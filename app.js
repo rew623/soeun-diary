@@ -40,7 +40,7 @@ const SCHEDULE = [
 ];
 
 // ---------- 폰 안의 사본 (화면은 여기서 바로 그림) ----------
-const M = { fid: '', uid: '', family: null, member: null, members: [], col: {} };
+const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map() };
 COLS.forEach(c => { M.col[c] = new Map(); });
 let unsubs = [], lastJSON = '', pendingRemote = false, ready = false;
 
@@ -80,6 +80,7 @@ function build() {
     vaccines: list('vaccines').map(v => ({ id: v.id, period: String(v.period || ''), name: String(v.name || ''), sub: v.sub || '', done: v.done || '', memo: v.memo || '', by: v.by || '' }))
   };
   Object.keys(TBL).forEach(k => { d[OUT[k]] = item(k); });
+  d.hospitals = [...M.hosp.values()].map(h => ({ hpid: h.id, star: !!h.star, memo: h.memo || '', lunch: h.lunch || '', reserve: h.reserve || '', moonlight: !!h.moonlight, updatedBy: h.updatedBy || '' }));
   return d;
 }
 function data() { const d = build(); lastJSON = JSON.stringify(d); return d; }
@@ -241,6 +242,19 @@ const H = {
     if (k === 'ep') list('log').filter(o => o.ep === id).forEach(o => { M.col.log.delete(o.id); b.delete(dref('log', o.id)); });
     await commit(b.commit());
     return { data: data() };
+  },
+
+  // 관심 병원 (families/{fid}/hospitals/{hpid}), 보낸 칸만 바꿔요
+  async saveHospital(h) {
+    const id = String((h && h.hpid) || '');
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) throw new Error('병원 번호가 올바르지 않아요');
+    const row = {};
+    ['star', 'moonlight'].forEach(k => { if (k in h) row[k] = !!h[k]; });
+    ['memo', 'lunch', 'reserve'].forEach(k => { if (k in h) row[k] = txt(h[k], k === 'memo' ? 300 : 100); });
+    row.updatedBy = myRole() || (auth.currentUser && auth.currentUser.displayName) || '';
+    M.hosp.set(id, Object.assign({}, M.hosp.get(id) || {}, row, { id }));
+    await commit(setDoc(dref('hospitals', id), Object.assign({ updatedAt: serverTimestamp() }, row), { merge: true }));
+    return { data: data() };
   }
 };
 
@@ -261,7 +275,7 @@ const API = {
 function stopAll() { unsubs.forEach(u => u()); unsubs = []; ready = false; }
 function start(fid) {
   stopAll();
-  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear());
+  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map();
   const need = new Set(['family', 'member', ...COLS]);
   const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); } };
   const fail = e => {
@@ -278,6 +292,11 @@ function start(fid) {
     M.col[c] = new Map(s.docs.map(d => [d.id, Object.assign({ id: d.id }, d.data())]));
     first(c); onRemote();
   }, fail)));
+  // 관심 병원: 보안 규칙이 아직 없어도 앱은 그대로 열리게 따로 받아요
+  unsubs.push(onSnapshot(collection(db, 'families', fid, 'hospitals'), s => {
+    M.hosp = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
+    onRemote();
+  }, e => console.warn('관심 병원을 불러오지 못했어요 (Firestore 규칙 확인)', e)));
 }
 
 async function enter(fid) {

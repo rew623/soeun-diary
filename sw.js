@@ -1,8 +1,8 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.09.24-2';
+const VERSION = '2026.09.24-3';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
-const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1';
+  './hospitals.js', './map-key.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL_CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))));
@@ -23,6 +23,22 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
+  // 병원 정보: 인터넷에서 먼저 받고, 안 되면 마지막으로 받은 것 (VERSION이 바뀌어도 지우지 않아요)
+  if (url.origin === location.origin && url.pathname.endsWith('/hospitals.json')) {
+    e.respondWith((async () => {
+      const c = await caches.open(DATA), key = new URL('hospitals.json', self.registration.scope).href;
+      try {
+        const res = await fetch(req);
+        if (res.ok) { c.put(key, res.clone()); return res; }
+        return (await c.match(key)) || res;
+      } catch (x) {
+        const hit = await c.match(key);
+        if (hit) return hit;
+        throw x;
+      }
+    })());
+    return;
+  }
   // 앱 화면: 폰에 저장된 것부터 바로 (새 버전은 VERSION이 바뀔 때 받아요)
   if (url.origin === location.origin) {
     e.respondWith((async () => {
