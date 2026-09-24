@@ -234,7 +234,7 @@ function renderHosp() {
 }
 
 // 긴급 출동 탭 위쪽 바로가기
-const quickHtml = () => `<div class="hquick"><button class="er" data-h="open" data-p="ernight">${typeof I_SIREN === 'string' ? I_SIREN.replace(/24/g, '20') : ''}응급실·야간 진료 병원</button><button class="all" data-h="open" data-k="hosp">병원</button><button class="all" data-h="open" data-k="ph">약국</button></div>`;
+const quickHtml = () => `<div class="hquick"><button class="er" data-h="open" data-p="ernight">${typeof I_SIREN === 'string' ? I_SIREN.replace(/24/g, '20') : ''}<span>응급실·야간<br>진료 병원</span></button><button class="all" data-h="open" data-k="hosp">병원</button><button class="all" data-h="open" data-k="ph">약국</button></div>`;
 
 function openEdit(id) {
   const h = byId(id), f = favMap().get(id) || {}, ph = !!(h && h.ph);
@@ -286,9 +286,10 @@ document.addEventListener('toggle', e => { const d = e.target; if (d && d.datase
 const css = document.createElement('style');
 css.textContent = `
 .hquick{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;display:flex;gap:8px;margin:-18px -20px 14px;padding:10px 20px;background:var(--paper);border-bottom:1px dashed var(--line)}
-.hquick button{border-radius:4px;min-height:46px;font-family:var(--display);font-size:16px;display:flex;align-items:center;justify-content:center;gap:6px}
-.hquick .er{flex:1;background:var(--red);color:#fff;border:0}
-.hquick .all{background:#FFFDF7;border:1.5px solid var(--navy);color:var(--navy);padding:0 12px;white-space:nowrap}
+.hquick button{border-radius:4px;min-height:46px;font-family:var(--display);font-size:16px;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}
+.hquick .er{flex:2 1 0;background:var(--red);color:#fff;border:0;padding:4px 6px;font-size:14px;line-height:1.2;text-align:left;word-break:keep-all}
+.hquick .er svg{flex-shrink:0}
+.hquick .all{flex:1 1 0;background:#FFFDF7;border:1.5px solid var(--navy);color:var(--navy);padding:0 6px;white-space:nowrap}
 .hfilters .chips{margin-top:10px;gap:6px}
 .chip.on{background:var(--navy);color:var(--paper)}
 .hpreset{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 0;border:1px dashed var(--red);color:var(--red);padding:6px 10px;font-size:13px}
