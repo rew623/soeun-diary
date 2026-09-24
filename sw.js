@@ -1,5 +1,5 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.09.24-1';
+const VERSION = '2026.09.24-2';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1';
@@ -33,7 +33,8 @@ self.addEventListener('fetch', e => {
     return;
   }
   // 사진: 한 번 받은 건 폰에 보관 (사진 주소는 바뀌지 않아요)
-  if (url.hostname === 'firebasestorage.googleapis.com') {
+  // 사진 올리기·주소 받기 요청은 로그인 정보가 필요하니 건드리지 않아요
+  if (url.hostname === 'firebasestorage.googleapis.com' && url.searchParams.get('alt') === 'media' && url.searchParams.has('token')) {
     e.respondWith((async () => {
       const c = await caches.open(PHOTO), hit = await c.match(req.url);
       if (hit) return hit;
