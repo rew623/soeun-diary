@@ -70,6 +70,7 @@ function build() {
   const item = k => list(k).map(o => {
     const c = { id: o.id };
     TBL[k].forEach(key => { c[key] = key === 'photo' ? !!o.photoUrl : (o[key] == null ? '' : String(o[key])); });
+    if (k === 'mom') c.board = !!o.board;          // 수사 보드에 붙인 사진
     return c;
   });
   const d = {
@@ -241,6 +242,14 @@ const H = {
     M.col[k].delete(id); b.delete(dref(k, id)); dropPhoto(ex && ex.photoPath);
     if (k === 'ep') list('log').filter(o => o.ep === id).forEach(o => { M.col.log.delete(o.id); b.delete(dref('log', o.id)); });
     await commit(b.commit());
+    return { data: data() };
+  },
+
+  // 앨범 사진을 수사 보드에 붙이기/떼기 (기존 앨범 문서에 board 칸만 더해요)
+  async setBoard(id, on) {
+    id = String(id); if (!M.col.mom.has(id)) throw new Error('없는 사진이에요');
+    localSet('mom', id, { board: !!on });
+    await commit(setDoc(dref('mom', id), { board: !!on }, { merge: true }));
     return { data: data() };
   },
 

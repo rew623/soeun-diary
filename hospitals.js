@@ -248,16 +248,24 @@ function openEdit(id) {
     <div class="actions"><button class="secondary" data-act="close">취소</button><button class="primary" data-h="save" data-id="${esc(id)}">저장</button></div>`);
 }
 
+function openView(preset, kind) {
+  S.tab = 'sick'; S.view = 'hosp'; H.preset = preset; H.sel = ''; H.more = 40;
+  if (H.preset) { H.mode = 'list'; H.kind = 'hosp'; } else if (kind) H.kind = kind;
+  if (!H.list || H.err || H.phErr) load();
+  if (!H.pos && navigator.permissions) navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') locate(true); }).catch(() => {});
+  render(); window.scrollTo(0, 0);
+}
+// 수사 보드용: 관심(★) 병원·약국 이름 (목록을 아직 안 받았으면 폰에 보관한 관심 목록에서)
+function favNames() {
+  const fav = favMap(), src = H.list || (readFav() || {}).items || [];
+  return src.filter(h => (fav.get(h.hpid) || {}).star).map(h => ({ name: h.name, ph: !!h.ph }));
+}
+
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-h]'); if (!b) return;
   const v = b.dataset.v, id = b.dataset.id;
   switch (b.dataset.h) {
-    case 'open':
-      S.tab = 'sick'; S.view = 'hosp'; H.preset = b.dataset.p || ''; H.sel = ''; H.more = 40;
-      if (H.preset) { H.mode = 'list'; H.kind = 'hosp'; } else if (b.dataset.k) H.kind = b.dataset.k;
-      if (!H.list || H.err || H.phErr) load();
-      if (!H.pos && navigator.permissions) navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') locate(true); }).catch(() => {});
-      render(); window.scrollTo(0, 0); break;
+    case 'open': openView(b.dataset.p || '', b.dataset.k || ''); break;
     case 'preset': H.preset = ''; render(); break;
     case 'kind': H.kind = v; H.sel = ''; H.more = 40; render(); break;
     case 'dept': H.dept = v; H.more = 40; render(); break;
@@ -328,5 +336,5 @@ css.textContent = `
 .hacts{display:flex;gap:8px;margin-top:10px}`;
 document.head.appendChild(css);
 
-window.HOSP = { render: renderHosp, mount, quickHtml };
+window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames };
 })();
