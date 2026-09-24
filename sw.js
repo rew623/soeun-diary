@@ -1,5 +1,5 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.09.25-1';
+const VERSION = '2026.09.25-2';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
   './hospitals.js', './map-key.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
@@ -23,10 +23,11 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // 병원 정보: 인터넷에서 먼저 받고, 안 되면 마지막으로 받은 것 (VERSION이 바뀌어도 지우지 않아요)
-  if (url.origin === location.origin && url.pathname.endsWith('/hospitals.json')) {
+  // 병원·약국 정보: 인터넷에서 먼저 받고, 안 되면 마지막으로 받은 것 (VERSION이 바뀌어도 지우지 않아요)
+  const dataFile = url.origin === location.origin && /\/(hospitals|pharmacies)\.json$/.exec(url.pathname);
+  if (dataFile) {
     e.respondWith((async () => {
-      const c = await caches.open(DATA), key = new URL('hospitals.json', self.registration.scope).href;
+      const c = await caches.open(DATA), key = new URL(dataFile[1] + '.json', self.registration.scope).href;
       try {
         const res = await fetch(req);
         if (res.ok) { c.put(key, res.clone()); return res; }

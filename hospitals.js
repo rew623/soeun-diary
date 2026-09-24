@@ -1,5 +1,5 @@
-// 병원 수사 — 긴급 출동 탭 안의 동네 병원 찾기 (강원 원주시)
-// 병원 목록: hospitals.json (GitHub Actions가 매주 공공데이터에서 받아 올려요)
+// 병원 수사 — 긴급 출동 탭 안의 동네 병원·약국 찾기 (강원 원주시)
+// 병원·약국 목록: hospitals.json, pharmacies.json (GitHub Actions가 매주 공공데이터에서 받아 올려요)
 // 관심 병원·메모: Firestore families/{fid}/hospitals/{hpid} (app.js의 saveHospital, 가족 공유)
 (function () {
 const HOME = { lat: 37.3422, lng: 127.9202 };               // 원주시청 (현재 위치를 모를 때 기준)
@@ -14,9 +14,9 @@ const HOLI = new Set([
   '2027-08-15', '2027-08-16', '2027-09-14', '2027-09-15', '2027-09-16', '2027-10-03', '2027-10-04', '2027-10-09', '2027-10-11',
   '2027-12-25', '2027-12-27'
 ]);
-const FAVK = 'soeun-hosp-fav';   // 오프라인용: 관심 병원의 마지막 진료시간
+const FAVK = 'soeun-hosp-fav';   // 오프라인용: 관심 병원·약국의 마지막 진료시간
 
-const H = { list: null, updated: '', loading: false, err: '', mode: '', dept: '', f: {}, preset: '', pos: null, sel: '', open: new Set(), more: 40, mapErr: '' };
+const H = { list: null, updated: '', phUpdated: '', loading: false, err: '', phErr: '', kind: 'hosp', mode: '', dept: '', f: {}, preset: '', pos: null, sel: '', open: new Set(), more: 40, mapErr: '' };
 let map = null, mapEl = null, mapLoading = false, markers = [], lastSig = '', meDot = null, sdk = null, favJ = '';
 
 // ---------- 시간 ----------
@@ -28,13 +28,15 @@ const spanOf = (h, i) => { const t = h.t && h.t[i]; if (!t) return null; const s
 function fmtT(n) { const next = n >= 2400; if (next) n -= 2400; const s = String(n).padStart(4, '0'); return (next ? '익일 ' : '') + s.slice(0, 2) + ':' + s.slice(2); }
 const spanText = sp => sp ? fmtT(sp[0]) + '~' + fmtT(sp[1]) : '휴진';
 function status(h, n) {
-  const sp = spanOf(h, n.idx);
-  if (!sp) return { k: 'off', t: '오늘 휴진' };
-  if (n.hm >= sp[0] && n.hm < sp[1]) return { k: 'open', t: '진료 중' };
-  if (n.hm < sp[0]) return { k: 'before', t: '진료 전' };
+  const sp = spanOf(h, n.idx), w = h.ph ? ['영업', '휴무'] : ['진료', '휴진'];
+  if (!sp) return { k: 'off', t: '오늘 ' + w[1] };
+  if (n.hm >= sp[0] && n.hm < sp[1]) return { k: 'open', t: w[0] + ' 중' };
+  if (n.hm < sp[0]) return { k: 'before', t: w[0] + ' 전' };
   return { k: 'off', t: '마감' };
 }
-const night = h => [1, 2, 3, 4, 5, 6, 7, 8].some(i => { const sp = spanOf(h, i); return sp && sp[1] > 1800; });
+// 야간: 병원은 18시 이후, 약국은 대부분 저녁까지 열어서 21시 이후까지 여는 곳
+const nightAt = h => h.ph ? 2100 : 1800;
+const night = h => [1, 2, 3, 4, 5, 6, 7, 8].some(i => { const sp = spanOf(h, i); return sp && sp[1] > nightAt(h); });
 
 // ---------- 거리, 관심 ----------
 function dist(h) {
@@ -50,15 +52,17 @@ function visitMap() { const m = new Map(); (S.visits || []).forEach(v => { const
 
 function visible(n, fav) {
   const f = H.f;
+  const ph = H.kind === 'ph';
   return (H.list || []).filter(h => {
-    if (H.preset === 'ernight' && !(h.er || night(h))) return false;
-    if (H.dept && !(h.depts || []).includes(H.dept)) return false;
+    if (!!h.ph !== ph) return false;
+    if (!ph && H.preset === 'ernight' && !(h.er || night(h))) return false;
+    if (!ph && H.dept && !(h.depts || []).includes(H.dept)) return false;
     if (f.now && !(h.er || status(h, n).k === 'open')) return false;
     if (f.sat && !h.t[6]) return false;
     if (f.sun && !h.t[7]) return false;
     if (f.hol && !h.t[8]) return false;
     if (f.night && !night(h)) return false;
-    if (f.er && !h.er) return false;
+    if (!ph && f.er && !h.er) return false;
     return true;
   }).map(h => ({ h, d: dist(h), fav: !!(fav.get(h.hpid) || {}).star }))
     .sort((a, b) => (b.fav - a.fav) || (a.d - b.d)).map(x => x.h);
@@ -69,22 +73,28 @@ const readFav = () => { try { return JSON.parse(localStorage.getItem(FAVK) || 'n
 function saveFav() {
   if (!H.list) return;
   const fav = favMap(), items = H.list.filter(h => (fav.get(h.hpid) || {}).star);
-  const j = JSON.stringify({ updated: H.updated, items });
+  const j = JSON.stringify({ updated: H.updated, phUpdated: H.phUpdated, items });
   if (j === favJ) return; favJ = j;
   try { localStorage.setItem(FAVK, j); } catch (e) {}
 }
+async function getJson(url) {
+  const r = await fetch(url, { cache: 'no-store' });
+  if (r.status === 404) throw new Error('nodata');
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+// 병원과 약국을 따로 받아서, 받지 못한 쪽은 마지막으로 보관한 관심 목록으로 채워요
 async function load() {
-  if (H.loading) return; H.loading = true; H.err = '';
-  try {
-    const r = await fetch('hospitals.json', { cache: 'no-store' });
-    if (r.status === 404) throw new Error('nodata');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json(); H.list = j.items || []; H.updated = j.updated || '';
-  } catch (e) {
-    const f = readFav();
-    if (f && f.items && f.items.length) { H.list = f.items; H.updated = f.updated || ''; H.err = 'offline'; }
-    else { H.list = []; H.err = e.message === 'nodata' ? 'nodata' : 'offline'; }
-  } finally { H.loading = false; saveFav(); rerender(); }
+  if (H.loading) return; H.loading = true; H.err = ''; H.phErr = '';
+  const [a, b] = await Promise.allSettled([getJson('hospitals.json'), getJson('pharmacies.json')]);
+  const f = readFav() || {}, keep = (f.items || []), why = r => r.reason && r.reason.message === 'nodata' ? 'nodata' : 'offline';
+  let hs, ps;
+  if (a.status === 'fulfilled') { hs = a.value.items || []; H.updated = a.value.updated || ''; }
+  else { hs = keep.filter(h => !h.ph); H.updated = f.updated || ''; H.err = why(a); }
+  if (b.status === 'fulfilled') { ps = (b.value.items || []).map(h => Object.assign(h, { ph: true })); H.phUpdated = b.value.updated || ''; }
+  else { ps = keep.filter(h => h.ph); H.phUpdated = f.phUpdated || ''; H.phErr = why(b); }
+  H.list = hs.concat(ps);
+  H.loading = false; saveFav(); rerender();
 }
 const rerender = () => { if (S.view === 'hosp') render(); };
 const byId = id => (H.list || []).find(h => h.hpid === id);
@@ -161,18 +171,18 @@ function locate(quiet) {
 
 // ---------- 화면 ----------
 function card(h, n, fav, vm, isSel) {
-  const f = fav.get(h.hpid) || {}, st = status(h, n), sp = spanOf(h, n.idx), last = vm.get(norm(h.name));
+  const f = fav.get(h.hpid) || {}, st = status(h, n), sp = spanOf(h, n.idx), last = h.ph ? '' : vm.get(norm(h.name));
   const dd = kmText(dist(h)), tel = String(h.tel || '').replace(/[^0-9+]/g, '');
   const rows = [1, 2, 3, 4, 5, 6, 7, 8].map(i => `<tr class="${i === n.idx ? 'today' : ''}"><td>${DAYN[i]}</td><td>${spanText(spanOf(h, i))}</td></tr>`).join('');
-  const notes = [['점심', f.lunch], ['예약', f.reserve], ['메모', f.memo]].filter(x => x[1]);
+  const notes = [['점심', f.lunch], ['예약', h.ph ? '' : f.reserve], ['메모', f.memo]].filter(x => x[1]);
   const depts = (h.depts || []).filter(d => DEPTS.includes(d));
   return `<article class="hcard${f.star ? ' fav' : ''}${isSel ? ' sel' : ''}" ${isSel ? 'id="hsel"' : ''}>
     <div class="htop"><div style="min-width:0"><b class="hname">${esc(h.name)}</b><small>${esc(h.kind)}${dd ? ' · ' + dd : ''}${depts.length ? ' · ' + esc(depts.join(', ')) : ''}</small></div>
-      <button class="hstar${f.star ? ' on' : ''}" data-h="star" data-id="${esc(h.hpid)}" aria-pressed="${f.star ? 'true' : 'false'}" aria-label="관심 병원">${f.star ? '★' : '☆'}</button></div>
-    ${h.er || f.moonlight || last ? `<div class="hbadges">${h.er ? '<span class="hb er">응급실 운영</span>' : ''}${f.moonlight ? '<span class="hb moon">달빛어린이병원</span>' : ''}${last ? `<span class="hb">마지막 방문 ${fmtK(last, true)}</span>` : ''}</div>` : ''}
+      <button class="hstar${f.star ? ' on' : ''}" data-h="star" data-id="${esc(h.hpid)}" aria-pressed="${f.star ? 'true' : 'false'}" aria-label="관심 ${h.ph ? '약국' : '병원'}">${f.star ? '★' : '☆'}</button></div>
+    ${h.er || (f.moonlight && !h.ph) || last ? `<div class="hbadges">${h.er ? '<span class="hb er">응급실 운영</span>' : ''}${f.moonlight && !h.ph ? '<span class="hb moon">달빛어린이병원</span>' : ''}${last ? `<span class="hb">마지막 방문 ${fmtK(last, true)}</span>` : ''}</div>` : ''}
     <div class="htoday"><span><small>오늘(${DAYN[n.idx]})</small><b>${spanText(sp)}</b></span><span class="hst ${st.k}">${st.t}</span></div>
-    <details data-hid="${esc(h.hpid)}" ${H.open.has(h.hpid) ? 'open' : ''}><summary>진료시간 전체 보기</summary><table class="htimes">${rows}</table></details>
-    <p class="hsrc">공공데이터 기준, 방문 전 전화 확인${H.updated ? ` (${esc(H.updated)} 받음)` : ''}</p>
+    <details data-hid="${esc(h.hpid)}" ${H.open.has(h.hpid) ? 'open' : ''}><summary>${h.ph ? '영업시간' : '진료시간'} 전체 보기</summary><table class="htimes">${rows}</table></details>
+    <p class="hsrc">공공데이터 기준, 방문 전 전화 확인${(h.ph ? H.phUpdated : H.updated) ? ` (${esc(h.ph ? H.phUpdated : H.updated)} 받음)` : ''}</p>
     ${notes.length ? `<div class="hnote">${notes.map(([k, v]) => `<span><i>${k}</i>${esc(v)}</span>`).join('')}${f.updatedBy ? `<small>${esc(f.updatedBy)} 수사관 기록</small>` : ''}</div>` : ''}
     ${h.addr ? `<p class="hsrc" style="margin-top:6px">${esc(h.addr)}</p>` : ''}
     <div class="hacts">${tel ? `<a class="linkbtn" href="tel:${tel}">전화</a>` : ''}${h.lat != null ? `<a class="linkbtn" href="https://map.kakao.com/link/to/${encodeURIComponent(h.name)},${h.lat},${h.lng}" target="_blank" rel="noopener">길찾기</a>` : ''}<button class="linkbtn" data-h="edit" data-id="${esc(h.hpid)}">메모 편집</button></div>
@@ -183,51 +193,57 @@ const chip = (on, attrs, label) => `<button class="chip${on ? ' on' : ''}" ${att
 function renderHosp() {
   if (!H.list && !H.loading) load();
   if (!H.mode) H.mode = hasKey() ? 'map' : 'list';
+  const ph = H.kind === 'ph', W = ph ? { n: '약국', t: '영업' } : { n: '병원', t: '진료' };
   const n = nowInfo(), fav = favMap(), vm = visitMap(), list = visible(n, fav);
   const favs = list.filter(h => (fav.get(h.hpid) || {}).star);
   const head = `<header class="vhead"><span class="no">긴급 출동 · 강원 원주시</span><div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1>병원 수사</h1><button class="ghost" data-act="tab" data-v="sick">← 긴급 출동</button></div>
-    <p>${n.idx === 8 ? '오늘은 공휴일이에요. ' : ''}관심 병원은 가족 모두에게 같이 보여요.</p></header>`;
+    <p>${n.idx === 8 ? '오늘은 공휴일이에요. ' : ''}관심 병원·약국은 가족 모두에게 같이 보여요.</p></header>`;
+  const kinds = `<div class="seg hkind" style="margin-top:14px"><button class="${ph ? '' : 'on'}" data-h="kind" data-v="hosp">병원</button><button class="${ph ? 'on' : ''}" data-h="kind" data-v="ph">약국</button></div>`;
+  const err = ph ? H.phErr : H.err, has = (H.list || []).some(h => !!h.ph === ph);
   let notice = '';
-  if (H.err === 'nodata') notice = '<p class="notice">아직 병원 정보가 없어요. GitHub Actions에서 "병원 정보 받기"를 한 번 실행해 주세요.</p>';
-  else if (H.err === 'offline') notice = `<p class="notice">인터넷에 연결되지 않아 ${H.list && H.list.length ? '마지막으로 받은 관심 병원만' : '병원 정보를'} 보여 줘요.</p>`;
+  if (err === 'nodata' && !has) notice = `<p class="notice">아직 ${W.n} 정보가 없어요. GitHub Actions에서 "병원 정보 받기"를 한 번 실행해 주세요.</p>`;
+  else if (err) notice = `<p class="notice">인터넷에 연결되지 않아 ${has ? `마지막으로 받은 관심 ${W.n}만` : `${W.n} 정보를`} 보여 줘요.</p>`;
+  const flts = [['now', `지금 ${W.t} 중`], ['sat', '토요일'], ['sun', '일요일'], ['hol', '공휴일'], ['night', ph ? '야간 21시 이후' : '야간 18시 이후']].concat(ph ? [] : [['er', '응급실']]);
   const filters = `<div class="hfilters">
-    ${H.preset === 'ernight' ? '<p class="hpreset"><span>응급실 또는 야간(18시 이후) 진료 병원만 보는 중</span><button class="ghost" data-h="preset">모두 보기</button></p>' : ''}
-    <div class="chips">${chip(!H.dept, 'data-h="dept" data-v=""', '전체 과목')}${DEPTS.map(d => chip(H.dept === d, `data-h="dept" data-v="${d}"`, d)).join('')}</div>
-    <div class="chips">${[['now', '지금 진료 중'], ['sat', '토요일'], ['sun', '일요일'], ['hol', '공휴일'], ['night', '야간 18시 이후'], ['er', '응급실']].map(([k, l]) => chip(!!H.f[k], `data-h="flt" data-v="${k}"`, l)).join('')}</div>
+    ${!ph && H.preset === 'ernight' ? '<p class="hpreset"><span>응급실 또는 야간(18시 이후) 진료 병원만 보는 중</span><button class="ghost" data-h="preset">모두 보기</button></p>' : ''}
+    ${ph ? '' : `<div class="chips">${chip(!H.dept, 'data-h="dept" data-v=""', '전체 과목')}${DEPTS.map(d => chip(H.dept === d, `data-h="dept" data-v="${d}"`, d)).join('')}</div>`}
+    <div class="chips">${flts.map(([k, l]) => chip(!!H.f[k], `data-h="flt" data-v="${k}"`, l)).join('')}</div>
   </div>`;
   const seg = `<div class="seg" style="margin-top:14px"><button class="${H.mode === 'map' ? 'on' : ''}" data-h="mode" data-v="map">지도</button><button class="${H.mode === 'list' ? 'on' : ''}" data-h="mode" data-v="list">목록 (${list.length})</button></div>`;
   const cards = arr => arr.map(h => card(h, n, fav, vm, h.hpid === H.sel)).join('');
   let body;
-  if (H.loading && !H.list) body = '<p class="vempty">병원 정보를 불러오는 중…</p>';
+  if (H.loading && !H.list) body = '<p class="vempty">병원·약국 정보를 불러오는 중…</p>';
   else if (H.mode === 'map') {
     const mapBox = !hasKey() ? '<div class="hmap hmsg">지도를 쓰려면 map-key.js에 카카오 JavaScript 키를 넣어 주세요. 목록 보기는 그대로 쓸 수 있어요.</div>'
       : H.mapErr ? '<div class="hmap hmsg"><span>지도를 불러오지 못했어요. 인터넷 연결이나 카카오 키의 사이트 도메인 등록을 확인해 주세요.</span><button class="ghost" data-h="remap">다시 불러오기</button></div>'
       : '<div id="hmap-slot"></div>';
-    const sel = H.sel && byId(H.sel);
+    const sel = H.sel && byId(H.sel), rest = favs.filter(h => h.hpid !== H.sel);
     body = `<div class="hmapwrap">${mapBox}${hasKey() && !H.mapErr ? '<button class="hme" data-h="me">현재 위치</button>' : ''}</div>
-      <div class="hlegend"><span><i style="background:var(--red)"></i>관심 병원</span><span><i style="background:rgba(31,42,68,.38)"></i>그 밖의 병원</span><span>${list.length}곳</span></div>
-      ${sel ? cards([sel]) : '<p class="vempty">핀을 누르면 병원 정보가 나와요.</p>'}
-      ${favs.filter(h => h.hpid !== H.sel).length ? `<h2 class="subh">★ 관심 병원</h2>${cards(favs.filter(h => h.hpid !== H.sel))}` : ''}`;
+      <div class="hlegend"><span><i style="background:var(--red)"></i>관심 ${W.n}</span><span><i style="background:rgba(31,42,68,.38)"></i>그 밖의 ${W.n}</span><span>${list.length}곳</span></div>
+      ${sel && !!sel.ph === ph ? cards([sel]) : `<p class="vempty">핀을 누르면 ${W.n} 정보가 나와요.</p>`}
+      ${rest.length ? `<h2 class="subh">★ 관심 ${W.n}</h2>${cards(rest)}` : ''}`;
   } else {
     const shown = list.slice(0, Math.max(H.more, favs.length));
-    body = `<p class="hsrc" style="margin-top:8px">관심 병원 먼저, 그다음 ${H.pos ? '현재 위치에서' : '원주시청에서'} 가까운 순이에요. <button class="ghost" data-h="me" style="min-height:30px;padding:2px 8px">현재 위치로</button></p>
-      ${list.length ? cards(shown) : '<p class="vempty">조건에 맞는 병원이 없어요. 필터를 줄여 보세요.</p>'}
+    body = `<p class="hsrc" style="margin-top:8px">관심 ${W.n} 먼저, 그다음 ${H.pos ? '현재 위치에서' : '원주시청에서'} 가까운 순이에요. <button class="ghost" data-h="me" style="min-height:30px;padding:2px 8px">현재 위치로</button></p>
+      ${list.length ? cards(shown) : `<p class="vempty">조건에 맞는 ${W.n}이 없어요. 필터를 줄여 보세요.</p>`}
       ${list.length > shown.length ? `<button class="addperiod" data-h="more">더 보기 (${list.length - shown.length}곳 남음)</button>` : ''}`;
   }
-  return head + notice + filters + seg + body + '<p class="foot">병원 정보: 국립중앙의료원 전국 병·의원 찾기 서비스(공공데이터포털). 진료시간이 실제와 다를 수 있어요.</p>';
+  const src = ph ? '약국 정보: 국립중앙의료원 전국 약국 정보 조회 서비스(공공데이터포털). 영업시간이 실제와 다를 수 있어요.'
+    : '병원 정보: 국립중앙의료원 전국 병·의원 찾기 서비스(공공데이터포털). 진료시간이 실제와 다를 수 있어요.';
+  return head + kinds + notice + filters + seg + body + `<p class="foot">${src}</p>`;
 }
 
 // 긴급 출동 탭 위쪽 바로가기
-const quickHtml = () => `<div class="hquick"><button class="er" data-h="open" data-p="ernight">${typeof I_SIREN === 'string' ? I_SIREN.replace(/24/g, '20') : ''}응급실·야간 진료 병원</button><button class="all" data-h="open">병원 수사</button></div>`;
+const quickHtml = () => `<div class="hquick"><button class="er" data-h="open" data-p="ernight">${typeof I_SIREN === 'string' ? I_SIREN.replace(/24/g, '20') : ''}응급실·야간 진료 병원</button><button class="all" data-h="open" data-k="hosp">병원</button><button class="all" data-h="open" data-k="ph">약국</button></div>`;
 
 function openEdit(id) {
-  const h = byId(id), f = favMap().get(id) || {};
+  const h = byId(id), f = favMap().get(id) || {}, ph = !!(h && h.ph);
   openSheet(`<h3>${esc(h ? h.name : '병원')}</h3>
-    <label class="check"><input type="checkbox" id="hm-star" ${f.star ? 'checked' : ''}> ★ 관심 병원</label>
-    <label class="check"><input type="checkbox" id="hm-moon" ${f.moonlight ? 'checked' : ''}> 달빛어린이병원 (직접 확인하고 체크)</label>
+    <label class="check"><input type="checkbox" id="hm-star" ${f.star ? 'checked' : ''}> ★ 관심 ${ph ? '약국' : '병원'}</label>
+    ${ph ? '' : `<label class="check"><input type="checkbox" id="hm-moon" ${f.moonlight ? 'checked' : ''}> 달빛어린이병원 (직접 확인하고 체크)</label>`}
     <label class="field"><span>점심시간</span><input id="hm-lunch" maxlength="100" value="${esc(f.lunch || '')}" placeholder="예: 13:00~14:00"></label>
-    <label class="field"><span>예약 방법</span><input id="hm-reserve" maxlength="100" value="${esc(f.reserve || '')}" placeholder="예: 똑닥 앱, 전화 예약"></label>
-    <label class="field"><span>메모</span><textarea id="hm-memo" maxlength="300" placeholder="예: 주차 2시간 무료, 오후 3시쯤 덜 붐빔">${esc(f.memo || '')}</textarea></label>
+    ${ph ? '' : `<label class="field"><span>예약 방법</span><input id="hm-reserve" maxlength="100" value="${esc(f.reserve || '')}" placeholder="예: 똑닥 앱, 전화 예약"></label>`}
+    <label class="field"><span>메모</span><textarea id="hm-memo" maxlength="300" placeholder="${ph ? '예: 아기 해열제 시럽 있음, 주차 가능' : '예: 주차 2시간 무료, 오후 3시쯤 덜 붐빔'}">${esc(f.memo || '')}</textarea></label>
     <p class="hint">가족 수사관 모두에게 같이 보여요.</p>
     <div class="actions"><button class="secondary" data-act="close">취소</button><button class="primary" data-h="save" data-id="${esc(id)}">저장</button></div>`);
 }
@@ -238,11 +254,12 @@ document.addEventListener('click', async e => {
   switch (b.dataset.h) {
     case 'open':
       S.tab = 'sick'; S.view = 'hosp'; H.preset = b.dataset.p || ''; H.sel = ''; H.more = 40;
-      if (H.preset) H.mode = 'list';
-      if (!H.list || H.err) load();
+      if (H.preset) { H.mode = 'list'; H.kind = 'hosp'; } else if (b.dataset.k) H.kind = b.dataset.k;
+      if (!H.list || H.err || H.phErr) load();
       if (!H.pos && navigator.permissions) navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') locate(true); }).catch(() => {});
       render(); window.scrollTo(0, 0); break;
     case 'preset': H.preset = ''; render(); break;
+    case 'kind': H.kind = v; H.sel = ''; H.more = 40; render(); break;
     case 'dept': H.dept = v; H.more = 40; render(); break;
     case 'flt': H.f[v] = !H.f[v]; H.more = 40; render(); break;
     case 'mode': H.mode = v; render(); break;
@@ -251,14 +268,15 @@ document.addEventListener('click', async e => {
     case 'remap': H.mapErr = ''; render(); break;
     case 'edit': openEdit(id); break;
     case 'star': {
-      const cur = !!(favMap().get(id) || {}).star;
-      if (await write('saveHospital', { hpid: id, star: !cur })) { toast(cur ? '관심 병원에서 뺐어요' : '관심 병원으로 등록했어요'); saveFav(); }
+      const cur = !!(favMap().get(id) || {}).star, w = (byId(id) || {}).ph ? '약국' : '병원';
+      if (await write('saveHospital', { hpid: id, star: !cur })) { toast(cur ? `관심 ${w}에서 뺐어요` : `관심 ${w}으로 등록했어요`); saveFav(); }
       break;
     }
     case 'save': {
-      const val = k => (document.getElementById(k) || {}).value || '';
-      const o = { hpid: id, star: document.getElementById('hm-star').checked, moonlight: document.getElementById('hm-moon').checked, lunch: val('hm-lunch').trim(), reserve: val('hm-reserve').trim(), memo: val('hm-memo').trim() };
-      if (await write('saveHospital', o)) { closeSheet(); toast('병원 정보를 저장했어요'); saveFav(); }
+      const el = k => document.getElementById(k), o = { hpid: id, star: el('hm-star').checked, lunch: el('hm-lunch').value.trim(), memo: el('hm-memo').value.trim() };
+      if (el('hm-moon')) o.moonlight = el('hm-moon').checked;        // 약국 편집 창에는 달빛·예약 칸이 없어요
+      if (el('hm-reserve')) o.reserve = el('hm-reserve').value.trim();
+      if (await write('saveHospital', o)) { closeSheet(); toast(((byId(id) || {}).ph ? '약국' : '병원') + ' 정보를 저장했어요'); saveFav(); }
       break;
     }
   }
@@ -270,7 +288,7 @@ css.textContent = `
 .hquick{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;display:flex;gap:8px;margin:-18px -20px 14px;padding:10px 20px;background:var(--paper);border-bottom:1px dashed var(--line)}
 .hquick button{border-radius:4px;min-height:46px;font-family:var(--display);font-size:16px;display:flex;align-items:center;justify-content:center;gap:6px}
 .hquick .er{flex:1;background:var(--red);color:#fff;border:0}
-.hquick .all{background:#FFFDF7;border:1.5px solid var(--navy);color:var(--navy);padding:0 14px;white-space:nowrap}
+.hquick .all{background:#FFFDF7;border:1.5px solid var(--navy);color:var(--navy);padding:0 12px;white-space:nowrap}
 .hfilters .chips{margin-top:10px;gap:6px}
 .chip.on{background:var(--navy);color:var(--paper)}
 .hpreset{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 0;border:1px dashed var(--red);color:var(--red);padding:6px 10px;font-size:13px}
