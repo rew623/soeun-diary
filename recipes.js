@@ -1,4 +1,5 @@
 // 이유식 표준레시피 — 센터 엑셀(초기·중기·후기 시트)을 앱에서 읽어 정리하고 보기 좋게 보여줘요
+// 센터 식단 올리기: 엑셀은 레시피로, PDF 식단표는 쪽마다 이미지로 바꿔 식단표 칸에, 사진은 기존 식단표 편집창으로
 // 저장: Firestore families/{fid}/recipes/{YYYY-MM} (app.js의 saveRecipe), 원본 칸 그대로 두고 화면에서 다듬어요
 (function () {
 const R = { stage: '', mult: 1 };
@@ -125,7 +126,7 @@ function grouped(stage) {
 const fmtD = d => { const [, m, dd] = d.split('-').map(Number); return `${m}/${dd}`; };
 function foodHtml(ym) {
   const doc = monthDoc(ym);
-  const up = `<label class="addperiod rup">${doc ? '레시피 엑셀 다시 올리기' : '+ 표준레시피 엑셀 올리기'}<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-r="file" hidden></label>`;
+  const up = `<button class="addperiod rup" data-r="pick">${doc ? '레시피 엑셀 다시 올리기' : '+ 표준레시피 엑셀 올리기'}</button>`;
   if (!doc) return `<div class="rbox"><p class="vempty">센터 게시판의 표준레시피 엑셀(.xlsx)을 올리면 단계별 레시피로 정리해 보여줘요.</p>${up}</div>`;
   const cnt = doc.stages.map(s => `${esc(s.stage)} ${grouped(s).length}`).join(' · ');
   return `<div class="rbox"><button class="nextcard" data-r="open"><span><small>${esc(doc.title || '표준레시피')}</small><span class="t">이유식 표준레시피</span><small>${cnt}가지</small></span><span class="d">보기</span></button>${up}</div>`;
@@ -175,9 +176,10 @@ function openDish(idx) {
 
 // ---------- 동작 ----------
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-r]'); if (!b || b.tagName === 'INPUT') return;
+  const b = e.target.closest('[data-r]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.r) {
+    case 'pick': picker.click(); break;
     case 'open': S.tab = 'food'; S.view = 'recipe'; render(); window.scrollTo(0, 0); break;
     case 'mon': S.menuMonth = shiftMonth(curMenuMonth(), +v); render(); break;
     case 'stage': R.stage = v; render(); break;
@@ -191,18 +193,77 @@ document.addEventListener('click', async e => {
     }
   }
 });
-document.addEventListener('change', async e => {
-  const inp = e.target; if (!inp.dataset || inp.dataset.r !== 'file' || !inp.files[0]) return;
-  const file = inp.files[0]; inp.value = '';
+// 파일 고르는 칸은 화면 밖에 하나만 둬요 (파일 창에서 돌아올 때 화면을 다시 그려도 사라지지 않게)
+const picker = document.createElement('input');
+picker.type = 'file'; picker.hidden = true;
+picker.accept = '.pdf,.xlsx,image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+document.body.appendChild(picker);
+picker.addEventListener('change', async () => {
+  const file = picker.files[0]; picker.value = '';
+  if (!file) return;
+  const nm = file.name.toLowerCase();
   try {
-    toast('엑셀 읽는 중…');
-    const p = await parseXlsx(file), month = pickMonth(p.monthNo, curMenuMonth()), [yy, mm] = month.split('-');
-    const cnt = p.stages.map(s => `${s.stage} ${grouped(s).length}가지`).join(', ');
-    if (monthDoc(month) && !confirm(`${yy}년 ${+mm}월 레시피가 이미 있어요. 새 파일로 바꿀까요?`)) return;
-    if (!confirm(`${yy}년 ${+mm}월 표준레시피로 저장할게요.\n${cnt}`)) return;
-    if (await write('saveRecipe', toDoc(p, month, file))) { S.menuMonth = month; S.tab = 'food'; S.view = 'recipe'; R.stage = ''; render(); window.scrollTo(0, 0); toast('레시피를 정리해서 저장했어요'); }
-  } catch (x) { console.error(x); toast('레시피를 읽지 못했어요: ' + ((x && x.message) || '')); }
+    if (nm.endsWith('.xlsx') || /spreadsheet/.test(file.type)) await uploadRecipe(file);
+    else if (nm.endsWith('.pdf') || file.type === 'application/pdf') await uploadPdf(file);
+    else if (/^image\//.test(file.type)) { const d = await readPhoto(file, true); openMenu(null); pending = d; const pv = document.getElementById('pv'); if (pv) { pv.src = d; pv.hidden = false; } }
+    else toast('PDF, 엑셀(.xlsx), 사진만 올릴 수 있어요');
+  } catch (x) { console.error(x); toast('올리지 못했어요: ' + ((x && x.message) || '')); }
 });
+async function uploadRecipe(file) {
+  toast('엑셀 읽는 중…');
+  const p = await parseXlsx(file), month = pickMonth(p.monthNo, curMenuMonth()), [yy, mm] = month.split('-');
+  const cnt = p.stages.map(s => `${s.stage} ${grouped(s).length}가지`).join(', ');
+  if (monthDoc(month) && !confirm(`${yy}년 ${+mm}월 레시피가 이미 있어요. 새 파일로 바꿀까요?`)) return;
+  if (!confirm(`${yy}년 ${+mm}월 표준레시피로 저장할게요.\n${cnt}`)) return;
+  if (await write('saveRecipe', toDoc(p, month, file))) { S.menuMonth = month; S.tab = 'food'; S.view = 'recipe'; R.stage = ''; render(); window.scrollTo(0, 0); toast('레시피를 정리해서 저장했어요'); }
+}
+
+// ---------- PDF 식단표 → 쪽마다 이미지 ----------
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+function loadPdf() {
+  if (window.pdfjsLib) return Promise.resolve();
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = PDFJS + 'pdf.min.js'; s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; res(); }; s.onerror = () => rej(new Error('PDF를 여는 도구를 불러오지 못했어요')); document.head.appendChild(s); });
+}
+// 사진 저장 한도(약 380KB) 안에서 글씨가 읽히게, 폭 1400px부터 줄여 가며 JPEG로
+function pageJpeg(canvas) {
+  let c = canvas;
+  for (let k = 0; k < 4; k++) {
+    for (let q = .82; q >= .5; q -= .08) { const d = c.toDataURL('image/jpeg', q); if (d.length <= 380000) return d; }
+    const n = document.createElement('canvas'); n.width = Math.round(c.width * .85); n.height = Math.round(c.height * .85);
+    const x = n.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, n.width, n.height); x.drawImage(c, 0, 0, n.width, n.height); c = n;
+  }
+  return c.toDataURL('image/jpeg', .5);
+}
+async function uploadPdf(file) {
+  toast('PDF 읽는 중…');
+  await loadPdf();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), cMapUrl: PDFJS + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDFJS + 'standard_fonts/' }).promise;
+  const pages = [], n = Math.min(pdf.numPages, 6);
+  let monthNo = 0, year = 0;
+  for (let i = 1; i <= n; i++) {
+    const pg = await pdf.getPage(i), text = (await pg.getTextContent()).items.map(t => t.str).join(' ');
+    const m = /(\d{4})\s*년\s*(\d{1,2})\s*월/.exec(text) || /(\d{1,2})\s*월/.exec(text);
+    if (m && !monthNo) { if (m[2]) { year = +m[1]; monthNo = +m[2]; } else monthNo = +m[1]; }
+    const vp0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1400 / vp0.width });
+    const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: cx, viewport: vp }).promise;
+    pages.push({ title: /참고사항/.test(text) ? '식단 참고사항' : /레시피/.test(text) && !/식단/.test(text) ? '표준레시피' : '식단표', photo: pageJpeg(cv) });
+  }
+  const month = year && monthNo ? `${year}-${String(monthNo).padStart(2, '0')}` : pickMonth(monthNo, curMenuMonth()), [yy, mm] = month.split('-');
+  // 같은 제목이 여러 쪽이면 (1/2)처럼 번호를 붙여요
+  const seen = {}; pages.forEach(p => { seen[p.title] = (seen[p.title] || 0) + 1; });
+  const idx = {}; pages.forEach(p => { if (seen[p.title] > 1) { idx[p.title] = (idx[p.title] || 0) + 1; p.title += ` (${idx[p.title]}/${seen[p.title]})`; } });
+  if (!confirm(`${yy}년 ${+mm}월 식단으로 ${pages.length}쪽을 올릴게요.\n${pages.map(p => p.title).join(', ')}`)) return;
+  let ok = 0;
+  for (const p of pages) {
+    const res = await write('saveItem', 'menu', { month, title: p.title, photo: p.photo });
+    if (!res) break;
+    PHOTOS[res.id] = p.photo; ok++;
+  }
+  S.menuMonth = month; render();
+  if (ok) toast(`식단표 ${ok}쪽을 보관했어요`);
+}
 
 const css = document.createElement('style');
 css.textContent = `

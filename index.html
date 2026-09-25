@@ -794,7 +794,7 @@ function renderFood(){
       <span class="cnt"><button data-act="cubestep" data-id="${c.id}" data-v="-1" aria-label="하나 사용">−</button><b>${n}</b><button data-act="cubestep" data-id="${c.id}" data-v="1" aria-label="하나 추가">+</button></span></div>`}).join('');
   // 센터 식단
   const ym=curMenuMonth(),[yy,mm]=ym.split('-').map(Number),mn=S.menus.filter(m=>m.month===ym);
-  const menus=mn.length?`<div class="menus">${mn.map(m=>{const ph=safeImg(PHOTOS[m.id]);return `<button data-act="viewmenu" data-id="${m.id}">${ph?`<img src="${ph}" alt="${esc(m.title)}">`:`<span class="noph">${m.photo?'불러오는 중':'사진 없음'}</span>`}${esc(m.title||'식단표')}</button>`}).join('')}</div>`:'<p class="vempty">이달 식단표를 캡처해서 올려두면 두 수사관이 같이 볼 수 있어요.</p>';
+  const menus=mn.length?`<div class="menus">${mn.map(m=>{const ph=safeImg(PHOTOS[m.id]);return `<button data-act="viewmenu" data-id="${m.id}">${ph?`<img src="${ph}" alt="${esc(m.title)}">`:`<span class="noph">${m.photo?'불러오는 중':'사진 없음'}</span>`}${esc(m.title||'식단표')}</button>`}).join('')}</div>`:'<p class="vempty">센터 식단표(PDF·사진)나 표준레시피 엑셀을 올려두면 두 수사관이 같이 볼 수 있어요.</p>';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>급식 수사대</h1><p>이유식 기록, 새 식재료 심문, 냉동 큐브 보관</p></header>
   ${head}${band}
   <p class="foot" style="margin-top:8px">돌 전에는 꿀, 간(소금·설탕), 음료로 주는 생우유는 피해요. 새 재료는 한 번에 하나씩, 오전에 먹여 반응을 봐요.</p>
@@ -813,7 +813,7 @@ function renderFood(){
   <section><h2 class="sh"><span>센터 식단</span><span class="mnav"><button data-act="mmon" data-v="-1" aria-label="이전 달">◀</button><b>${yy}.${mm}</b><button data-act="mmon" data-v="1" aria-label="다음 달">▶</button></span></h2>
     ${menus}
     ${RECIPES.foodHtml(ym)}
-    <div class="cacts" style="margin-top:12px"><a class="linkbtn" href="${FOOD_URL}" target="_blank" rel="noopener">게시판 열기</a><button class="solve" data-act="addmenu">+ 식단표 올리기</button></div></section>`;
+    <div class="cacts" style="margin-top:12px"><a class="linkbtn" href="${FOOD_URL}" target="_blank" rel="noopener">게시판 열기</a><button class="solve" data-r="pick">+ 식단표 올리기</button></div></section>`;
 }
 function openFood(id,preset){
   const f=id?S.foods.find(x=>x.id===id):{name:preset||'',start:today(),result:'',reaction:'',memo:''};
@@ -1031,7 +1031,7 @@ document.addEventListener('click',async e=>{
   case 'mmon':S.menuMonth=shiftMonth(curMenuMonth(),+a.dataset.v);render();loadPhotos();break;
   case 'addmenu':openMenu(null);break;
   case 'editmenu':openMenu(a.dataset.id);break;
-  case 'viewmenu':viewMenu(a.dataset.id);break;
+  case 'viewmenu':if(!VIEWER.open(a.dataset.id))viewMenu(a.dataset.id);break;
   case 'savemenu':{const mo=val('mn-month');if(!/^\d{4}-\d{2}$/.test(mo))return err('mn-err','월을 골라 주세요');
     if(!a.dataset.id&&!pending)return err('mn-err','식단표 사진을 골라 주세요');
     const o={id:a.dataset.id,month:mo,title:val('mn-title')};if(pending!==undefined)o.photo=pending;

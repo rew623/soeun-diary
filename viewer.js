@@ -26,6 +26,8 @@ function info(key) {
   const p = S.profile || {};
   if (key === 'profile') return { cap: `${p.name || '우리 아기'}, 수사 ${dayNo(today())}일째`, edit: () => openSettings() };
   if (key === 'mom' || key === 'dad') { const r = key === 'mom' ? '엄마' : '아빠'; return { cap: `${r} 수사관${p[key] ? ' ' + p[key] : ''}`, edit: () => openInv(r) }; }
+  const mn = (S.menus || []).find(x => x.id === key);
+  if (mn) return { cap: `${mn.title || '식단표'} (${mn.month.replace('-', '.')})`, edit: () => openMenu(key) };
   const m = S.moments.find(x => x.id === key);
   if (!m) return null;
   return { cap: `${m.title}, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => openMoment(key), boardId: key };
