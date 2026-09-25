@@ -276,6 +276,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="viewer.js"></script>
 <script src="board.js"></script>
 <script src="recipes.js"></script>
+<script src="checkups.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
 const WFA=[[0.3809,3.2322,0.14171],[0.1714,4.1873,0.13724],[0.0962,5.1282,0.13000],[0.0402,5.8458,0.12619],[-0.0050,6.4237,0.12402],[-0.0430,6.8985,0.12274],[-0.0756,7.2970,0.12204],[-0.1039,7.6422,0.12178],[-0.1288,7.9487,0.12181],[-0.1507,8.2254,0.12199],[-0.1700,8.4800,0.12223],[-0.1872,8.7192,0.12247],[-0.2024,8.9481,0.12268],[-0.2158,9.1699,0.12283],[-0.2278,9.3870,0.12294],[-0.2384,9.6008,0.12299],[-0.2478,9.8124,0.12303],[-0.2562,10.0226,0.12306],[-0.2637,10.2315,0.12309],[-0.2703,10.4393,0.12315],[-0.2762,10.6464,0.12323],[-0.2815,10.8534,0.12335],[-0.2862,11.0608,0.12350],[-0.2903,11.2688,0.12369],[-0.2941,11.4775,0.12390]];
@@ -325,14 +326,14 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 
 // ---------- storage (Google Sheets via Apps Script) ----------
-const S={me:{role:''},eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],albumView:'album',tab:'grow',chart:'weight'};
+const S={me:{role:''},eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
 const PHOTOS={};let busy=false;
 const DEMO=false;
 const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',photo:false,mom:'',dad:'',momPhoto:false,dadPhoto:false},
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
   periods:[{id:'p1',name:'출생',month:0,confirmed:'',hospital:''},{id:'p2',name:'2개월',month:2,confirmed:'',hospital:''},{id:'p3',name:'4개월',month:4,confirmed:'2026-11-10',hospital:'우리동네 소아청소년과'},{id:'p4',name:'6개월',month:6,confirmed:'',hospital:''}],
   foods:[{id:'f1',name:'쌀',start:'2026-09-20',result:'통과',reaction:'',memo:'',by:'엄마'},{id:'f2',name:'소고기',start:'2026-09-23',result:'',reaction:'',memo:'',by:'아빠'}],meals:[{id:'ml1',date:'2026-09-23',slot:'아침',menu:'소고기 쌀미음',amount:'40g',eat:'잘먹음',memo:'',photo:false,by:'아빠'}],cubes:[{id:'c1',name:'소고기',count:'5',made:'2026-09-20',memo:''}],menus:[],
-  hospitals:[],recipes:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
+  hospitals:[],recipes:[],checkups:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
   vaccines:[{id:'v1',period:'p1',name:'B형간염 1차',sub:'',done:'2026-07-06',memo:''},{id:'v2',period:'p2',name:'DTaP-IPV/Hib 1차',sub:'5가 혼합 백신',done:'2026-09-08',memo:''},{id:'v3',period:'p2',name:'폐렴구균 1차',sub:'',done:'2026-09-08',memo:''},{id:'v4',period:'p3',name:'DTaP-IPV/Hib 2차',sub:'',done:'',memo:''},{id:'v5',period:'p3',name:'폐렴구균 2차',sub:'',done:'',memo:''},{id:'v6',period:'p4',name:'DTaP-IPV/Hib 3차',sub:'',done:'',memo:''}]};
 const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus'};
 let dseq=100;const nid=p=>p+(dseq++);
@@ -350,6 +351,8 @@ const MOCK={
   deleteVaccine:id=>{DB.vaccines=DB.vaccines.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},o,{id});if(k==='mom'||k==='meal'||k==='menu')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
+  saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
+  deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveRecipe:r=>{DB.recipes=DB.recipes.filter(x=>x.month!==r.month).concat([Object.assign({},r,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteRecipe:m=>{DB.recipes=DB.recipes.filter(x=>x.month!==m);return{data:MOCK.getData()}},
   setBoard:(id,on)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.board=!!on;return{data:MOCK.getData()}},
@@ -358,7 +361,7 @@ const MOCK={
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
-function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.mode='ok'}
+function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.mode='ok'}
 function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d)}
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
@@ -499,7 +502,7 @@ function renderGrow(){
     <div class="info"><span class="lab">수사 대상</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
   </div>
   <div class="dday" aria-label="생후 ${d}일"><span>수사</span><b>${d}</b><span>일째</span></div>
-  ${next}
+  ${next}${CHECKUPS.nextCard()}
   <section><h2 class="sh">증거 기록</h2><div class="stats">${stats}</div></section>
   <section>
     <h2 class="sh"><span>성장 그래프</span><span>WHO ${sexWord()} 기준</span></h2>
@@ -536,8 +539,10 @@ function caseHtml(p,hot,solved){
 function renderVac(){
   const up=S.periods.filter(p=>!pDone(p)).sort(byDate),sol=S.periods.filter(pDone).sort((a,b)=>-byDate(a,b));
   const doneN=S.vaccines.filter(v=>v.done).length,left=S.vaccines.length-doneN;
+  const vseg=`<div class="seg" style="margin-top:14px"><button class="${S.vacView==='check'?'':'on'}" data-ck="view" data-v="vac">예방접종</button><button class="${S.vacView==='check'?'on':''}" data-ck="view" data-v="check">영유아검진</button></div>`;
+  if(S.vacView==='check')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>영유아검진 출동 기록부</h1><p>검진 기간은 태어난 날로 계산했어요. 받으면 "검진 받았어요"로 해결 처리해 주세요.</p></header>${vseg}${CHECKUPS.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>예방접종 출동 기록부</h1>
-    <p>해결 ${doneN}건, 남은 접종 ${left}건. 권장일은 표준 일정으로 계산했어요. 병원 예약을 하면 날짜를 바꿔 두세요.</p></header>
+    <p>해결 ${doneN}건, 남은 접종 ${left}건. 권장일은 표준 일정으로 계산했어요. 병원 예약을 하면 날짜를 바꿔 두세요.</p></header>${vseg}
   ${up.map((p,i)=>caseHtml(p,i===0,false)).join('')}
   <button class="addperiod" data-act="newp">+ 접종 시기 추가</button>
   ${sol.length?'<h2 class="subh">해결된 사건</h2>'+sol.map(p=>caseHtml(p,false,true)).join(''):''}

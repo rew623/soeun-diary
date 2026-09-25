@@ -40,7 +40,7 @@ const SCHEDULE = [
 ];
 
 // ---------- 폰 안의 사본 (화면은 여기서 바로 그림) ----------
-const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map() };
+const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map(), checkups: new Map() };
 COLS.forEach(c => { M.col[c] = new Map(); });
 let unsubs = [], lastJSON = '', pendingRemote = false, ready = false;
 
@@ -82,6 +82,7 @@ function build() {
   };
   Object.keys(TBL).forEach(k => { d[OUT[k]] = item(k); });
   d.recipes = [...M.recipes.values()].map(r => ({ month: r.id, title: r.title || '', file: r.file || '', stages: r.stages || [], by: r.by || '' }));
+  d.checkups = [...M.checkups.values()].map(c => ({ id: c.id, done: c.done || '', hospital: c.hospital || '', memo: c.memo || '', by: c.by || '' }));
   d.hospitals = [...M.hosp.values()].map(h => ({ hpid: h.id, star: !!h.star, memo: h.memo || '', lunch: h.lunch || '', reserve: h.reserve || '', moonlight: !!h.moonlight, updatedBy: h.updatedBy || '' }));
   return d;
 }
@@ -254,6 +255,22 @@ const H = {
     return { data: data() };
   },
 
+  // 영유아검진 받은 기록 (families/{fid}/checkups/{g1…g8, o1…o3}), 일정은 checkups.js가 태어난 날로 계산
+  async saveCheckup(c) {
+    const id = String((c && c.id) || '');
+    if (!/^[go]\d$/.test(id)) throw new Error('검진 차수가 올바르지 않아요');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.done || '')) throw new Error('날짜 형식이 올바르지 않아요');
+    const row = { done: c.done, hospital: txt(c.hospital, 40), memo: txt(c.memo, 200), by: myRole() };
+    M.checkups.set(id, Object.assign({ id }, row));
+    await commit(setDoc(dref('checkups', id), Object.assign({ updatedAt: serverTimestamp() }, row)));
+    return { data: data() };
+  },
+  async deleteCheckup(id) {
+    id = String(id); M.checkups.delete(id);
+    await commit(deleteDoc(dref('checkups', id)));
+    return { data: data() };
+  },
+
   // 이유식 표준레시피 (families/{fid}/recipes/{YYYY-MM}), 엑셀을 앱에서 읽어 정리한 내용을 한 달에 한 문서로
   async saveRecipe(r) {
     const id = String((r && r.month) || '');
@@ -302,7 +319,7 @@ const API = {
 function stopAll() { unsubs.forEach(u => u()); unsubs = []; ready = false; }
 function start(fid) {
   stopAll();
-  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map();
+  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map(); M.checkups = new Map();
   const need = new Set(['family', 'member', ...COLS]);
   const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); } };
   const fail = e => {
@@ -328,6 +345,10 @@ function start(fid) {
     M.recipes = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
     onRemote();
   }, e => console.warn('레시피를 불러오지 못했어요', e)));
+  unsubs.push(onSnapshot(collection(db, 'families', fid, 'checkups'), s => {
+    M.checkups = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
+    onRemote();
+  }, e => console.warn('검진 기록을 불러오지 못했어요', e)));
 }
 
 async function enter(fid) {

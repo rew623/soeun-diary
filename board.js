@@ -27,6 +27,9 @@ function cards() {
     out.push({ id: 'vac', go: 'vac', cls: 'kraft note', html: `<b class="bt">다음 출동</b><span class="bbig">${ddayText(dt)}</span><p>${esc(np.name)} 접종<small>${fmtK(dt, true)}${vs.length ? ', ' + esc(vs[0].name) + (vs.length > 1 ? ` 외 ${vs.length - 1}` : '') : ''}</small></p>` });
   }
 
+  const ck = window.CHECKUPS && CHECKUPS.boardCard();
+  if (ck) out.push(ck);
+
   const fb = `${+p.birth.slice(0, 4) + 1}${p.birth.slice(4)}`;
   const ann = [['50일', addDays(p.birth, 49)], ['100일', addDays(p.birth, 99)], ['200일', addDays(p.birth, 199)], ['첫 돌', fb]];
   out.push({ id: 'ann', go: 'grow', cls: 'kraft', html: `<b class="bt">기념일 수배</b>${ann.map(([l, dt]) => { const n = daysBetween(t, dt); return `<p class="${n < 0 ? 'done' : ''}"><span>${l}</span><b>${n > 0 ? 'D-' + n : n === 0 ? '오늘!' : '해결'}</b><small>${fmtMD(dt)}</small></p>`; }).join('')}` });
@@ -158,10 +161,11 @@ const PHOTO_KEY = { center: 'profile', mom: 'mom', dad: 'dad' };
 function goTo(go) {
   if (go === 'hosp' && window.HOSP) { HOSP.open('', 'hosp'); return; }
   if (go === 'album') S.albumView = 'album';
+  else if (go === 'check') { S.tab = 'vac'; S.view = ''; S.vacView = 'check'; }
   else { S.tab = go; S.view = ''; }
   render(); window.scrollTo(0, 0);
 }
-const GO_LABEL = { grow: '성장 수사로', vac: '예방접종으로', hosp: '병원 수사로', album: '앨범으로' };
+const GO_LABEL = { check: '검진 일정으로', grow: '성장 수사로', vac: '예방접종으로', hosp: '병원 수사로', album: '앨범으로' };
 document.addEventListener('click', e => {
   const c = e.target.closest('.bstage [data-bgo]'); if (!c) return;
   const id = c.dataset.bid, go = c.dataset.bgo, key = PHOTO_KEY[id] || (go === 'album' ? id : '');
