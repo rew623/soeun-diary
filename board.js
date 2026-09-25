@@ -46,7 +46,7 @@ function renderBoard() {
   return `<div class="bwrap" id="bwrap"><div class="bstage" id="bstage">
     ${cs.map(c => `<div class="bcard ${c.cls}" data-bid="${esc(c.id)}" data-bgo="${c.go}" role="button" tabindex="0" ${c.id === 'center' ? 'data-center="1"' : ''}>${c.html}</div>`).join('')}
     <svg class="bstrings" id="bstrings" aria-hidden="true"></svg><svg class="bstrings bpins" id="bpins" aria-hidden="true"></svg></div>
-    <div class="bhint">두 손가락으로 확대, 끌어서 이동 · 카드를 누르면 해당 화면으로</div></div>
+    <div class="bhint">두 손가락으로 확대, 끌어서 이동 · 카드를 누르면 크게 보기</div></div>
     <p class="foot">앨범 사진을 크게 보고 "보드에 붙이기"를 누르면 여기에 붙어요.</p>`;
 }
 
@@ -153,13 +153,21 @@ function mount() {
   wrap.querySelectorAll('img').forEach(im => { if (!im.complete) im.addEventListener('load', () => { if (document.getElementById('bwrap') === wrap) { dim = layout(); clamp(); apply(); } }, { once: true }); });
 }
 
-document.addEventListener('click', e => {
-  const c = e.target.closest('[data-bgo]'); if (!c) return;
-  const go = c.dataset.bgo;
+// 카드를 누르면 그 카드를 크게 보기 (사진은 사진 그대로, 뒤로가기로 닫힘)
+const PHOTO_KEY = { center: 'profile', mom: 'mom', dad: 'dad' };
+function goTo(go) {
   if (go === 'hosp' && window.HOSP) { HOSP.open('', 'hosp'); return; }
   if (go === 'album') S.albumView = 'album';
   else { S.tab = go; S.view = ''; }
   render(); window.scrollTo(0, 0);
+}
+const GO_LABEL = { grow: '성장 수사로', vac: '예방접종으로', hosp: '병원 수사로', album: '앨범으로' };
+document.addEventListener('click', e => {
+  const c = e.target.closest('.bstage [data-bgo]'); if (!c) return;
+  const id = c.dataset.bid, go = c.dataset.bgo, key = PHOTO_KEY[id] || (go === 'album' ? id : '');
+  if (key && VIEWER.open(key)) return;
+  const t = c.querySelector('.bt');
+  VIEWER.openCard(`<div class="${c.className}">${c.innerHTML}</div>`, t ? t.textContent : '수사 보드', GO_LABEL[go], () => goTo(go));
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.bgo) e.target.click(); });
 

@@ -4,18 +4,19 @@
 const lb = document.createElement('div');
 lb.id = 'lbox'; lb.className = 'lbox'; lb.hidden = true;
 lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-modal', 'true');
-lb.innerHTML = `<div class="lb-stage"><img class="lb-img" alt=""></div>
+lb.innerHTML = `<div class="lb-stage"><img class="lb-img" alt=""><div class="lb-card" hidden></div></div>
   <div class="lb-top"><span class="lb-cap"></span><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
   <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn edit" data-lb="edit">편집</button></div>`;
 document.body.appendChild(lb);
-const $img = lb.querySelector('.lb-img'), $stage = lb.querySelector('.lb-stage');
-let cur = null;                                    // { key, edit, boardId }
+const $img = lb.querySelector('.lb-img'), $card = lb.querySelector('.lb-card'), $stage = lb.querySelector('.lb-stage');
+let cur = null;                                    // { key, edit, boardId, editLabel }
+let $t = $img;                                     // 확대·이동할 대상 (사진 또는 수사 보드 카드)
 const Z = { s: 1, x: 0, y: 0 };
-const draw = () => { $img.style.transform = `translate(${Z.x}px,${Z.y}px) scale(${Z.s})`; };
+const draw = () => { $t.style.transform = `translate(${Z.x}px,${Z.y}px) scale(${Z.s})`; };
 const reset = () => { Z.s = 1; Z.x = 0; Z.y = 0; draw(); };
 function clampPan() {
   if (Z.s <= 1) { Z.s = 1; Z.x = 0; Z.y = 0; return; }
-  const r = $stage.getBoundingClientRect(), w = $img.offsetWidth * Z.s, h = $img.offsetHeight * Z.s;
+  const r = $stage.getBoundingClientRect(), w = $t.offsetWidth * Z.s, h = $t.offsetHeight * Z.s;
   const mx = Math.max(0, (w - r.width) / 2), my = Math.max(0, (h - r.height) / 2);
   Z.x = Math.min(mx, Math.max(-mx, Z.x)); Z.y = Math.min(my, Math.max(-my, Z.y));
 }
@@ -35,17 +36,29 @@ function boardBtn() {
   const m = S.moments.find(x => x.id === cur.boardId);
   b.hidden = false; b.textContent = m && m.board ? '보드에서 떼기' : '📌 보드에 붙이기';
 }
+function show(target, cap) {
+  $t = target; $img.hidden = target !== $img; $card.hidden = target !== $card;
+  lb.querySelector('.lb-cap').textContent = cap;
+  lb.querySelector('[data-lb=edit]').textContent = (cur && cur.editLabel) || '편집';
+  lb.querySelector('[data-lb=edit]').hidden = !(cur && cur.edit);
+  boardBtn(); reset();
+  lb.hidden = false; document.documentElement.classList.add('lb-open');
+}
 function open(key) {
   const src = safeImg(PHOTOS[key]), i = info(key);
   if (!src || !i) return false;
   cur = Object.assign({ key }, i);
   $img.src = src; $img.alt = i.cap;
-  lb.querySelector('.lb-cap').textContent = i.cap;
-  boardBtn(); reset();
-  lb.hidden = false; document.documentElement.classList.add('lb-open');
+  show($img, i.cap);
   return true;
 }
-function close() { if (lb.hidden) return; lb.hidden = true; cur = null; $img.removeAttribute('src'); document.documentElement.classList.remove('lb-open'); }
+// 수사 보드의 글자 카드(성장·접종·기념일 등)를 크게 보기. go가 있으면 아래 버튼으로 해당 화면에 갈 수 있어요
+function openCard(html, cap, goLabel, go) {
+  cur = { key: '', edit: go || null, editLabel: goLabel || '' };
+  $card.innerHTML = html;
+  show($card, cap);
+}
+function close() { if (lb.hidden) return; lb.hidden = true; cur = null; $img.removeAttribute('src'); $card.innerHTML = ''; document.documentElement.classList.remove('lb-open'); }
 const isOpen = () => !lb.hidden;
 
 // 사진을 누르면 편집창 대신 크게 보기
@@ -75,7 +88,7 @@ $stage.addEventListener('pointerdown', e => {
   pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
   const r = $stage.getBoundingClientRect(), c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   const P = [...pts.values()];
-  if (P.length === 1) g = { mode: 'pan', sx: e.clientX, sy: e.clientY, x0: Z.x, y0: Z.y, moved: false, t: Date.now(), onImg: e.target === $img, c };
+  if (P.length === 1) g = { mode: 'pan', sx: e.clientX, sy: e.clientY, x0: Z.x, y0: Z.y, moved: false, t: Date.now(), onImg: $t.contains(e.target), c };
   else if (P.length === 2) {
     const mid = { x: (P[0].x + P[1].x) / 2 - c.x, y: (P[0].y + P[1].y) / 2 - c.y };
     g = { mode: 'pinch', d0: Math.hypot(P[0].x - P[1].x, P[0].y - P[1].y) || 1, s0: Z.s, qx: (mid.x - Z.x) / Z.s, qy: (mid.y - Z.y) / Z.s, moved: true, c };
@@ -156,8 +169,13 @@ html.lb-open,html.lb-open body{overflow:hidden}
 .lb-bar{display:flex;gap:10px;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));justify-content:center}
 .lb-btn{flex:1;max-width:220px;min-height:48px;border-radius:4px;border:1.5px solid var(--paper);background:none;color:var(--paper);font-family:var(--display);font-size:16px}
 .lb-btn.edit{background:var(--red);border-color:var(--red);color:#fff}
+.lb-btn[hidden]{display:none}
+.lb-card{width:min(86vw,340px);transform-origin:center;will-change:transform}
+.lb-card .bcard{position:static;transform:none;width:100%;font-size:15px;padding:24px 18px 18px;gap:6px;cursor:default;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.lb-card .bcard .bt{font-size:24px}.lb-card .bcard small{font-size:13px}.lb-card .bcard p b{font-size:18px}
+.lb-card .bcard .bbig{font-size:40px}.lb-card .bcard .bday{font-size:18px}.lb-card .bcard .bday em{font-size:32px}
 .toast{z-index:60}`;
 document.head.appendChild(css);
 
-window.VIEWER = { open, close, isOpen };
+window.VIEWER = { open, openCard, close, isOpen };
 })();

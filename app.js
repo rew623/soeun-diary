@@ -40,7 +40,7 @@ const SCHEDULE = [
 ];
 
 // ---------- 폰 안의 사본 (화면은 여기서 바로 그림) ----------
-const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map() };
+const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map() };
 COLS.forEach(c => { M.col[c] = new Map(); });
 let unsubs = [], lastJSON = '', pendingRemote = false, ready = false;
 
@@ -81,6 +81,7 @@ function build() {
     vaccines: list('vaccines').map(v => ({ id: v.id, period: String(v.period || ''), name: String(v.name || ''), sub: v.sub || '', done: v.done || '', memo: v.memo || '', by: v.by || '' }))
   };
   Object.keys(TBL).forEach(k => { d[OUT[k]] = item(k); });
+  d.recipes = [...M.recipes.values()].map(r => ({ month: r.id, title: r.title || '', file: r.file || '', stages: r.stages || [], by: r.by || '' }));
   d.hospitals = [...M.hosp.values()].map(h => ({ hpid: h.id, star: !!h.star, memo: h.memo || '', lunch: h.lunch || '', reserve: h.reserve || '', moonlight: !!h.moonlight, updatedBy: h.updatedBy || '' }));
   return d;
 }
@@ -253,6 +254,23 @@ const H = {
     return { data: data() };
   },
 
+  // 이유식 표준레시피 (families/{fid}/recipes/{YYYY-MM}), 엑셀을 앱에서 읽어 정리한 내용을 한 달에 한 문서로
+  async saveRecipe(r) {
+    const id = String((r && r.month) || '');
+    if (!/^\d{4}-\d{2}$/.test(id)) throw new Error('레시피 월이 올바르지 않아요');
+    if (!Array.isArray(r.stages) || !r.stages.length) throw new Error('레시피를 찾지 못했어요');
+    const row = { title: txt(r.title, 60), file: txt(r.file, 120), stages: r.stages, by: myRole() };
+    if (JSON.stringify(row).length > 900000) throw new Error('레시피 파일이 너무 커요');
+    M.recipes.set(id, Object.assign({ id }, row));
+    await commit(setDoc(dref('recipes', id), Object.assign({ updatedAt: serverTimestamp() }, row)));
+    return { data: data() };
+  },
+  async deleteRecipe(month) {
+    const id = String(month); M.recipes.delete(id);
+    await commit(deleteDoc(dref('recipes', id)));
+    return { data: data() };
+  },
+
   // 관심 병원 (families/{fid}/hospitals/{hpid}), 보낸 칸만 바꿔요
   async saveHospital(h) {
     const id = String((h && h.hpid) || '');
@@ -284,7 +302,7 @@ const API = {
 function stopAll() { unsubs.forEach(u => u()); unsubs = []; ready = false; }
 function start(fid) {
   stopAll();
-  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map();
+  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map();
   const need = new Set(['family', 'member', ...COLS]);
   const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); } };
   const fail = e => {
@@ -306,6 +324,10 @@ function start(fid) {
     M.hosp = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
     onRemote();
   }, e => console.warn('관심 병원을 불러오지 못했어요 (Firestore 규칙 확인)', e)));
+  unsubs.push(onSnapshot(collection(db, 'families', fid, 'recipes'), s => {
+    M.recipes = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
+    onRemote();
+  }, e => console.warn('레시피를 불러오지 못했어요', e)));
 }
 
 async function enter(fid) {

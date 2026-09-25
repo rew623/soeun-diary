@@ -1,7 +1,7 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.09.25-5';
+const VERSION = '2026.09.25-6';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './hospitals.js', './map-key.js', './viewer.js', './board.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
 
 self.addEventListener('install', e => {
