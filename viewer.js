@@ -4,12 +4,15 @@
 const lb = document.createElement('div');
 lb.id = 'lbox'; lb.className = 'lbox'; lb.hidden = true;
 lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-modal', 'true');
-lb.innerHTML = `<div class="lb-stage"><img class="lb-img" alt=""><div class="lb-card" hidden></div></div>
+lb.innerHTML = `<div class="lb-stage"><img class="lb-img" alt=""><div class="lb-card" hidden></div>
+    <button class="lb-nav prev" data-lb="prev" aria-label="이전 사진" hidden>‹</button><button class="lb-nav next" data-lb="next" aria-label="다음 사진" hidden>›</button></div>
   <div class="lb-top"><span class="lb-cap"></span><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
   <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn edit" data-lb="edit">편집</button></div>`;
 document.body.appendChild(lb);
 const $img = lb.querySelector('.lb-img'), $card = lb.querySelector('.lb-card'), $stage = lb.querySelector('.lb-stage');
 let cur = null;                                    // { key, edit, boardId, editLabel }
+let seq = [], idx = -1;                            // 옆으로 넘길 사진 목록 (누른 사진이 있는 칸의 사진들)
+let savedY = 0;                                    // 사진을 열기 전 화면 위치
 let $t = $img;                                     // 확대·이동할 대상 (사진 또는 수사 보드 카드)
 const Z = { s: 1, x: 0, y: 0 };
 const draw = () => { $t.style.transform = `translate(${Z.x}px,${Z.y}px) scale(${Z.s})`; };
@@ -40,16 +43,22 @@ function boardBtn() {
   b.hidden = false; b.textContent = m && m.board ? '보드에서 떼기' : '📌 보드에 붙이기';
 }
 function show(target, cap) {
+  if (lb.hidden) savedY = window.scrollY;
   $t = target; $img.hidden = target !== $img; $card.hidden = target !== $card;
-  lb.querySelector('.lb-cap').textContent = cap;
+  const many = target === $img && seq.length > 1 && idx >= 0;
+  lb.querySelector('.lb-cap').textContent = cap + (many ? `  ·  ${idx + 1} / ${seq.length}` : '');
+  lb.querySelector('.prev').hidden = !many || idx <= 0;
+  lb.querySelector('.next').hidden = !many || idx >= seq.length - 1;
   lb.querySelector('[data-lb=edit]').textContent = (cur && cur.editLabel) || '편집';
   lb.querySelector('[data-lb=edit]').hidden = !(cur && cur.edit);
   boardBtn(); reset();
   lb.hidden = false; document.documentElement.classList.add('lb-open');
 }
-function open(key) {
+function open(key, list) {
   const src = safeImg(PHOTOS[key]), i = info(key);
   if (!src || !i) return false;
+  if (list) seq = list; else if (!seq.includes(key)) seq = [];
+  idx = seq.indexOf(key);
   cur = Object.assign({ key }, i);
   $img.src = src; $img.alt = i.cap;
   show($img, i.cap);
@@ -57,23 +66,40 @@ function open(key) {
 }
 // 수사 보드의 글자 카드(성장·접종·기념일 등)를 크게 보기. go가 있으면 아래 버튼으로 해당 화면에 갈 수 있어요
 function openCard(html, cap, goLabel, go) {
-  cur = { key: '', edit: go || null, editLabel: goLabel || '' };
+  cur = { key: '', edit: go || null, editLabel: goLabel || '' }; seq = []; idx = -1;
   $card.innerHTML = html;
   show($card, cap);
 }
-function close() { if (lb.hidden) return; lb.hidden = true; cur = null; $img.removeAttribute('src'); $card.innerHTML = ''; document.documentElement.classList.remove('lb-open'); }
+function close() {
+  if (lb.hidden) return;
+  lb.hidden = true; cur = null; seq = []; idx = -1; $img.removeAttribute('src'); $card.innerHTML = '';
+  document.documentElement.classList.remove('lb-open');
+  const y = savedY; window.scrollTo(0, y); requestAnimationFrame(() => window.scrollTo(0, y));   // 누르기 전 위치 그대로
+}
+// 옆 사진으로 (d: +1 다음, -1 이전). 사진이 옆에서 밀려 들어오게
+function go(d) {
+  const j = idx + d; if (idx < 0 || j < 0 || j >= seq.length) { reset(); return; }
+  if (!open(seq[j], seq)) { reset(); return; }
+  $img.style.transition = 'none'; $img.style.transform = `translateX(${d * 60}px)`; $img.style.opacity = '.3';
+  requestAnimationFrame(() => { $img.style.transition = 'transform .18s ease-out, opacity .18s'; $img.style.transform = ''; $img.style.opacity = ''; });
+  setTimeout(() => { $img.style.transition = ''; }, 220);
+}
 const isOpen = () => !lb.hidden;
 
 // 사진을 누르면 편집창 대신 크게 보기
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-view]'); if (!t) return;
   e.preventDefault();
-  if (!open(t.dataset.view)) { const i = info(t.dataset.view); if (i) i.edit(); }   // 사진을 아직 못 받았으면 편집창으로
+  const box = t.closest('section, .badges, .menus, .suspect') || t.parentElement;
+  const list = [...new Set([...box.querySelectorAll('[data-view]')].map(el => el.dataset.view))].filter(k => safeImg(PHOTOS[k]) && info(k));
+  if (!open(t.dataset.view, list)) { const i = info(t.dataset.view); if (i) i.edit(); }   // 사진을 아직 못 받았으면 편집창으로
 });
 lb.addEventListener('click', async e => {
   const b = e.target.closest('[data-lb]'); if (!b) return;
   e.stopPropagation();
   if (b.dataset.lb === 'close') close();
+  if (b.dataset.lb === 'prev') go(-1);
+  if (b.dataset.lb === 'next') go(1);
   if (b.dataset.lb === 'edit') { const f = cur && cur.edit; close(); if (f) f(); }
   if (b.dataset.lb === 'board' && cur && cur.boardId) {
     const m = S.moments.find(x => x.id === cur.boardId), on = !(m && m.board);
@@ -87,6 +113,7 @@ lb.addEventListener('click', async e => {
 const pts = new Map();
 let g = null, lastTap = 0;
 $stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('button')) return;          // ‹ › 버튼은 그냥 누르기
   $stage.setPointerCapture(e.pointerId);
   pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
   const r = $stage.getBoundingClientRect(), c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -110,12 +137,18 @@ $stage.addEventListener('pointermove', e => {
   } else if (g.mode === 'pan') {
     const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
     if (Math.abs(dx) + Math.abs(dy) > 8) g.moved = true;
+    g.dx = dx; g.dy = dy;
     if (Z.s > 1) { Z.x = g.x0 + dx; Z.y = g.y0 + dy; clampPan(); draw(); }
+    else if (seq.length > 1 && $t === $img && Math.abs(dx) > Math.abs(dy)) { $img.style.transform = `translateX(${dx}px)`; }
   }
 });
 function up(e) {
   if (!pts.has(e.pointerId)) return;
   pts.delete(e.pointerId);
+  if (g && g.mode === 'pan' && g.moved && g.t && Z.s <= 1 && seq.length > 1 && $t === $img) {
+    const dx = g.dx || 0, dy = g.dy || 0;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1); else reset();
+  }
   if (g && g.mode === 'pan' && !g.moved && Date.now() - g.t < 350) {
     if (!g.onImg) close();                        // 사진 바깥 배경을 톡 → 닫기
     else if (Date.now() - lastTap < 300) {        // 사진을 두 번 톡 → 확대/원래대로
@@ -130,8 +163,12 @@ function up(e) {
 $stage.addEventListener('pointerup', up);
 $stage.addEventListener('pointercancel', up);
 
+document.addEventListener('keydown', e => { if (lb.hidden) return; if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); if (e.key === 'Escape') close(); });
+
 // ---------- 안드로이드 뒤로가기 ----------
 // 기록(history)에 "지킴이" 한 칸을 넣어 두고, 뒤로가기로 그 칸이 빠질 때마다 앱 안에서 처리한 뒤 다시 넣어요
+// 뒤로가기로 지킴이 칸이 빠질 때 브라우저가 옛 스크롤 위치(맨 위)로 되돌리지 않게
+try { history.scrollRestoration = 'manual'; } catch (e) {}
 let waitExit = false, exitTimer = 0;
 const guard = () => { if (!(history.state && history.state.soeunGuard)) history.pushState({ soeunGuard: 1 }, ''); };
 try { history.replaceState(Object.assign({}, history.state, { soeunRoot: 1 }), ''); guard(); } catch (e) {}
@@ -173,6 +210,9 @@ html.lb-open,html.lb-open body{overflow:hidden}
 .lb-btn{flex:1;max-width:220px;min-height:48px;border-radius:4px;border:1.5px solid var(--paper);background:none;color:var(--paper);font-family:var(--display);font-size:16px}
 .lb-btn.edit{background:var(--red);border-color:var(--red);color:#fff}
 .lb-btn[hidden]{display:none}
+.lb-stage{position:relative}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:64px;border:0;border-radius:4px;background:rgba(233,220,195,.14);color:var(--paper);font-size:30px;line-height:1;z-index:2}
+.lb-nav.prev{left:6px}.lb-nav.next{right:6px}.lb-nav[hidden]{display:none}
 .lb-card{width:min(86vw,340px);transform-origin:center;will-change:transform}
 .lb-card .bcard{position:static;transform:none;width:100%;font-size:15px;padding:24px 18px 18px;gap:6px;cursor:default;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .lb-card .bcard .bt{font-size:24px}.lb-card .bcard small{font-size:13px}.lb-card .bcard p b{font-size:18px}
