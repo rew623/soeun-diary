@@ -39,7 +39,7 @@ function cards() {
 
   S.moments.filter(m => m.board && m.photo).sort((a, b) => a.date < b.date ? -1 : 1).forEach(m => {
     const im = safeImg(PHOTOS[m.id]);
-    out.push({ id: m.id, go: 'album', cls: 'pola', html: `${im ? `<img src="${im}" alt="${esc(m.title)} 사진">` : '<span class="bnoph">사진 불러오는 중</span>'}<b class="bt">${esc(m.title)}</b><small>생후 ${dayNo(m.date)}일, ${fmtK(m.date, true)}</small>` });
+    out.push({ id: m.id, go: 'album', cls: 'pola', html: `${im ? `<img src="${im}" alt="${esc(m.title)} 사진">` : '<span class="bnoph">사진 불러오는 중</span>'}<b class="bt">${esc(m.title || '현장 사진')}</b><small>생후 ${dayNo(m.date)}일, ${fmtK(m.date, true)}</small>` });
   });
   return out;
 }
