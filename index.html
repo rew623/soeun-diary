@@ -455,7 +455,7 @@ function render(){
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();
+  cachePhSoon();stayAfterRender();
 }
 
 function renderGrow(){
@@ -1103,6 +1103,19 @@ document.addEventListener('click',async e=>{
 });
 
 window.__app={apply,toast,isBusy:()=>busy,sheetOpen:()=>$sheet.classList.contains('open'),closeSheet,openSheet,refresh,CK};
+// ---------- 새로고침해도 보던 탭 그대로 (이 창에서만 기억, 앱을 새로 열면 첫 화면) ----------
+const STAY='soeun-stay';let stayY=null,stayT;
+function staySave(){if(S.mode!=='ok')return;try{sessionStorage.setItem(STAY,JSON.stringify({tab:S.tab,view:S.view,vacView:S.vacView,albumView:S.albumView,menuMonth:S.menuMonth,y:Math.round(window.scrollY)}))}catch(e){}}
+function stayAfterRender(){
+  if(S.mode!=='ok')return;
+  if(stayY!=null){const y=stayY;if(document.documentElement.scrollHeight>=y+innerHeight*.5){stayY=null;requestAnimationFrame(()=>window.scrollTo(0,y))}}
+  staySave();
+}
+try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
+  if(st&&['grow','vac','food','sick','album'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report'].includes(st.view)?st.view:'';S.vacView=st.vacView==='check'?'check':'vac';S.albumView=st.albumView==='board'?'board':'album';if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
+}catch(e){}
+window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
+window.addEventListener('pagehide',staySave);
 loadCache();
 refresh();
 setInterval(()=>{if(S.tab==='sick'&&S.mode==='ok'&&!$sheet.classList.contains('open'))render()},60000);
