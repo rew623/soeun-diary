@@ -1,10 +1,12 @@
 // 공공데이터포털(국립중앙의료원) 목록 API 공통 도구: 쪽 넘기며 전부 받기, 진료시간 정리, 바뀐 경우에만 저장
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
-const RAW = (process.env.DATA_GO_KR_KEY || '').trim();
-if (!RAW) { console.error('DATA_GO_KR_KEY 시크릿이 비어 있어요'); process.exit(1); }
-// 공공데이터포털의 인코딩 키(%가 들어 있음)는 그대로, 디코딩 키는 인코딩해서 써요
-const KEY = RAW.includes('%') ? RAW : encodeURIComponent(RAW);
+// 공공데이터포털의 인코딩 키(%가 들어 있음)는 그대로, 디코딩 키는 인코딩해서 써요 (API를 부를 때만 확인)
+function key() {
+  const raw = (process.env.DATA_GO_KR_KEY || '').trim();
+  if (!raw) { console.error('DATA_GO_KR_KEY 시크릿이 비어 있어요'); process.exit(1); }
+  return raw.includes('%') ? raw : encodeURIComponent(raw);
+}
 const ROWS = 500;
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
@@ -22,7 +24,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function page(base, params, pageNo) {
   const qs = Object.entries({ ...params, pageNo, numOfRows: ROWS }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-  const url = `${base}?serviceKey=${KEY}&${qs}`;
+  const url = `${base}?serviceKey=${key()}&${qs}`;
   for (let i = 0; ; i++) {
     try {
       const res = await fetch(url);
@@ -48,10 +50,20 @@ export async function all(base, params) {
     if (!list.length || out.length >= total) return out;
   }
 }
+// 강원 18개 시·군 (code는 파일 이름: data/h-{code}.json, data/p-{code}.json)
+export const REGIONS = [
+  ['chuncheon', '춘천시'], ['wonju', '원주시'], ['gangneung', '강릉시'], ['donghae', '동해시'], ['taebaek', '태백시'], ['sokcho', '속초시'],
+  ['samcheok', '삼척시'], ['hongcheon', '홍천군'], ['hoengseong', '횡성군'], ['yeongwol', '영월군'], ['pyeongchang', '평창군'], ['jeongseon', '정선군'],
+  ['cheorwon', '철원군'], ['hwacheon', '화천군'], ['yanggu', '양구군'], ['inje', '인제군'], ['goseong', '고성군'], ['yangyang', '양양군']
+].map(([code, name]) => ({ code, name }));
+// 주소로 시·군 찾기 ("강원특별자치도 춘천시 …" → chuncheon)
+export const regionOf = addr => REGIONS.find(r => new RegExp(`(^|\\s)${r.name}(\\s|$)`).test(addr || '')) || null;
+export const dataFile = name => new URL('../../data/' + name, import.meta.url);
+
 // 시도 이름: "강원특별자치도"로 먼저, 결과가 없으면 "강원도"로
 export async function allRegion(base, q1, extra = {}) {
   for (const Q0 of ['강원특별자치도', '강원도']) {
-    const rows = await all(base, { Q0, Q1: q1, ...extra });
+    const rows = await all(base, q1 ? { Q0, Q1: q1, ...extra } : { Q0, ...extra });
     if (rows.length) return { Q0, rows };
   }
   return { Q0: '', rows: [] };
@@ -74,6 +86,7 @@ export function coords(r) {
 
 // 목록이 그대로면 파일을 건드리지 않아요 (커밋도 안 생김)
 export async function save(out, meta, list) {
+  await mkdir(new URL('.', out), { recursive: true });
   list.sort((a, b) => a.hpid < b.hpid ? -1 : a.hpid > b.hpid ? 1 : 0);
   let old = null;
   try { old = JSON.parse(await readFile(out, 'utf8')); } catch (e) {}

@@ -1,4 +1,4 @@
-# 원주시 병·의원·약국 정보를 공공데이터에서 받아 hospitals.json, pharmacies.json으로 올려요
+# 강원 18개 시·군 병·의원·약국 정보를 공공데이터에서 받아 data/ 폴더에 시·군별로 올려요
 name: 병원 정보 받기
 
 on:
@@ -37,17 +37,19 @@ jobs:
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
 
+      - name: 시·군 목록 만들기
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/build-regions.mjs
+
       - name: 바뀐 게 있으면 main에 올리기
         if: ${{ !cancelled() }}
         run: |
-          for f in hospitals.json pharmacies.json; do
-            if [ -f "$f" ]; then git add "$f"; fi
-          done
+          git add -A data
           if git diff --cached --quiet; then
             echo "병원·약국 정보가 그대로라 올리지 않아요"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "병원·약국 정보 갱신 (원주시)"
+          git commit -m "병원·약국 정보 갱신 (강원)"
           git push origin HEAD:main

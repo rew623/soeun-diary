@@ -13,17 +13,17 @@
 - index.html: 화면 대부분 (탭 렌더링, 편집창 sheet, 그래프, 클릭 처리 switch, 상태 S, 미리보기용 MOCK/DB)
 - app.js: Firebase 연결 (로그인, 가족 공간, onSnapshot 구독, 저장 API, 사진 업로드, 새 버전 안내)
 - config.js: Firebase 설정 (수정 금지)
-- sw.js: 서비스 워커 (앱 파일 캐시 우선, 사진 캐시, hospitals/pharmacies.json 네트워크 우선), VERSION
-- hospitals.js: 긴급 출동 > 병원 수사 (카카오맵, 목록, 필터, 관심 병원·약국, 공휴일 목록)
+- sw.js: 서비스 워커 (앱 파일 캐시 우선, 사진 캐시, data/*.json 네트워크 우선), VERSION
+- hospitals.js: 긴급 출동 > 병원 수사 (강원 18개 시·군, 현재 위치의 시·군 자동 선택, 카카오맵, 목록, 필터, 관심 병원·약국, 공휴일 목록)
 - map-key.js: 카카오맵 JavaScript 키 (공개용, 등록 도메인 rew623.github.io)
 - viewer.js: 사진·보드 카드 크게 보기(핀치 줌), 안드로이드 뒤로가기, 길게 누르기 막기
 - board.js: 사건 앨범 > 수사 보드
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free')
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
-- hospitals.json / pharmacies.json: Actions가 매주 만드는 원주시 병원·약국 목록 (직접 고치지 않음)
+- data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
 - .github/workflows/hospitals.yml: 병원 정보 받기 (매주 월 03:00 KST + 수동), 시크릿 DATA_GO_KR_KEY
-- .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통)
+- .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통, 시·군 목록 REGIONS, build-regions.mjs)
 - 새 JS 파일은 index.html의 <script>와 sw.js의 SHELL 목록에 추가할 것
 
 ## Firestore 구조

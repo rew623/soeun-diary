@@ -1,8 +1,9 @@
-// 병원 수사 — 긴급 출동 탭 안의 동네 병원·약국 찾기 (강원 원주시)
-// 병원·약국 목록: hospitals.json, pharmacies.json (GitHub Actions가 매주 공공데이터에서 받아 올려요)
+// 병원 수사 — 긴급 출동 탭 안의 동네 병원·약국 찾기 (강원 18개 시·군, 현재 위치의 시·군을 자동으로)
+// 병원·약국 목록: data/h-{시군}.json, data/p-{시군}.json, 시·군 목록 data/regions.json (GitHub Actions가 매주 공공데이터에서 받아 올려요)
 // 관심 병원·메모: Firestore families/{fid}/hospitals/{hpid} (app.js의 saveHospital, 가족 공유)
 (function () {
-const HOME = { lat: 37.3422, lng: 127.9202 };               // 원주시청 (현재 위치를 모를 때 기준)
+const DEF_REGIONS = [{ code: 'wonju', name: '원주시', lat: 37.3422, lng: 127.9202 }];   // regions.json을 못 받았을 때
+const REGK = 'soeun-hosp-region';                                                       // 마지막으로 본 시·군 (이 폰에만)
 const DEPTS = ['소아청소년과', '이비인후과', '내과', '가정의학과', '피부과', '안과'];
 const DAYN = ['', '월', '화', '수', '목', '금', '토', '일', '공휴일'];
 // 공휴일 (대체공휴일·선거일 포함). 정부 발표로 바뀌면 여기만 고치면 돼요
@@ -16,7 +17,7 @@ const HOLI = new Set([
 ]);
 const FAVK = 'soeun-hosp-fav';   // 오프라인용: 관심 병원·약국의 마지막 진료시간
 
-const H = { list: null, updated: '', phUpdated: '', loading: false, err: '', phErr: '', kind: 'hosp', mode: '', dept: '', f: {}, preset: '', pos: null, sel: '', open: new Set(), more: 40, mapErr: '' };
+const H = { region: (() => { try { return localStorage.getItem(REGK) || 'wonju'; } catch (e) { return 'wonju'; } })(), regions: null, list: null, updated: '', phUpdated: '', loading: false, err: '', phErr: '', kind: 'hosp', mode: '', dept: '', f: {}, preset: '', pos: null, sel: '', open: new Set(), more: 40, mapErr: '' };
 let map = null, mapEl = null, mapLoading = false, markers = [], lastSig = '', meDot = null, sdk = null, favJ = '';
 
 // ---------- 시간 ----------
@@ -41,7 +42,7 @@ const night = h => [1, 2, 3, 4, 5, 6, 7, 8].some(i => { const sp = spanOf(h, i);
 // ---------- 거리, 관심 ----------
 function dist(h) {
   if (h.lat == null) return Infinity;
-  const p = H.pos || HOME, R = 6371, r = x => x * Math.PI / 180;
+  const p = H.pos || regionInfo(H.region), R = 6371, r = x => x * Math.PI / 180;
   const a = Math.sin(r(h.lat - p.lat) / 2) ** 2 + Math.cos(r(p.lat)) * Math.cos(r(h.lat)) * Math.sin(r(h.lng - p.lng) / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
@@ -70,9 +71,13 @@ function visible(n, fav) {
 
 // ---------- 데이터 ----------
 const readFav = () => { try { return JSON.parse(localStorage.getItem(FAVK) || 'null'); } catch (e) { return null; } };
-function saveFav() {
-  if (!H.list) return;
-  const fav = favMap(), items = H.list.filter(h => (fav.get(h.hpid) || {}).star);
+// 관심 병원·약국은 시·군이 달라도 계속 보이게, 받은 적 있는 것을 모두 폰에 모아 둬요
+function saveFav(from) {
+  const src = from || H.list;
+  if (!src || S.mode !== 'ok') return;
+  const fav = favMap(), on = h => (fav.get(h.hpid) || {}).star;
+  const cur = src.filter(on), ids = new Set(cur.map(h => h.hpid));
+  const items = cur.concat(((readFav() || {}).items || []).filter(h => on(h) && !ids.has(h.hpid)));
   const j = JSON.stringify({ updated: H.updated, phUpdated: H.phUpdated, items });
   if (j === favJ) return; favJ = j;
   try { localStorage.setItem(FAVK, j); } catch (e) {}
@@ -83,18 +88,51 @@ async function getJson(url) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
+// ---------- 시·군 ----------
+const regionList = () => H.regions && H.regions.length ? H.regions : DEF_REGIONS;
+const regionInfo = c => regionList().find(r => r.code === c) || regionList()[0];
+async function ensureRegions() {
+  if (H.regions) return;
+  try { H.regions = (await getJson('data/regions.json')).regions || null; } catch (e) {}
+}
+// 현재 위치가 속한 시·군: 범위 안에 드는 시·군 중 가운데가 가장 가까운 곳 (강원 밖이면 null)
+function regionFor(p) {
+  const R = H.regions || []; if (!R.length || !p) return null;
+  const d = r => Math.hypot(r.lat - p.lat, (r.lng - p.lng) * Math.cos(p.lat * Math.PI / 180));
+  const pad = .04, inBox = R.filter(r => r.box && p.lat >= r.box[0] - pad && p.lat <= r.box[2] + pad && p.lng >= r.box[1] - pad && p.lng <= r.box[3] + pad);
+  const best = (inBox.length ? inBox : R).slice().sort((a, b) => d(a) - d(b))[0];
+  return d(best) * 111 > 40 ? null : best;
+}
+function setRegion(code, msg) {
+  if (!code || code === H.region) return;
+  H.region = code; try { localStorage.setItem(REGK, code); } catch (e) {}
+  H.list = null; H.sel = ''; H.more = 40; lastSig = '';
+  if (map && !H.pos) { const c = regionInfo(code); map.setCenter(new kakao.maps.LatLng(c.lat, c.lng)); }
+  load(); rerender();
+  if (msg) toast(msg);
+}
+
 // 병원과 약국을 따로 받아서, 받지 못한 쪽은 마지막으로 보관한 관심 목록으로 채워요
 async function load() {
   if (H.loading) return; H.loading = true; H.err = ''; H.phErr = '';
-  const [a, b] = await Promise.allSettled([getJson('hospitals.json'), getJson('pharmacies.json')]);
+  await ensureRegions();
+  const code = H.region;
+  const [a, b] = await Promise.allSettled([getJson(`data/h-${code}.json`), getJson(`data/p-${code}.json`)]);
+  H.loading = false;
+  if (code !== H.region) {                                             // 받는 사이에 시·군을 바꿨으면 관심 병원만 챙기고 다시
+    saveFav([].concat(a.status === 'fulfilled' ? a.value.items || [] : [], b.status === 'fulfilled' ? (b.value.items || []).map(h => Object.assign(h, { ph: true })) : []));
+    load(); return;
+  }
   const f = readFav() || {}, keep = (f.items || []), why = r => r.reason && r.reason.message === 'nodata' ? 'nodata' : 'offline';
   let hs, ps;
   if (a.status === 'fulfilled') { hs = a.value.items || []; H.updated = a.value.updated || ''; }
-  else { hs = keep.filter(h => !h.ph); H.updated = f.updated || ''; H.err = why(a); }
+  else { hs = []; H.updated = f.updated || ''; H.err = why(a); }
   if (b.status === 'fulfilled') { ps = (b.value.items || []).map(h => Object.assign(h, { ph: true })); H.phUpdated = b.value.updated || ''; }
-  else { ps = keep.filter(h => h.ph); H.phUpdated = f.phUpdated || ''; H.phErr = why(b); }
-  H.list = hs.concat(ps);
-  H.loading = false; saveFav(); rerender();
+  else { ps = []; H.phUpdated = f.phUpdated || ''; H.phErr = why(b); }
+  // 다른 시·군의 관심 병원·약국도 같이 (폰에 모아 둔 것)
+  const have = new Set(hs.concat(ps).map(h => h.hpid));
+  H.list = hs.concat(ps, keep.filter(h => !have.has(h.hpid)));
+  saveFav(); rerender();
 }
 const rerender = () => { if (S.view === 'hosp') render(); };
 const byId = id => (H.list || []).find(h => h.hpid === id);
@@ -154,7 +192,7 @@ function mount() {
   mapLoading = true;
   loadSdk().then(() => {
     mapLoading = false;
-    const c = H.pos || HOME;
+    const c = H.pos || regionInfo(H.region);
     map = new kakao.maps.Map(mapEl, { center: new kakao.maps.LatLng(c.lat, c.lng), level: 6 });
     lastSig = ''; syncMarkers(); showMe();
   }).catch(() => { mapLoading = false; H.mapErr = 'fail'; rerender(); });
@@ -166,6 +204,8 @@ function locate(quiet) {
     H.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
     if (map) { map.setCenter(new kakao.maps.LatLng(H.pos.lat, H.pos.lng)); if (!quiet) map.setLevel(5); showMe(); }
     rerender();
+    // 현재 위치의 시·군으로 바꿔요
+    ensureRegions().then(() => { const r = regionFor(H.pos); if (r && r.code !== H.region) setRegion(r.code, `현재 위치에 맞춰 ${r.name} 병원·약국을 보여줘요`); else rerender(); });
   }, () => { if (!quiet) toast('위치를 가져오지 못했어요. 위치 권한을 확인해 주세요'); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
 }
 
@@ -196,8 +236,11 @@ function renderHosp() {
   const ph = H.kind === 'ph', W = ph ? { n: '약국', t: '영업' } : { n: '병원', t: '진료' };
   const n = nowInfo(), fav = favMap(), vm = visitMap(), list = visible(n, fav);
   const favs = list.filter(h => (fav.get(h.hpid) || {}).star);
-  const head = `<header class="vhead"><span class="no">긴급 출동 · 강원 원주시</span><div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1>병원 수사</h1><button class="ghost" data-act="tab" data-v="sick">← 긴급 출동</button></div>
+  const rg = regionInfo(H.region), here = regionFor(H.pos);
+  const head = `<header class="vhead"><span class="no">긴급 출동 · 강원 ${esc(rg.name)}</span><div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1>병원 수사</h1><button class="ghost" data-act="tab" data-v="sick">← 긴급 출동</button></div>
     <p>${n.idx === 8 ? '오늘은 공휴일이에요. ' : ''}관심 병원·약국은 가족 모두에게 같이 보여요.</p></header>`;
+  const regRow = `<div class="hreg"><label for="hreg-sel">지역</label><select id="hreg-sel">${regionList().map(r => `<option value="${r.code}" ${r.code === H.region ? 'selected' : ''}>강원 ${esc(r.name)}</option>`).join('')}</select>
+    ${here && here.code !== H.region ? `<button class="ghost" data-h="here">현재 위치(${esc(here.name)})로 보기</button>` : H.pos && !here && H.regions ? '<small>현재 위치가 강원 밖이에요</small>' : ''}</div>`;
   const kinds = `<div class="seg hkind" style="margin-top:14px"><button class="${ph ? '' : 'on'}" data-h="kind" data-v="hosp">병원</button><button class="${ph ? 'on' : ''}" data-h="kind" data-v="ph">약국</button></div>`;
   const err = ph ? H.phErr : H.err, has = (H.list || []).some(h => !!h.ph === ph);
   let notice = '';
@@ -224,13 +267,13 @@ function renderHosp() {
       ${rest.length ? `<h2 class="subh">★ 관심 ${W.n}</h2>${cards(rest)}` : ''}`;
   } else {
     const shown = list.slice(0, Math.max(H.more, favs.length));
-    body = `<p class="hsrc" style="margin-top:8px">관심 ${W.n} 먼저, 그다음 ${H.pos ? '현재 위치에서' : '원주시청에서'} 가까운 순이에요. <button class="ghost" data-h="me" style="min-height:30px;padding:2px 8px">현재 위치로</button></p>
+    body = `<p class="hsrc" style="margin-top:8px">관심 ${W.n} 먼저, 그다음 ${H.pos ? '현재 위치에서' : esc(rg.name) + ' 가운데에서'} 가까운 순이에요. <button class="ghost" data-h="me" style="min-height:30px;padding:2px 8px">현재 위치로</button></p>
       ${list.length ? cards(shown) : `<p class="vempty">조건에 맞는 ${W.n}이 없어요. 필터를 줄여 보세요.</p>`}
       ${list.length > shown.length ? `<button class="addperiod" data-h="more">더 보기 (${list.length - shown.length}곳 남음)</button>` : ''}`;
   }
   const src = ph ? '약국 정보: 국립중앙의료원 전국 약국 정보 조회 서비스(공공데이터포털). 영업시간이 실제와 다를 수 있어요.'
     : '병원 정보: 국립중앙의료원 전국 병·의원 찾기 서비스(공공데이터포털). 진료시간이 실제와 다를 수 있어요.';
-  return head + kinds + notice + filters + seg + body + `<p class="foot">${src}</p>`;
+  return head + regRow + kinds + notice + filters + seg + body + `<p class="foot">${src}</p>`;
 }
 
 // 긴급 출동 탭 위쪽 바로가기
@@ -268,6 +311,7 @@ document.addEventListener('click', async e => {
     case 'open': openView(b.dataset.p || '', b.dataset.k || ''); break;
     case 'preset': H.preset = ''; render(); break;
     case 'kind': H.kind = v; H.sel = ''; H.more = 40; render(); break;
+    case 'here': { const r = regionFor(H.pos); if (r) setRegion(r.code); break; }
     case 'dept': H.dept = v; H.more = 40; render(); break;
     case 'flt': H.f[v] = !H.f[v]; H.more = 40; render(); break;
     case 'mode': H.mode = v; render(); break;
@@ -289,6 +333,7 @@ document.addEventListener('click', async e => {
     }
   }
 });
+document.addEventListener('change', e => { if (e.target.id === 'hreg-sel') setRegion(e.target.value, `강원 ${regionInfo(e.target.value).name} 병원·약국을 보여줘요`); });
 document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.hid) { if (d.open) H.open.add(d.dataset.hid); else H.open.delete(d.dataset.hid); } }, true);
 
 const css = document.createElement('style');
@@ -298,6 +343,10 @@ css.textContent = `
 .hquick .er{flex:2 1 0;background:var(--red);color:#fff;border:0;padding:4px 6px;font-size:14px;line-height:1.2;text-align:left;word-break:keep-all}
 .hquick .er svg{flex-shrink:0}
 .hquick .all{flex:1 1 0;background:#FFFDF7;border:1.5px solid var(--navy);color:var(--navy);padding:0 6px;white-space:nowrap}
+.hreg{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:13px}
+.hreg label{color:var(--muted)}
+.hreg select{font:inherit;font-size:15px;padding:8px 10px;border:1.5px solid var(--navy);border-radius:4px;background:#FFFDF7;color:var(--navy);min-height:42px}
+.hreg .ghost{min-height:38px}.hreg small{color:var(--muted)}
 .hfilters .chips{margin-top:10px;gap:6px}
 .chip.on{background:var(--navy);color:var(--paper)}
 .hpreset{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 0;border:1px dashed var(--red);color:var(--red);padding:6px 10px;font-size:13px}
