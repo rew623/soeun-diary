@@ -493,7 +493,7 @@ function renderGrow(){
     if(r.weight!=null&&r.weight!==''){const prev=list.slice(idx+1).find(x=>x.weight!=null&&x.weight!=='');
       if(prev){const g=Math.round((r.weight-prev.weight)*1000),gap=daysBetween(prev.date,r.date);
         delta=`<div class="rec-delta">지난 기록보다 <b>${g>=0?'+':''}${g}g</b>${gap>0?`, 하루 평균 ${Math.round(g/gap)}g`:''}</div>`}}
-    return `<li class="rec" data-act="editrec" data-id="${esc(r.id)}" tabindex="0"><div class="rec-date"><b>${fmtDate(r.date)}</b><span>수사 ${dd+1}일째${r.by?`, ${r.by} 수사관`:''}</span></div><div class="rec-vals">${vals}</div>${delta}${r.memo?`<div class="rec-memo">${esc(r.memo)}</div>`:''}${safeImg(PHOTOS[r.id])?`<img class="rec-thumb" src="${safeImg(PHOTOS[r.id])}" alt="">`:''}</li>`;
+    return `<li class="rec" data-act="editrec" data-id="${esc(r.id)}" tabindex="0"><div class="rec-date"><b>${fmtDate(r.date)}</b><span>수사 ${dd+1}일째${r.by?`, ${r.by} 수사관`:''}</span></div><div class="rec-vals">${vals}</div>${delta}${r.memo?`<div class="rec-memo">${esc(r.memo)}</div>`:''}${safeImg(PHOTOS[r.id])?`<img class="rec-thumb" src="${safeImg(PHOTOS[r.id])}" alt="증거 사진 크게 보기" data-view="${esc(r.id)}">`:''}</li>`;
   }).join(''):'<li class="emptylist">아래 버튼으로 첫 증거를 기록해 보세요.</li>';
 
   return `
