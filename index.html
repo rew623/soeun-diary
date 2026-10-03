@@ -459,6 +459,7 @@ function render(){
   cachePhSoon();stayAfterRender();
 }
 
+const REC_SHOW=5;   // 수사 기록은 최근 몇 건만 펼쳐 두고 나머지는 접어요
 function renderGrow(){
   const p=S.profile,t=today(),d=Math.max(0,daysBetween(p.birth,t))+1,[mo,rd]=monthsDays(p.birth,t);
   let ms='';
@@ -495,7 +496,7 @@ function renderGrow(){
       if(prev){const g=Math.round((r.weight-prev.weight)*1000),gap=daysBetween(prev.date,r.date);
         delta=`<div class="rec-delta">지난 기록보다 <b>${g>=0?'+':''}${g}g</b>${gap>0?`, 하루 평균 ${Math.round(g/gap)}g`:''}</div>`}}
     return `<li class="rec" data-act="editrec" data-id="${esc(r.id)}" tabindex="0"><div class="rec-date"><b>${fmtDate(r.date)}</b><span>수사 ${dd+1}일째${r.by?`, ${r.by} 수사관`:''}</span></div><div class="rec-vals">${vals}</div>${delta}${r.memo?`<div class="rec-memo">${esc(r.memo)}</div>`:''}${safeImg(PHOTOS[r.id])?`<img class="rec-thumb" src="${safeImg(PHOTOS[r.id])}" alt="증거 사진 크게 보기" data-view="${esc(r.id)}">`:''}</li>`;
-  }).join(''):'<li class="emptylist">아래 버튼으로 첫 증거를 기록해 보세요.</li>';
+  }).slice(0,S.recAll?undefined:REC_SHOW).join(''):'<li class="emptylist">아래 버튼으로 첫 증거를 기록해 보세요.</li>';
 
   return `
   <div class="filebar"><span>사건 파일 No.${fileNo()}</span><button class="ghost" data-act="settings">대상 정보</button></div>
@@ -515,8 +516,9 @@ function renderGrow(){
     ${note}
   </section>
   <section>
-    <h2 class="sh"><span>수사 기록</span><span>${list.length}건</span></h2>
+    <h2 class="sh" id="rec-head"><span>수사 기록</span><span>${list.length}건</span></h2>
     <ul class="recs">${rows}</ul>
+    ${list.length>REC_SHOW?`<button class="addperiod" data-act="recall">${S.recAll?'최근 '+REC_SHOW+'건만 보기 ▴':'전체 '+list.length+'건 보기 ▾'}</button>`:''}
     <p class="foot">수사 일수는 태어난 날을 1일로 세요. 백분위는 한국 소아청소년 성장도표(3세 미만 WHO 기준)를 따르고, 참고용이에요.</p>
   </section>
   <button class="fab" data-act="addrec">+ 새 증거 기록</button>`;
@@ -976,6 +978,7 @@ document.addEventListener('click',async e=>{
   const act=a.dataset.act,val=id=>{const el=document.getElementById(id);return el?el.value.trim():''},err=(id,m)=>{document.getElementById(id).textContent=m};
   switch(act){
   case 'tab':S.tab=a.dataset.v;S.view='';render();window.scrollTo(0,0);break;
+  case 'recall':S.recAll=!S.recAll;render();if(!S.recAll){const h=document.getElementById('rec-head');if(h)h.scrollIntoView({block:'start'})}break;
   case 'aview':S.albumView=a.dataset.v;render();window.scrollTo(0,0);break;
   case 'report':S.view='report';render();window.scrollTo(0,0);break;
   case 'closereport':S.view='';render();window.scrollTo(0,0);break;
@@ -1107,14 +1110,14 @@ document.addEventListener('click',async e=>{
 window.__app={apply,toast,isBusy:()=>busy,sheetOpen:()=>$sheet.classList.contains('open'),closeSheet,openSheet,refresh,CK};
 // ---------- 새로고침해도 보던 탭 그대로 (이 창에서만 기억, 앱을 새로 열면 첫 화면) ----------
 const STAY='soeun-stay';let stayY=null,stayT;
-function staySave(){if(S.mode!=='ok')return;try{sessionStorage.setItem(STAY,JSON.stringify({tab:S.tab,view:S.view,vacView:S.vacView,albumView:S.albumView,menuMonth:S.menuMonth,y:Math.round(window.scrollY)}))}catch(e){}}
+function staySave(){if(S.mode!=='ok')return;try{sessionStorage.setItem(STAY,JSON.stringify({tab:S.tab,view:S.view,vacView:S.vacView,albumView:S.albumView,menuMonth:S.menuMonth,recAll:!!S.recAll,y:Math.round(window.scrollY)}))}catch(e){}}
 function stayAfterRender(){
   if(S.mode!=='ok')return;
   if(stayY!=null){const y=stayY;if(document.documentElement.scrollHeight>=y+innerHeight*.5){stayY=null;requestAnimationFrame(()=>window.scrollTo(0,y))}}
   staySave();
 }
 try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
-  if(st&&['grow','vac','food','sick','album'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report'].includes(st.view)?st.view:'';S.vacView=st.vacView==='check'?'check':'vac';S.albumView=st.albumView==='board'?'board':'album';if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
+  if(st&&['grow','vac','food','sick','album'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report'].includes(st.view)?st.view:'';S.vacView=st.vacView==='check'?'check':'vac';S.albumView=st.albumView==='board'?'board':'album';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
 }catch(e){}
 window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
 window.addEventListener('pagehide',staySave);
