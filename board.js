@@ -29,6 +29,7 @@ function cards() {
 
   const ck = window.CHECKUPS && CHECKUPS.boardCard();
   if (ck) out.push(ck);
+  if (window.CHARGES) out.push(CHARGES.boardCard());
 
   const fb = `${+p.birth.slice(0, 4) + 1}${p.birth.slice(4)}`;
   const ann = [['50일', addDays(p.birth, 49)], ['100일', addDays(p.birth, 99)], ['200일', addDays(p.birth, 199)], ['첫 돌', fb]];
