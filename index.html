@@ -719,14 +719,14 @@ function renderAlbum(){
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${aseg}
   <button class="nextcard" data-act="report" style="margin-top:14px"><span><small>${d<100?fmtK(d100,true)+' 공개 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>${d<100?'미리 보기':'보고서 보기'}</small></span><span class="d">${d<100?'D-'+(100-d):'100일'}</span></button>
+  <section><h2 class="sh"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div></section>
   <section><h2 class="sh" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">최초 목격 기록</span><span>${F.length}건 확보</span></h2>
     ${F.length?`<div class="polas">${F.map((m,i)=>polaroid(m,i===0,rots[i%rots.length])).join('')}</div>`:'<p class="vempty">첫 미소, 첫 옹알이 같은 순간을 기록해 보세요.</p>'}
     <button class="solve" data-act="addmom" style="width:100%;margin-top:18px;min-height:50px">+ 최초 목격 기록</button></section>
   ${ALBUM.sectionHtml()}
   <section><h2 class="sh" style="border-bottom:2px solid var(--ink);padding-bottom:6px"><span>미확인 사건, 목격하면 눌러서 기록</span></h2>
     ${MILES.filter(([t])=>!seen.has(t)).map(([t,a])=>`<button class="vrow" data-act="addmom" data-v="${t}"><span class="box" style="border-style:dashed;border-radius:50%"></span><span class="vn"><span>${t}</span></span><span class="vd">보통 ${a}</span></button>`).join('')}
-    <p class="foot" style="margin-top:8px">시기는 아기마다 차이가 커요. 비교용이 아니라 기억용이에요.</p></section>
-  <section><h2 class="sh"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div></section>`;
+    <p class="foot" style="margin-top:8px">시기는 아기마다 차이가 커요. 비교용이 아니라 기억용이에요.</p></section>`;
 }
 function addDays(s,n){return new Date(pd(s)+n*864e5).toISOString().slice(0,10)}
 function openMoment(id,preset){
