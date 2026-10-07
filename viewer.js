@@ -228,6 +228,7 @@ window.addEventListener('popstate', () => {
   if (history.state && history.state.soeunGuard) return;
   if (isOpen()) { close(); guard(); return; }                          // 1) 사진 크게 보기
   if (sheetOpen()) { closeSheet(); guard(); return; }                  // 2) 편집창 같은 아래 창
+  if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }   // 3) 크게 본 병원 지도
   if (typeof S !== 'undefined' && S.view) {                            // 3) 병원 수사·100일 보고서 → 원래 탭
     if (S.view === 'hosp') S.tab = 'sick';
     S.view = ''; render(); window.scrollTo(0, 0); guard(); return;

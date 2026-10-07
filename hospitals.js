@@ -194,6 +194,7 @@ function mount() {
     mapLoading = false;
     const c = H.pos || regionInfo(H.region);
     map = new kakao.maps.Map(mapEl, { center: new kakao.maps.LatLng(c.lat, c.lng), level: 6 });
+    kakao.maps.event.addListener(map, 'click', () => { if (!H.full) openFull(); });   // 작은 지도를 톡 → 크게
     lastSig = ''; syncMarkers(); showMe();
   }).catch(() => { mapLoading = false; H.mapErr = 'fail'; rerender(); });
 }
@@ -228,6 +229,19 @@ function card(h, n, fav, vm, isSel) {
     <div class="hacts">${tel ? `<a class="linkbtn" href="tel:${tel}">전화</a>` : ''}${h.lat != null ? `<a class="linkbtn" href="https://map.kakao.com/link/to/${encodeURIComponent(h.name)},${h.lat},${h.lng}" target="_blank" rel="noopener">길찾기</a>` : ''}<button class="linkbtn" data-h="edit" data-id="${esc(h.hpid)}">메모 편집</button></div>
   </article>`;
 }
+// 지도 크게 보기 아래쪽의 요약 카드
+function mini(h, n, fav) {
+  const f = fav.get(h.hpid) || {}, st = status(h, n), sp = spanOf(h, n.idx), dd = kmText(dist(h)), tel = String(h.tel || '').replace(/[^0-9+]/g, '');
+  return `<div class="hmini">
+    <div class="htop"><div style="min-width:0"><b class="hname">${esc(h.name)}</b><small>${esc(h.kind)}${dd ? ' · ' + dd : ''}</small></div>
+      <button class="hstar${f.star ? ' on' : ''}" data-h="star" data-id="${esc(h.hpid)}" aria-label="관심 ${h.ph ? '약국' : '병원'}">${f.star ? '★' : '☆'}</button></div>
+    <div class="htoday"><span><small>오늘(${DAYN[n.idx]})</small><b>${spanText(sp)}</b></span><span class="hst ${st.k}">${st.t}</span></div>
+    <div class="hacts">${tel ? `<a class="linkbtn" href="tel:${tel}">전화</a>` : ''}${h.lat != null ? `<a class="linkbtn" href="https://map.kakao.com/link/to/${encodeURIComponent(h.name)},${h.lat},${h.lng}" target="_blank" rel="noopener">길찾기</a>` : ''}<button class="linkbtn" data-h="detail">자세히</button></div>
+  </div>`;
+}
+function openFull() { H.full = true; rerender(); }
+function closeFull() { if (!H.full) return false; H.full = false; rerender(); return true; }
+
 const chip = (on, attrs, label) => `<button class="chip${on ? ' on' : ''}" ${attrs} aria-pressed="${on ? 'true' : 'false'}">${label}</button>`;
 
 function renderHosp() {
@@ -261,7 +275,11 @@ function renderHosp() {
       : H.mapErr ? '<div class="hmap hmsg"><span>지도를 불러오지 못했어요. 인터넷 연결이나 카카오 키의 사이트 도메인 등록을 확인해 주세요.</span><button class="ghost" data-h="remap">다시 불러오기</button></div>'
       : '<div id="hmap-slot"></div>';
     const sel = H.sel && byId(H.sel), rest = favs.filter(h => h.hpid !== H.sel);
-    body = `<div class="hmapwrap">${mapBox}${hasKey() && !H.mapErr ? '<button class="hme" data-h="me">현재 위치</button>' : ''}</div>
+    const live = hasKey() && !H.mapErr, full = H.full && live;
+    body = `<div class="hmapwrap${full ? ' full' : ''}">${mapBox}${live ? '<button class="hme" data-h="me">현재 위치</button>' : ''}
+      ${!live ? '' : full ? `<button class="hfx" data-h="unfull" aria-label="지도 작게">✕</button><span class="hfcount">${esc(rg.name)} ${W.n} ${list.length}곳</span>
+        ${sel && !!sel.ph === ph ? mini(sel, n, fav) : `<p class="hfhint">핀을 누르면 ${W.n} 정보가 나와요</p>`}`
+        : '<button class="hfull" data-h="full" aria-label="지도 크게 보기">⤢ 크게 보기</button>'}</div>
       <div class="hlegend"><span><i style="background:var(--red)"></i>관심 ${W.n}</span><span><i style="background:rgba(31,42,68,.38)"></i>그 밖의 ${W.n}</span><span>${list.length}곳</span></div>
       ${sel && !!sel.ph === ph ? cards([sel]) : `<p class="vempty">핀을 누르면 ${W.n} 정보가 나와요.</p>`}
       ${rest.length ? `<h2 class="subh">★ 관심 ${W.n}</h2>${cards(rest)}` : ''}`;
@@ -292,6 +310,7 @@ function openEdit(id) {
 }
 
 function openView(preset, kind) {
+  H.full = false;
   S.tab = 'sick'; S.view = 'hosp'; H.preset = preset; H.sel = ''; H.more = 40;
   if (H.preset) { H.mode = 'list'; H.kind = 'hosp'; } else if (kind) H.kind = kind;
   if (!H.list || H.err || H.phErr) load();
@@ -318,6 +337,9 @@ document.addEventListener('click', async e => {
     case 'more': H.more += 40; render(); break;
     case 'me': locate(false); break;
     case 'remap': H.mapErr = ''; render(); break;
+    case 'full': openFull(); break;
+    case 'unfull': closeFull(); break;
+    case 'detail': closeFull(); setTimeout(() => { const el = document.getElementById('hsel'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); break;
     case 'edit': openEdit(id); break;
     case 'star': {
       const cur = !!(favMap().get(id) || {}).star, w = (byId(id) || {}).ph ? '약국' : '병원';
@@ -351,6 +373,17 @@ css.textContent = `
 .chip.on{background:var(--navy);color:var(--paper)}
 .hpreset{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 0;border:1px dashed var(--red);color:var(--red);padding:6px 10px;font-size:13px}
 .hmapwrap{position:relative;margin-top:10px}
+.hfull{position:absolute;right:10px;top:10px;z-index:3;border:0;background:rgba(255,253,247,.94);color:var(--navy);border-radius:4px;padding:7px 11px;font-size:13px;box-shadow:0 2px 6px rgba(31,42,68,.3);min-height:38px}
+.hmapwrap.full{position:fixed;inset:0;z-index:40;margin:0;background:var(--paper)}
+.hmapwrap.full #hmap-slot,.hmapwrap.full .hmap{height:100%}
+.hmapwrap.full .hmap{border:0;border-radius:0}
+body:has(.hmapwrap.full){overflow:hidden}
+.hfx{position:absolute;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:4;width:46px;height:46px;border:0;border-radius:50%;background:var(--navy);color:var(--paper);font-size:20px;box-shadow:0 3px 8px rgba(31,42,68,.4)}
+.hfcount{position:absolute;left:12px;top:calc(18px + env(safe-area-inset-top,0px));z-index:4;background:rgba(255,253,247,.94);color:var(--navy);font-size:12px;padding:5px 10px;border-radius:4px;box-shadow:0 2px 6px rgba(31,42,68,.25)}
+.hmapwrap.full .hme{top:calc(64px + env(safe-area-inset-top,0px));bottom:auto;right:12px}
+.hfhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:4;margin:0;background:rgba(31,42,68,.88);color:var(--paper);font-size:13px;padding:8px 14px;border-radius:20px;white-space:nowrap}
+.hmini{position:absolute;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:4;background:var(--card);border:2px solid var(--navy);border-radius:6px;padding:10px 12px;box-shadow:0 6px 16px rgba(31,42,68,.35);max-width:540px;margin:0 auto;font-size:13px}
+.hmini .hacts{margin-top:8px}
 .hmap{width:100%;height:320px;border:2px solid var(--navy);border-radius:4px;background:var(--card2);overflow:hidden}
 .hmsg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;color:var(--muted);font-size:13px;height:160px}
 .hme{position:absolute;right:10px;bottom:10px;z-index:3;border:0;background:var(--navy);color:var(--paper);border-radius:4px;padding:8px 12px;font-size:13px;box-shadow:0 3px 8px rgba(31,42,68,.35);min-height:40px}
@@ -385,5 +418,5 @@ css.textContent = `
 .hacts{display:flex;gap:8px;margin-top:10px}`;
 document.head.appendChild(css);
 
-window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames };
+window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames, closeFull: () => S.view === 'hosp' && closeFull() };
 })();
