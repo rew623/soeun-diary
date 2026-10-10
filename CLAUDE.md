@@ -4,6 +4,7 @@
 - 파일을 바꾸면 sw.js의 VERSION을 반드시 올릴 것 (형식: YYYY.MM.DD-n)
 - config.js는 절대 수정하지 말 것
 - 디자인 유지: 탐정 수첩 테마, 남색 #1F2A44, 크라프트지, 도장 빨강 #B3261E, 글꼴 Black Han Sans + Nanum Gothic Coding
+  - 아기자기 꾸미기: index.html의 <style id="cute"> (둥근 카드, 바느질 점선, 깅엄 체크, 마스킹 테이프, 둥둥 뜬 아래 메뉴)
 - Firestore 구조(families/{fid} 하위 컬렉션, users, invites)는 바꾸지 말 것. 바꿔야 하면 먼저 알리고 기존 데이터 이전 방법을 제시
 - 생후 일수는 태어난 날을 1일로 셈
 - 작업이 끝나면 브랜치를 따로 만들지 말고 main에 바로 올릴 것
@@ -19,7 +20,7 @@
 - viewer.js: 사진·보드 카드 크게 보기(3칸 트랙으로 옆으로 넘기기, 핀치 줌), 안드로이드 뒤로가기, 길게 누르기 막기
 - board.js: 사건 앨범 > 수사 보드
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
-- album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free')
+- album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report')
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
@@ -37,7 +38,7 @@
   - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
   - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
   - recipes/{YYYY-MM}: title, file, stages[{ stage, items[{ d, meal, raw, ing[{ n, g }], how, src }] }], by, updatedAt
-- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩), board: true/false = 수사 보드에 붙인 사진
+- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장), board: true/false = 수사 보드에 붙인 사진
 - 보안 규칙: families/{fid} 아래는 members에 있는 사람만 읽기·쓰기 (members 제외 하위 컬렉션 전체 허용이라 새 컬렉션도 규칙 수정 불필요)
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
 

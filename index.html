@@ -168,6 +168,7 @@ section{margin-top:26px}
 .rphoto img,.rphoto .noph{width:260px;height:290px;object-fit:cover;object-position:center 30%;display:grid;place-items:center;background:var(--card2);color:var(--muted)}
 .rphoto .cap{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:13px}
 .rphoto .stamp{position:absolute;right:-22px;bottom:12px;font-size:20px;transform:rotate(-14deg);margin:0;background:rgba(245,237,220,.6)}
+.rpick{align-self:center;min-height:40px;border-radius:99px;padding:6px 16px}
 .rtext{margin:0;font-size:14px;line-height:1.7}
 .rstats{border-top:2px solid var(--ink)}
 .rstat{display:flex;flex-direction:column;padding:8px 0;border-bottom:1px dashed var(--line);font-size:15px}.rstat small{font-size:12px;color:var(--muted)}
@@ -259,6 +260,85 @@ section{margin-top:26px}
 .pola,.mcell{position:relative}
 .onboard{position:absolute;top:-6px;right:-4px;z-index:1;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;transform:rotate(6deg);box-shadow:0 2px 4px rgba(0,0,0,.25)}
 </style>
+<style id="cute">
+/* 아기자기 꾸미기 (탐정 수첩 테마 위에: 둥근 카드, 바느질 선, 깅엄 체크, 마스킹 테이프) */
+:root{--paper:#F3E6CE;--card:#FFF8EC;--card2:#F2E3C9;--line:#E0C9A2;--pink:#F8D8D1;--butter:#FCE8B4;--sky:#DCE7F1;--stitch:rgba(185,150,105,.45);
+  --gingham:linear-gradient(90deg,rgba(179,38,30,.13) 50%,transparent 0) 0 0/14px 14px,linear-gradient(rgba(179,38,30,.13) 50%,transparent 0) 0 0/14px 14px}
+body{background:radial-gradient(rgba(185,150,105,.22) 1.3px,transparent 1.6px) 0 0/20px 20px,var(--paper)}
+#app::before{content:"";display:block;height:12px;margin:-18px -20px 14px;background:var(--gingham),#FFF8EC;border-bottom:1.5px dashed var(--stitch)}
+.filebar{border-bottom:0;padding:0}
+.filebar>span:first-child,.vhead .no,.rhead .no{display:inline-block;background:#FFFDF7;border:1.5px solid var(--line);border-radius:99px;padding:3px 12px;font-size:11px}
+.ghost{border-radius:99px;border-color:var(--line);background:#FFFDF7;box-shadow:0 2px 0 var(--line)}
+/* 카드: 둥글게 + 바느질 선 */
+#app section{background:var(--card);border:1.5px solid var(--line);border-radius:22px;padding:16px 14px;box-shadow:0 4px 0 #E6D2AE,0 8px 18px rgba(120,90,50,.08);outline:1.5px dashed var(--stitch);outline-offset:-7px}
+#app section section{background:none;border:0;border-radius:0;padding:0;box-shadow:none;outline:0}
+.sh>span:first-child:not([style]){background:var(--pink);color:var(--navy);padding:2px 11px;border-radius:99px;letter-spacing:0;font-weight:700;align-self:center}
+.sh>span:first-child[style]::before{content:"✦ ";color:var(--red);font-size:15px}
+.nextcard{border-radius:22px;outline:1.5px dashed rgba(255,255,255,.28);outline-offset:-7px;box-shadow:0 4px 0 #121a2e,0 8px 16px rgba(31,42,68,.18);padding:16px 18px}
+.nextcard .d{background:rgba(255,255,255,.1);border-radius:16px;padding:4px 10px}
+.vhead,.rhead{border-bottom:0;padding-bottom:4px}
+.vhead h1,.rhead h1{display:inline;background:linear-gradient(transparent 62%,var(--butter) 62%);padding:0 4px}
+.vhead p{margin-top:6px}
+/* 단추 */
+.solve,.primary{border-radius:99px;box-shadow:0 3px 0 #7E1A14}
+.solve:active,.primary:active,.ghost:active{transform:translateY(2px);box-shadow:none}
+.secondary{border-radius:99px;background:#FFFDF7}
+.addv,.addperiod,.linkbtn,.quick button{border-radius:99px}
+.addperiod{background:#FFFDF7}
+.sickbtns button,.addrow button{border-radius:99px;box-shadow:0 3px 0 #121a2e}
+.seg{border-radius:99px;overflow:hidden;border-color:var(--navy);background:#FFFDF7}
+.seg button+button{border-left-color:var(--navy)}
+.seg button.on{background:var(--navy);border-radius:99px}
+.cnt button,.stepper>button{border-radius:16px}
+/* 숫자 칸, 그래프, 목록 */
+.stats{border:0;gap:8px}
+.stat,.stat+.stat{background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:10px 10px}
+.stat.on{border-color:var(--red);background:#FFF3EF}
+.sickgrid{border:0;gap:8px}.sickgrid>div,.sickgrid>div+div{background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:10px 12px}
+.chartbox{border-radius:18px;background:#FFFDF7;overflow:hidden}
+.recs,.rstats{border-top:2px dotted var(--line)}
+.rec-thumb,.pv{border-radius:12px}
+.case{border-radius:22px;outline:1.5px dashed var(--stitch);outline-offset:-7px;box-shadow:0 4px 0 #E6D2AE}
+.case.hot{border-width:2.5px}
+.box{border-radius:8px}
+.visit,.sus,.menus button,.notice,.banner,.note.warn{border-radius:18px}
+.visit .ask{border-radius:12px}
+.stages div{border-radius:14px}
+.rolepick button{border-radius:22px}
+/* 신분증·사진 */
+.idb{border-radius:18px;box-shadow:0 3px 0 var(--line)}
+.idb .ph{border-radius:50%}
+.idb em{border-radius:99px}
+.polaroid::before,.pola::after,.rphoto::before{content:"";position:absolute;top:-9px;left:50%;width:62px;height:18px;margin-left:-31px;background:rgba(248,216,209,.88);transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.08);z-index:1}
+.polaroid::before{left:30%}
+.pola::after{background:rgba(252,232,180,.9);width:46px;margin-left:-23px}
+.pola:nth-child(even)::after{background:rgba(220,231,241,.95)}
+.polaroid.empty{border-radius:18px}
+.mcell img,.mcell .mph{border-radius:14px}
+.onboard{border-radius:99px}
+/* 아래 메뉴: 둥둥 뜬 알약 */
+.tabbar{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px;border-radius:26px;max-width:540px;margin:0 auto;box-shadow:0 8px 20px rgba(31,42,68,.3)}
+.tabbar button{border-top:0;border-radius:20px;min-height:56px;padding:7px 0 8px}
+.tabbar button.on{background:rgba(255,255,255,.12)}
+.tabbar button.on svg{color:#F6B4AA}
+.fab{border-radius:99px;margin-bottom:calc(84px + env(safe-area-inset-bottom,0px));box-shadow:0 3px 0 #7E1A14,0 8px 16px rgba(43,38,34,.25)}
+body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(40px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(243,230,206,.95));pointer-events:none;z-index:4}
+/* 편집창 */
+.sheet{border-radius:28px 28px 0 0;border-top:0;padding-top:30px}
+.sheet::before{content:"";position:absolute;top:0;left:0;right:0;height:12px;border-radius:28px 28px 0 0;background:var(--gingham),#FFF8EC}
+.sheet::after{content:"";position:absolute;top:18px;left:50%;width:44px;height:5px;margin-left:-22px;border-radius:99px;background:var(--line)}
+.field input,.field textarea,.addrow input{border-radius:14px;border-width:1.5px}
+.pick input[hidden]{display:none}
+.pick{display:inline-flex;align-items:center}
+.toast{border-radius:99px;background:var(--navy)}
+html body .charge{border-radius:20px;border:1.5px solid var(--line);border-left:6px solid var(--red);outline:0;box-shadow:0 4px 0 #E6D2AE}
+html body .acell img{border-radius:12px}
+.vhead .no,.rhead .no{display:table;margin-bottom:8px}
+html body .hquick button{border-radius:18px;box-shadow:0 3px 0 var(--line)}
+html body .hquick .er{box-shadow:0 3px 0 #7E1A14}
+html body .hmap{border-radius:20px}
+html body .hcard,html body .rcard{border-radius:18px;border-width:1.5px;box-shadow:0 3px 0 #E6D2AE}
+</style>
 <style>
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--navy);z-index:30}
 </style>
@@ -323,7 +403,7 @@ const safeImg=s=>typeof s==='string'&&(/^data:image\/(jpeg|png|webp);base64,[A-Z
 let pending;
 function readPhoto(file,big){const LIM=big?380000:180000;return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{const max=big?1600:900,sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);let q=.82,d=c.toDataURL('image/jpeg',q);while(d.length>LIM&&q>.35){q-=.08;d=c.toDataURL('image/jpeg',q)}if(d.length>LIM){const c2=document.createElement('canvas');c2.width=c.width/2;c2.height=c.height/2;c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);d=c2.toDataURL('image/jpeg',.7)}res(d)};img.src=fr.result};fr.readAsDataURL(file)})}
 function photoField(src,label,big){return `<div class="field"><span>${label||'사진 (선택)'}</span><div class="pickrow"><img id="pv" class="pv" alt="" ${src?`src="${src}"`:'hidden'}><label class="secondary pick">사진 고르기<input type="file" accept="image/*" id="f-photo" ${big?'data-big="1"':''} hidden></label><button class="danger" data-act="rmphoto" ${src?'':'hidden'}>빼기</button></div></div>`}
-document.addEventListener('change',async e=>{if(e.target.id!=='f-photo'||!e.target.files[0])return;try{pending=await readPhoto(e.target.files[0],e.target.dataset.big==='1');const pv=document.getElementById('pv');pv.src=pending;pv.hidden=false;const rm=document.querySelector('[data-act=rmphoto]');if(rm)rm.hidden=false}catch(err){toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요')}});
+document.addEventListener('change',async e=>{if(e.target.id!=='f-photo'||!e.target.files[0])return;const f0=e.target.files[0],dEl=document.getElementById('m-date')||document.getElementById('af-date');try{const tk=dEl?await ALBUM.photoDate(f0):'';pending=await readPhoto(f0,e.target.dataset.big==='1');if(tk&&tk>=S.profile.birth&&tk<=today()&&dEl.value!==tk){dEl.value=tk;toast('사진 찍은 날짜('+fmtK(tk,true)+')로 맞췄어요')}const pv=document.getElementById('pv');pv.src=pending;pv.hidden=false;const rm=document.querySelector('[data-act=rmphoto]');if(rm)rm.hidden=false}catch(err){toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요')}});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 
@@ -364,7 +444,8 @@ const MOCK={
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
 function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.mode='ok'}
-function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d)}
+let pumped=false;
+function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>ALBUM.pump(),1500)}}
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;
@@ -704,7 +785,7 @@ function viewEp(id){
 
 // ---------- 사건 앨범 ----------
 const MILES=[['첫 사회적 미소','1~2개월'],['소리 내어 웃기','3~4개월'],['목 가누기','3~4개월'],['뒤집기','4~6개월'],['혼자 앉기','6~8개월'],['첫 이','6~10개월'],['기기','7~10개월'],['잡고 서기','9~12개월'],['첫 걸음','12개월 전후'],['첫 단어','12개월 전후']];
-const firsts=()=>S.moments.filter(m=>m.type!=='month'&&m.type!=='free').sort((a,b)=>a.date<b.date?1:-1);
+const firsts=()=>S.moments.filter(m=>m.type!=='month'&&m.type!=='free'&&m.type!=='report').sort((a,b)=>a.date<b.date?1:-1);
 const dayNo=d=>daysBetween(S.profile.birth,d)+1;
 function polaroid(m,big,rot){const ph=safeImg(PHOTOS[m.id]);
   return `<button class="pola ${big?'big':''}" style="transform:rotate(${rot}deg)" ${ph?`data-view="${m.id}"`:`data-act="editmom" data-id="${m.id}"`}>${m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${esc(m.title)} 사진">`:m.photo?'<span class="noph">사진 불러오는 중</span>':'<span class="noph">사진 없음</span>'}<span class="pt"><b>${esc(m.title)}</b><small>생후 ${dayNo(m.date)}일</small></span><small class="pw">${fmtK(m.date,true)}${m.by?`, ${m.by} 수사관 최초 목격`:''}</small></button>`}
@@ -719,6 +800,7 @@ function renderAlbum(){
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${aseg}
   <button class="nextcard" data-act="report" style="margin-top:14px"><span><small>${d<100?fmtK(d100,true)+' 공개 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>${d<100?'미리 보기':'보고서 보기'}</small></span><span class="d">${d<100?'D-'+(100-d):'100일'}</span></button>
+  <button class="ghost rpick" data-al="report" style="width:100%;margin-top:8px">📷 ${ALBUM.reportDoc()?'보고서 사진 바꾸기':'보고서 사진 미리 올리기'}</button>
   <section><h2 class="sh"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div></section>
   <section><h2 class="sh" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">최초 목격 기록</span><span>${F.length}건 확보</span></h2>
     ${F.length?`<div class="polas">${F.map((m,i)=>polaroid(m,i===0,rots[i%rots.length])).join('')}</div>`:'<p class="vempty">첫 미소, 첫 옹알이 같은 순간을 기록해 보세요.</p>'}
@@ -747,11 +829,13 @@ function renderReport(){
   const row=(k)=>{const a=first(k),b=last(k);if(!a)return '';return `<div class="rstat"><small>${KINDS[k].label}</small><span><span class="muted">${fmt(k,a[k])}${KINDS[k].unit}</span> → <b>${b&&b!==a?fmt(k,b[k])+KINDS[k].unit:'[기록 대기]'}</b></span></div>`};
   const F=firsts().filter(m=>m.date<=upto).slice().reverse();
   const vDone=S.vaccines.filter(v=>v.done&&v.done<=upto).length;
-  const ph=safeImg(PHOTOS[(F.slice().reverse().find(m=>m.photo)||{}).id])||safeImg(PHOTOS.profile);
+  const rp=ALBUM.reportDoc(),rph=rp&&safeImg(PHOTOS[rp.id]);
+  const ph=rph||safeImg(PHOTOS[(F.slice().reverse().find(m=>m.photo)||{}).id])||safeImg(PHOTOS.profile);
   const events=F.map(m=>`<span>생후 ${dayNo(m.date)}일, ${esc(m.title)}${m.by?` (${m.by} 목격)`:''}</span>`).concat(S.periods.filter(pp=>pDone(pp)).map(pp=>{const last=vacsOf(pp.id).map(v=>v.done).sort().pop();return last<=upto?{d:last,t:`<span>생후 ${dayNo(last)}일, ${esc(pp.name)} 예방접종 해결</span>`}:null}).filter(Boolean).map(x=>x.t));
   return `<div class="report">
     <div class="rhead"><span class="no">사건 파일 No.${fileNo()}, ${done?'기밀 해제':'작성 중'}</span><h1>100일 사건 보고서</h1></div>
-    <div class="rphoto">${ph?`<img src="${ph}" alt="">`:'<span class="noph">사진 없음</span>'}<span class="cap">${fmtDate(d100)}, 생후 100일</span><span class="stamp">${done?'100일 달성':'D-'+daysBetween(today(),d100)}</span></div>
+    <div class="rphoto" ${rph?`data-view="${rp.id}" role="button"`:''}>${ph?`<img src="${ph}" alt="">`:'<span class="noph">사진 없음</span>'}<span class="cap">${fmtDate(d100)}, 생후 100일</span><span class="stamp">${done?'100일 달성':'D-'+daysBetween(today(),d100)}</span></div>
+    <button class="ghost rpick" data-al="report">📷 ${rp?'보고서 사진 바꾸기':done?'보고서 사진 고르기':'보고서 사진 미리 올리기'}</button>
     <p class="rtext">수사 대상 ${esc(p.name)}은(는) ${fmtK(p.birth,true)} ${first('weight')?fmt('weight',first('weight').weight)+'kg로 ':''}처음 발견되었다. 100일간 엄마, 아빠 수사관의 밀착 수사 결과 아래와 같은 성장이 확인되었다.</p>
     <div class="rstats">${row('weight')}${row('height')}${row('head')}</div>
     <div class="rnums"><div><b>${vDone}</b><small>해결한 접종</small></div><div><b>${F.length}</b><small>최초 목격</small></div><div><b>${recs.length}</b><small>증거 기록</small></div></div>
