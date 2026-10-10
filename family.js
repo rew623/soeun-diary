@@ -20,10 +20,11 @@ function render_() {
       <span class="fface">${face('profile', 'baby')}<b>${esc((P.name || '아기').replace(/^[가-힣](?=[가-힣]{2}$)/, ''))}</b></span>
       <span class="fcount"><b>${L.length}</b><small>장</small></span></div>
     </section>
-    <section><h2 class="sh" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">가족 사진</span><span>${L.length}장</span></h2>
+    <section${isFold('a-fam') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-fam" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">가족 사진</span><span>${L.length}장</span></h2>
       <button class="solve" data-fa="up" style="width:100%;min-height:50px">+ 가족 사진 올리기 (여러 장 가능)</button>
-      ${groups.map(g => { const [y, mo] = g.ym.split('-').map(Number); return `<h3 class="agh">${y}.${mo} · ${g.items.length}장</h3><div class="agrid">${g.items.map(cell).join('')}</div>`; }).join('') || '<p class="vempty" style="margin-top:12px">셋이 함께 찍은 사진, 엄마·아빠가 안고 있는 사진을 올려 보세요. 찍은 날짜로 알아서 정리돼요.</p>'}
+      ${groups.map((g, gi) => { const [y, mo] = g.ym.split('-').map(Number); return `<div class="amon${isFold('fm-' + g.ym, gi >= 2) ? ' folded' : ''}"><h3 class="agh" data-fold="fm-${g.ym}">${y}.${mo} · ${g.items.length}장</h3><div class="agrid">${g.items.map(cell).join('')}</div><button class="afold" data-al="foldm" data-k="fm-${g.ym}">▴ ${mo}월 가족 사진 접기</button></div>`; }).join('') || '<p class="vempty" style="margin-top:12px">셋이 함께 찍은 사진, 엄마·아빠가 안고 있는 사진을 올려 보세요. 찍은 날짜로 알아서 정리돼요.</p>'}
       ${L.length > shown.length ? `<button class="addperiod" data-fa="more">더 보기 (${L.length - shown.length}장)</button>` : ''}
+      ${L.length ? '<button class="afold" data-fa="folds">▴ 가족 사진 접기</button>' : ''}
     </section>`;
 }
 
@@ -50,6 +51,12 @@ document.addEventListener('click', async e => {
   switch (b.dataset.fa) {
     case 'up': picker.click(); break;
     case 'more': F.more += 30; render(); break;
+    case 'folds': {
+      const box = b.closest('section'); if (!box) return;
+      setFold('a-fam', true); box.classList.add('folded');
+      const h = box.querySelector('.sh'); if (h.getBoundingClientRect().top < 70) window.scrollTo({ top: Math.max(0, h.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' });
+      break;
+    }
     case 'fsave': {
       const m = S.moments.find(x => x.id === id), d = document.getElementById('ff-date').value; if (!m) return;
       if (!d) { document.getElementById('ff-err').textContent = '날짜를 골라 주세요'; return; }

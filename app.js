@@ -58,7 +58,7 @@ const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const fref = () => doc(db, 'families', M.fid);
-const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette'];
+const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic'];
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
 const list = c => [...M.col[c].values()].sort((a, b) => ((a._o ?? 0) - (b._o ?? 0)) || String(a.id).localeCompare(String(b.id)));
 const app = () => window.__app;
@@ -272,7 +272,9 @@ const H = {
     if (obj && obj.acornSet != null) row.acorn = Math.max(0, Math.round(+obj.acornSet) || 0);
     else if (acornDelta) row.acorn = increment(Math.round(+acornDelta) || 0);
     if (JSON.stringify(obj || {}).length > 50000) throw new Error('놀이 저장이 너무 커요');
-    await commit(setDoc(dref('game', 'shared'), Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row), { merge: true }));
+    // mergeFields: 보낸 칸만 통째로 바꿔요 (slot·wear 같은 묶음에서 뺀 자리도 다른 폰에 반영)
+    const data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row);
+    await commit(setDoc(dref('game', 'shared'), data, { mergeFields: Object.keys(data) }));
     return { ok: true };
   },
 

@@ -179,7 +179,7 @@ css.textContent = `
 .ghome .groom{border-radius:20px;border:1.5px solid var(--line);box-shadow:0 4px 0 #E6D2AE}
 .ghome .gbub{margin:12px 0 0;border-radius:20px}
 .ghome .gbub::before{left:50%;top:-9px;bottom:auto;margin-left:-7px;border:0;border-left:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:rotate(45deg);border-radius:4px 0 0 0}
-.ghedit{position:absolute;right:10px;top:10px;border:0;border-radius:99px;background:rgba(255,253,247,.92);font-size:12px;padding:4px 10px;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+.ghedit{position:absolute;left:8px;top:4px;border:0;border-radius:99px;background:rgba(255,253,247,.92);font-size:12px;padding:3px 9px;box-shadow:0 2px 4px rgba(0,0,0,.12)}
 .guide.ghome.hop .gchar{animation:none}
 @keyframes gbob{0%,100%{transform:none}50%{transform:translateY(-2px) rotate(1.5deg)}}
 @media (prefers-reduced-motion:reduce){.gchar .chr,.guide.hop .gchar,.guide.hop .gbub{animation:none}}

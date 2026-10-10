@@ -3,7 +3,7 @@
 // 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette'];
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic'];
 const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -230,6 +230,15 @@ function medalsView() {
   return head + body + '<button class="secondary" data-game="close" style="width:100%;margin-top:14px">첫 화면으로</button>';
 }
 
+// 구매 확인 창: 바로 사지 않고 미리보기·값·남는 도토리를 보여 준 뒤 '사기'
+function confirmBuy(name, cost, pv, attrs) {
+  const s = st(), lack = cost - s.acorn;
+  pending = undefined;
+  openSheet(`<h3>${esc(name)}, 살까요?</h3><div class="gbuy">${pv}</div>
+    <p class="gbuyp">🌰 <b>${cost}</b>개 · 지금 ${s.acorn}개${lack > 0 ? '' : ` → 사고 나면 ${s.acorn - cost}개`}</p>
+    <p class="hint" style="text-align:center;margin:0 0 10px">한 번 사면 엄마·아빠 폰 모두에서 쓸 수 있어요.</p>
+    <div class="actions"><button class="secondary" data-act="close">취소</button>${lack > 0 ? `<button class="primary" disabled>도토리 ${lack}개 모자라요</button>` : `<button class="primary" ${attrs} data-ok="1">🌰 ${cost}개로 사기</button>`}</div>`);
+}
 function whoSeg() { const who = G.wearWho || 'baby'; return `<div class="seg gwho">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${l}</button>`).join('')}</div>`; }
 function hatsHtml(s) {
   const who = G.wearWho || 'baby', own = s.hats || ['det'];
@@ -402,13 +411,17 @@ document.addEventListener('click', async e => {
     case 'wear': {
       const s = st(), c = CLOTHES.find(x => x[0] === b.dataset.id), who = G.wearWho || 'baby'; if (!c) return;
       s.clothes = s.clothes || []; s.wear = s.wear || {};
-      if (c[0] && !s.clothes.includes(c[0])) { if (s.acorn < c[2]) { toast(`도토리가 ${c[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= c[2]; s.clothes.push(c[0]); toast(`${c[1]}을(를) 샀어요!`); confetti(); }
+      if (c[0] && !s.clothes.includes(c[0])) {
+        if (b.dataset.ok !== '1') { confirmBuy(c[1], c[2], CHARS.svg(who, '', { size: 130, outfit: c[0] }), `data-game="wear" data-id="${c[0]}"`); return; }
+        if (s.acorn < c[2]) { toast(`도토리가 ${c[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= c[2]; s.clothes.push(c[0]); closeSheet(); toast(`${c[1]}을(를) 샀어요!`); confetti(); }
       s.wear[who] = c[0]; save(s); render(); break;
     }
     case 'hat': {
       const s = st(), who = G.wearWho || 'baby', id = b.dataset.id, h = HATS.find(x => x[0] === id);
       if (id && !h) return;
-      if (h && !(s.hats || []).includes(h[0]) && h[2] > 0) { if (s.acorn < h[2]) { toast(`도토리가 ${h[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= h[2]; s.hats = (s.hats || []).concat(h[0]); toast(`${h[1]}을(를) 샀어요!`); confetti(); }
+      if (h && !(s.hats || []).includes(h[0]) && h[2] > 0) {
+        if (b.dataset.ok !== '1') { confirmBuy(h[1], h[2], CHARS.svg(who, '', { face: true, size: 110, hat: id }), `data-game="hat" data-id="${id}"`); return; }
+        if (s.acorn < h[2]) { toast(`도토리가 ${h[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= h[2]; s.hats = (s.hats || []).concat(h[0]); closeSheet(); toast(`${h[1]}을(를) 샀어요!`); confetti(); }
       if (who === 'baby') s.hat = id || 'det'; else { s.hatOf = Object.assign({}, s.hatOf || {}, { [who]: id }); }
       save(s); render(); break;
     }
@@ -455,6 +468,8 @@ button.gchip{min-height:30px}
 .grt{flex:1;display:flex;flex-direction:column;min-width:0}.grt small{font-size:12px;color:var(--muted)}
 .grt b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--navy);line-height:1.2}
 .grt i{display:block;height:8px;border-radius:99px;background:var(--card2);overflow:hidden;margin:3px 0}.grt u{display:block;height:100%;background:var(--red);border-radius:99px}
+.gbuy{display:grid;place-items:center;margin:4px 0 6px}.gbuy .chr{background:#FCEBD3;border-radius:20px}.gbuy .rpv{width:160px;height:auto;max-height:130px;border-radius:14px;background:#FFF8EC}.gbuy .rsw{width:120px;height:80px;border-radius:14px}.gbuy .rpp{font-size:56px}
+.gbuyp{text-align:center;font-size:15px;margin:4px 0}.gbuyp b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--red)}
 .gwho{margin-bottom:8px}.gwear{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.gwear span{display:flex;flex-direction:column;align-items:center;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:6px 2px}.gwear span.on{border:2.5px solid var(--red)}.gwear b{font-size:13px;color:var(--navy)}.gwear small{font-size:11px;color:var(--muted)}
 .gcl .chr{border-radius:14px!important;background:#FFF8EC!important}
 .ghats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -504,5 +519,5 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf };
+window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, confirmBuy };
 })();

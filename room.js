@@ -10,7 +10,8 @@ const SLOTS = [
   ['wall', '벽지', 0, ''], ['floor', '바닥', 0, ''], ['win', '창문', 1, '14 26 82 74'], ['ceil', '천장 장식', 1, '40 0 240 50'],
   ['hang', '매달기', 1, '172 0 64 64'], ['wallC', '벽 가운데', 1, '100 22 70 80'], ['rug', '러그', 1, '60 140 200 40'],
   ['floorL', '바닥 왼쪽', 1, '20 92 66 84'], ['floorM', '바닥 소품', 1, '74 118 46 58'], ['floorR', '바닥 오른쪽 가구', 1, '214 70 70 106'],
-  ['corner', '구석', 1, '262 70 56 106'], ['pet', '반려동물', 1, '208 128 52 50'], ['prop', '소은 탐정 손에', 0, '']
+  ['corner', '구석', 1, '262 70 56 106'], ['pet', '반려동물', 1, '208 128 52 50'], ['prop', '소은 탐정 손에', 0, ''],
+  ['fam', '함께 있는 수사관', 1, ''], ['pic', '가족 사진 액자 (누르면 사진 고르기)', 1, '232 2 70 66']
 ];
 const WALLC = { cream: '#FFF3DD', pink: '#FBE3E0', mint: '#E3F2E6', sky: '#E2EEF8', lilac: '#EEE6F7', butter: '#FFF6CC' };
 const t = s => s;   // 그림 조각 (읽기 쉽게)
@@ -72,7 +73,11 @@ const CAT = [
   ['bunny', 'pet', '토끼', 11, t('<ellipse cx="234" cy="164" rx="13" ry="10" fill="#fff" stroke="#E0C9A2"/><circle cx="226" cy="152" r="8" fill="#fff" stroke="#E0C9A2"/><ellipse cx="222" cy="138" rx="3" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="229" cy="137" rx="3" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="229" cy="137" rx="1.3" ry="6" fill="#F6B4AA"/><circle cx="223" cy="151" r="1.4" fill="#2B2622"/><circle cx="246" cy="164" r="3.5" fill="#fff" stroke="#E0C9A2"/><circle cx="222" cy="155" r="2" fill="#F6B4AA" opacity=".7"/>')],
   ['chick', 'pet', '병아리 셋', 9, t([[222, 0], [236, 2], [248, -1]].map(([x, d]) => `<ellipse cx="${x}" cy="${166 + d}" rx="7" ry="6" fill="#F4C542"/><circle cx="${x - 2}" cy="${158 + d}" r="4.5" fill="#F4C542"/><path d="M${x - 7} ${158 + d}l-3 1 3 1" fill="#E59A5C"/><circle cx="${x - 3}" cy="${157 + d}" r=".9" fill="#2B2622"/>`).join(''))],
   // 소은 탐정 손에
-  ['p-lens', 'prop', '돋보기', 0], ['p-acorn', 'prop', '도토리', 2], ['p-camera', 'prop', '카메라', 3], ['p-heart', 'prop', '하트', 2], ['p-note', 'prop', '수첩', 2], ['p-spoon', 'prop', '숟가락', 2]
+  ['p-lens', 'prop', '돋보기', 0], ['p-acorn', 'prop', '도토리', 2], ['p-camera', 'prop', '카메라', 3], ['p-heart', 'prop', '하트', 2], ['p-note', 'prop', '수첩', 2], ['p-spoon', 'prop', '숟가락', 2],
+  // 함께 있는 수사관 (엄마·아빠 다람쥐)
+  ['fam-both', 'fam', '엄마·아빠 같이', 0], ['fam-mom', 'fam', '엄마랑', 0], ['fam-dad', 'fam', '아빠랑', 0],
+  // 가족 사진 액자 (우리 실제 사진, s.pic = 고른 사진 id, 안 고르면 최근 가족 사진)
+  ['pic-wood', 'pic', '나무 액자', 0, 'PIC'], ['pic-white', 'pic', '하얀 액자', 3, 'PIC'], ['pic-heart', 'pic', '하트 액자', 5, 'PIC'], ['pic-gold', 'pic', '금색 액자', 8, 'PIC']
 ];
 const DEFAULT = { wall: 'cream', floor: 'wood', prop: 'p-lens' };
 const item = id => CAT.find(c => c[0] === id);
@@ -87,8 +92,10 @@ function state() {
     for (const id of s.room) { const c = item(id); if (c && !s.slot[c[1]]) s.slot[c[1]] = id; }
     save(s);
   }
+  if (addNew(s) && !S.game) save(s);
   return s;
 }
+function addNew(s) { let ch = false; if (!('fam' in s.slot)) { s.slot.fam = 'fam-both'; ch = true; } if (!('pic' in s.slot)) { s.slot.pic = 'pic-wood'; ch = true; } return ch; }
 const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.room.includes(id)); };
 
 // ---------- 그림 ----------
@@ -131,16 +138,33 @@ function special(id) {
     return `<rect x="284" y="78" width="10" height="94" rx="4" fill="#F4C542"/>${Array.from({ length: 8 }, (_, i) => `<path d="M284 ${88 + i * 10}h${i % 2 ? 4 : 7}" stroke="#B97648" stroke-width="1.2"/>`).join('')}<circle cx="290" cy="100" r="2.5" fill="#D99A5B"/><circle cx="288" cy="128" r="2.2" fill="#D99A5B"/><circle cx="291" cy="152" r="2.4" fill="#D99A5B"/><ellipse cx="294" cy="74" rx="11" ry="8" fill="#F4C542"/><path d="M290 66l-1-6M298 66l1-6" stroke="#B97648" stroke-width="2" stroke-linecap="round"/><circle cx="297" cy="72" r="1.4" fill="#2B2622"/><ellipse cx="303" cy="77" rx="3" ry="2" fill="#E8B04A"/>${cm ? `<rect x="262" y="112" width="22" height="12" rx="3" fill="#FFFDF7" stroke="#E0C9A2"/><text x="273" y="121" font-size="7" text-anchor="middle" fill="#B3261E" font-family="Jua">${cm}</text>` : ''}`; }
   return '';
 }
-function draw(id) { const c = item(id); if (!c || !c[4]) return ''; return /^[A-Z]+$/.test(c[4]) ? special(c[4]) : c[4]; }
+// 가족 사진 액자: 고른 사진 → 최근 가족 사진 → 최근 현장 사진 → 프로필 사진
+function picSrc() {
+  const id = (st().pic || ''), own = id && safeImg(PHOTOS[id]); if (own) return own;
+  const by = t => (S.moments || []).filter(m => m.type === t && m.photo && safeImg(PHOTOS[m.id])).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+  const m = by('fam') || by('free') || by('month'); return (m && safeImg(PHOTOS[m.id])) || safeImg(PHOTOS.profile) || '';
+}
+function picSvg(id) {
+  const ph = picSrc(), x = 240, y = 16, w = 54, h = 42;
+  const fr = { 'pic-white': ['#FFFDF7', '#E0C9A2'], 'pic-heart': ['#F49CB8', '#E07A9A'], 'pic-gold': ['#E8C350', '#B98F1E'] }[id] || ['#B97648', '#8C5530'];
+  return `<g data-roompic="1" style="cursor:pointer"><path d="M${x + 10} ${y}L${x + w / 2} ${y - 10}L${x + w - 10} ${y}" stroke="#8C5530" stroke-width="1.2" fill="none"/><circle cx="${x + w / 2}" cy="${y - 10}" r="1.8" fill="#8C5530"/>
+    <rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="3" fill="rgba(0,0,0,.08)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${fr[0]}" stroke="${fr[1]}" stroke-width="1.5"/>
+    <rect x="${x + 5}" y="${y + 5}" width="${w - 10}" height="${h - 10}" fill="#FFF8EC"/>
+    ${ph ? `<image href="${ph}" x="${x + 5}" y="${y + 5}" width="${w - 10}" height="${h - 10}" preserveAspectRatio="xMidYMid slice"/>` : `<text x="${x + w / 2}" y="${y + h / 2 + 3}" font-size="7" text-anchor="middle" fill="#B9A889">우리 가족 사진</text>`}
+    ${id === 'pic-heart' ? `<path d="M${x + w / 2} ${y + h + 6}c-5-5-9 0-4.5 3.5L${x + w / 2} ${y + h + 13}l4.5-3.5c4.5-3.5.5-8.5-4.5-3.5z" fill="#E07A9A"/>` : ''}${id === 'pic-gold' ? `<circle cx="${x}" cy="${y}" r="2.4" fill="#F4E08A"/><circle cx="${x + w}" cy="${y}" r="2.4" fill="#F4E08A"/><circle cx="${x}" cy="${y + h}" r="2.4" fill="#F4E08A"/><circle cx="${x + w}" cy="${y + h}" r="2.4" fill="#F4E08A"/>` : ''}</g>`;
+}
+function draw(id) { const c = item(id); if (!c || !c[4]) return ''; if (c[4] === 'PIC') return picSvg(id); return /^[A-Z]+$/.test(c[4]) ? special(c[4]) : c[4]; }
+const chr = (who, prop, x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})">${CHARS.svg(who, prop, { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`;
 function roomSvg() {
   const s = state(), sl = s.slot, prop = (sl.prop || 'p-lens').slice(2);
   const order = ['ceil', 'hang', 'wallC', 'rug', 'floorR', 'corner', 'floorL', 'floorM'];
   return `<svg class="groom" viewBox="0 0 ${VW} ${VH}" aria-label="소은 탐정의 방">
     ${wallSvg(sl.wall)}<path d="M0 120h${VW}" stroke="rgba(0,0,0,.05)" stroke-width="10"/>${floorSvg(sl.floor)}<path d="M0 130h${VW}" stroke="rgba(150,110,60,.35)" stroke-width="2"/>
     ${windowSvg(sl.win === 'roundwin')}${sl.win && sl.win !== 'roundwin' ? draw(sl.win) : ''}
-    ${order.map(k => sl[k] ? draw(sl[k]) : '').join('')}
+    ${order.map(k => sl[k] ? draw(sl[k]) : '').join('')}${sl.pic ? draw(sl.pic) : ''}
+    ${sl.fam === 'fam-both' || sl.fam === 'fam-mom' ? chr('mom', 'heart', 46, 86, .7) : ''}${sl.fam === 'fam-both' || sl.fam === 'fam-dad' ? chr('dad', 'camera', 190, 86, .7) : ''}
     ${sl.pet ? draw(sl.pet) : ''}
-    <g transform="translate(118 72) scale(.82)">${CHARS.svg('baby', prop, { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g></svg>`;
+    ${chr('baby', prop, 118, 72, .82)}</svg>`;
 }
 
 // ---------- 가게 (도토리 놀이터 > 꾸미기) ----------
@@ -148,9 +172,10 @@ function preview(c) {
   const [id, slot, , , g] = c, vb = (SLOTS.find(x => x[0] === slot) || [])[3];
   if (slot === 'wall') return `<i class="rsw" style="background:${WALLC[id] || ({ dots: 'radial-gradient(#F6D2C8 2px,#FFF3DD 2.5px) 0 0/9px 9px', stripe: 'repeating-linear-gradient(90deg,#F4E0C8 0 5px,#FBF1E4 5px 10px)', stars: '#E2EEF8', gingham: 'repeating-linear-gradient(90deg,rgba(179,38,30,.12) 0 4px,transparent 4px 8px),repeating-linear-gradient(rgba(179,38,30,.12) 0 4px,#FFF7EC 4px 8px)' }[id] || '#FFF7EC')}">${id === 'stars' ? '✦' : ''}</i>`;
   if (slot === 'floor') return `<svg class="rpv" viewBox="0 130 120 50">${floorSvg(id)}</svg>`;
+  if (slot === 'fam') return `<span class="rpp rfam">${id !== 'fam-dad' ? CHARS.svg('mom', '', { face: true, size: 26 }) : ''}${id !== 'fam-mom' ? CHARS.svg('dad', '', { face: true, size: 26 }) : ''}</span>`;
   if (slot === 'prop') return `<span class="rpp">${{ lens: '🔍', acorn: '🌰', camera: '📷', heart: '💗', note: '📒', spoon: '🥄' }[id.slice(2)]}</span>`;
   const inner = id === 'roundwin' ? windowSvg(true) : slot === 'win' ? windowSvg(false) + draw(id) : draw(id);
-  return `<svg class="rpv" viewBox="${vb}">${inner}</svg>`;
+  return `<svg class="rpv" viewBox="${vb}">${inner.replace(/ data-roompic="1"/g, '')}</svg>`;
 }
 // 자리마다 접기 (기본 접힘, data-fold r-{자리} → localStorage soeun-fold), 위·아래에 모두 펼치기/접기
 function shopHtml() {
@@ -169,19 +194,38 @@ function count() { const s = state(); return { own: CAT.filter(c => c[3] > 0 && 
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-roomfold]');
   if (f) { const v = f.dataset.roomfold === 'close'; SLOTS.forEach(([slot]) => setFold('r-' + slot, v)); render(); if (v) { const el = document.getElementById('ghomeshop'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); } return; }
+  const pic = e.target.closest('[data-roompic]'); if (pic) { openPics(); return; }
+  const pk = e.target.closest('[data-roompick]'); if (pk) { const s = state(); s.pic = pk.dataset.roompick; save(s); closeSheet(); render(); toast('액자 사진을 바꿨어요'); return; }
   const b = e.target.closest('[data-room]'); if (!b) return;
   const slot = b.dataset.room, id = b.dataset.id, s = state();
-  if (!id) { delete s.slot[slot]; save(s); render(); return; }
+  if (!id) { if (slot === 'fam' || slot === 'pic') s.slot[slot] = ''; else delete s.slot[slot]; save(s); render(); return; }
   const c = item(id); if (!c) return;
   if (!owns(s, id)) {
+    // 바로 사지 않고 구매 확인 창 (거기서 '사기'를 누르면 data-ok=1로 다시 와요)
+    if (b.dataset.ok !== '1') { GAME.confirmBuy(c[2], c[3], preview(c), `data-room="${slot}" data-id="${id}"`); return; }
     if (s.acorn < c[3]) { toast(`도토리가 ${c[3] - s.acorn}개 더 필요해요`); return; }
-    s.acorn -= c[3]; s.room.push(id); GAME.confetti(); toast(`${c[2]}을(를) 샀어요! 방에 놓았어요`);
+    s.acorn -= c[3]; s.room.push(id); closeSheet(); GAME.confetti(); toast(`${c[2]}을(를) 샀어요! 방에 놓았어요`);
   }
   s.slot[slot] = id; save(s); render();
 });
 
+// 액자에 넣을 사진 고르기 (가족 사진 → 현장 사진첩 → 월별·최초 목격 순, 최근 것부터)
+function openPics() {
+  const rank = { fam: 0, free: 1, month: 2, first: 3 };
+  const L = (S.moments || []).filter(m => m.photo && safeImg(PHOTOS[m.id]) && m.type in rank).sort((a, b) => (rank[a.type] - rank[b.type]) || (a.date < b.date ? 1 : -1)).slice(0, 60);
+  const cur = st().pic || '';
+  pending = undefined;
+  openSheet(`<h3>액자에 넣을 사진</h3><p class="hint" style="margin:-6px 0 10px">첫 화면 방 벽에 걸려요. 엄마·아빠 폰에 똑같이 보여요.</p>
+    <button class="rpk-auto${!cur ? ' cur' : ''}" data-roompick="">✨ 자동 (가장 최근 가족 사진)</button>
+    <div class="rpks">${L.map(m => `<button class="${cur === m.id ? 'cur' : ''}" data-roompick="${m.id}"><img src="${safeImg(PHOTOS[m.id])}" alt="" loading="lazy"></button>`).join('') || '<p class="vempty">아직 사진이 없어요. 사건 앨범에 사진을 올려 주세요.</p>'}</div>
+    <div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
+}
+
 const css = document.createElement('style');
 css.textContent = `
+.rpks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:48vh;overflow:auto;margin:8px 0}.rpks button{border:0;padding:0;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--card2)}.rpks img{width:100%;height:100%;object-fit:cover;display:block}.rpks .cur,.rpk-auto.cur{outline:3px solid var(--red);outline-offset:-3px}
+.rpk-auto{width:100%;min-height:44px;border:1.5px dashed var(--line);background:#FFFDF7;border-radius:12px;font-size:14px}
+.rfam{display:flex;gap:2px;align-items:center;justify-content:center}.rfam .chr{border-radius:50%;background:#FCEBD3}
 .rbar{display:flex;justify-content:flex-end;margin:8px 0 0}.rbar .ghost{font-size:12.5px;min-height:34px}
 .rgrp .agh{margin:8px 0 4px}.rgrp .rcur{margin-left:8px;font-size:11.5px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .rshop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
