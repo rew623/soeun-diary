@@ -176,6 +176,10 @@ section{margin-top:26px}
 #app section.folded>.sh{margin-bottom:0}
 .amon.folded>:not(.agh){display:none}
 .rpick{align-self:center;}
+.rcard100{justify-content:flex-start;gap:14px}.rcard100 .t{font-size:20px}
+.r100ph{position:relative;flex-shrink:0;background:#FFFDF7;padding:5px 5px 14px;transform:rotate(-4deg);box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.r100ph img{display:block;width:84px;height:96px;object-fit:cover;object-position:center 30%}
+.r100ph i{position:absolute;right:-12px;bottom:-6px;font-style:normal;font-family:var(--display);font-size:15px;color:#fff;background:var(--red);border-radius:99px;padding:1px 9px;transform:rotate(8deg);box-shadow:0 2px 4px rgba(0,0,0,.3)}
 /* 보기 전용(할머니 등): 남기는 단추 숨기기 */
 body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,body.viewer [data-al=pick],body.viewer [data-fam=up],body.viewer [data-fam=add],body.viewer .gcard,body.viewer .gguess .ghost,body.viewer [data-act=addmom],body.viewer [data-act=addmonth],body.viewer .rpick[data-al]{display:none!important}
 .vban{background:#FFFDF7;border-radius:14px}
@@ -870,7 +874,8 @@ function renderAlbum(){
   <button class="fab" data-fa="up">+ 가족 사진</button>`;
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${CHARS.guide('album')}${aseg}${MEMO.onThisDay()}
-  <button class="nextcard" data-act="report" style="margin-top:14px"><span><small>${d<100?fmtK(d100,true)+' 공개 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>${d<100?'미리 보기':'보고서 보기'}</small></span><span class="d">${d<100?'D-'+(100-d):'100일'}</span></button>
+  ${(()=>{const rp=ALBUM.reportDoc(),ph=(rp&&safeImg(PHOTOS[rp.id]))||safeImg(PHOTOS[(firsts().slice().reverse().find(m=>m.photo&&safeImg(PHOTOS[m.id]))||{}).id])||safeImg(PHOTOS.profile);
+    return `<button class="nextcard rcard100" data-act="report" style="margin-top:14px">${ph?`<span class="r100ph"><img src="${ph}" alt=""><i>${d<100?'D-'+(100-d):'100일'}</i></span>`:''}<span><small>${d<100?fmtK(d100,true)+' 기밀 해제 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>태어나서 100일까지 키·몸무게 변화, 최초 목격, 접종을 한 장에 정리해요 · ${d<100?'미리 보기':'보고서 보기'}</small></span>${ph?'':`<span class="d">${d<100?'D-'+(100-d):'100일'}</span>`}</button>`})()}
   <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost rpick" data-al="report" style="flex:1">📷 ${ALBUM.reportDoc()?'보고서 사진 바꾸기':'보고서 사진 미리 올리기'}</button><button class="ghost rpick" data-book="open" style="flex:1">📖 성장 앨범 책 (PDF)</button></div>
   ${ALBUM.sectionHtml()}
   <section${fsec('a-month')}><h2 class="sh" data-fold="a-month"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div><button class="storybtn" data-story>▶ 성장 스토리 보기</button></section>

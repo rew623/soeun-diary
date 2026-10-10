@@ -27,7 +27,7 @@ let way = null;
 async function pickWay() {
   for (const w of WAYS) {
     try {
-      const res = await fetch(w.url('blog', 'query=' + encodeURIComponent('아기') + '&display=1'), { headers: w.h });
+      const res = await fetch(w.url('blog', 'query=' + encodeURIComponent('아기') + '&display=1'), { headers: w.h, signal: AbortSignal.timeout(15000) });
       const t = await res.text();
       if (res.ok && /"items"/.test(t)) { console.log(`네이버 검색: ${w.name} 주소로 받아요`); return w; }
       console.warn(`${w.name}: HTTP ${res.status} ${t.replace(/\s+/g, ' ').slice(0, 200)}`);
@@ -40,7 +40,7 @@ async function search(kind, query, sort, n, ok) {
   for (let i = 0; ; i++) {
     try {
       calls++;
-      const res = await fetch(url, { headers: way.h });
+      const res = await fetch(url, { headers: way.h, signal: AbortSignal.timeout(15000) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`HTTP ${res.status} ${j.errorMessage || ''}`);
       return (j.items || []).map(x => ({

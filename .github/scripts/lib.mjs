@@ -27,7 +27,7 @@ async function page(base, params, pageNo) {
   const url = `${base}?serviceKey=${key()}&${qs}`;
   for (let i = 0; ; i++) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
       const xml = await res.text();
       if (!res.ok) throw new Error(`HTTP ${res.status} ${xml.slice(0, 200)}`);
       const code = tag(xml, 'resultCode');

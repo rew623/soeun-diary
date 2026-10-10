@@ -53,6 +53,8 @@ function sectionHtml() {
   const cell = m => { const ph = safeImg(PHOTOS[m.id]); return `<button class="acell" data-view="${m.id}" aria-label="${esc(m.title || '사진')} 크게 보기">${ph ? `<img src="${ph}" alt="" loading="lazy">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}${m.title ? `<small>${esc(m.title)}</small>` : ''}</button>`; };
   // 달별 묶음: 가장 최근 달만 펼쳐 두고 그 전 달은 접어 둬요 (누르면 펼쳐지고, 이 폰에 기억). 펼친 달 맨 아래에도 접기 단추
   const cnt = ym => L.filter(m => m.date.slice(0, 7) === ym).length;
+  // 앱을 열 때마다 가장 최근 달은 펼쳐 둬요 (그 뒤에 접은 건 이번에 쓰는 동안 기억)
+  if (!A.opened && shown[0]) { A.opened = true; try { setFold('m-' + shown[0].date.slice(0, 7), false); } catch (e) {} }
   return `<section${isFold('a-free') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-free" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">현장 사진첩</span><span>${L.length}장</span></h2>
     <p class="foot" style="margin:0 0 10px">여러 장을 한 번에 올리면 찍은 날짜별로 나눠서 보관해요. 사진을 길게 누르면 여러 장 골라서 지우거나 날짜를 바꿀 수 있어요.</p>
     <button class="solve" data-al="pick" style="width:100%;min-height:50px">+ 사진 올리기 (여러 장 가능)</button>
