@@ -14,14 +14,14 @@
 <title>성장 수사 일지</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic+Coding:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#E9DCC3; --card:#F5EDDC; --card2:#E2D3B6; --ink:#2B2622; --muted:#6B5F52; --line:#B9A889;
   --navy:#1F2A44; --red:#B3261E; --band1:#DDCCAA; --band2:#CDB78D;
   --rose:var(--red); --surface:var(--card); --median:var(--navy);
-  --display:"Black Han Sans","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-  --body:"Nanum Gothic Coding","D2Coding","Apple SD Gothic Neo","Malgun Gothic",monospace;
+  --display:"Jua","Black Han Sans","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",monospace;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px);
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -338,6 +338,36 @@ html body .hquick button{border-radius:18px;box-shadow:0 3px 0 var(--line)}
 html body .hquick .er{box-shadow:0 3px 0 #7E1A14}
 html body .hmap{border-radius:20px}
 html body .hcard,html body .rcard{border-radius:18px;border-width:1.5px;box-shadow:0 3px 0 #E6D2AE}
+/* 글씨: 동글동글 (제목 Jua, 본문 Gowun Dodum) */
+body{font-size:15.5px;letter-spacing:-.1px}
+.stat .v,.rec-vals,.rec-date b{font-family:var(--display);font-weight:400}
+.stat .v{font-size:23px}.rec-vals{font-size:17px}
+/* 편집창: 크게, 또렷하게 */
+.sheet h3{display:flex;align-items:center;gap:10px;font-size:23px}
+.shc{flex-shrink:0;width:42px;height:42px;border-radius:50%;background:#FCEBD3;border:1.5px solid var(--line);display:grid;place-items:center;overflow:hidden}
+.shc .chr{width:46px;height:46px}
+.field>span{font-size:14px;color:var(--navy);font-weight:700;margin-bottom:7px}
+.field input,.field textarea{font-size:17px;background:#FFFDF7;min-height:52px}
+.field input:focus,.field textarea:focus,.addrow input:focus{outline:0;border-color:var(--navy);box-shadow:0 0 0 4px rgba(31,42,68,.12)}
+.field input::placeholder,.field textarea::placeholder{color:#B5A58C}
+.hint{font-size:13px;line-height:1.55}
+.sheet .actions{position:sticky;bottom:calc(-22px - env(safe-area-inset-bottom,0px));margin:10px -20px calc(-22px - env(safe-area-inset-bottom,0px));padding:12px 20px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(rgba(255,248,236,0),var(--card) 30%);z-index:2}
+.pbox{position:relative;display:block;width:100%;min-height:128px;border:2px dashed var(--line);border-radius:20px;background:#FFFDF7;cursor:pointer;overflow:hidden}
+.pbox:active{background:#FFF3E3}
+.pbox .pv{display:block;width:100%;height:220px;object-fit:contain;border:0;border-radius:0;background:var(--card2)}
+.pbox .pv[hidden],.pbox input[type=file]{display:none}
+.pbox-in{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:124px;color:var(--navy);text-align:center}
+.pbox-in svg{width:34px;height:34px;color:var(--red)}
+.pbox-in b{font-family:var(--display);font-weight:400;font-size:17px}
+.pbox-in small{font-size:12px;color:var(--muted)}
+.pbox-ch{display:none;position:absolute;right:10px;bottom:10px;background:rgba(31,42,68,.85);color:#fff;border-radius:99px;padding:5px 12px;font-size:13px}
+.pbox:has(.pv:not([hidden])) .pbox-in{display:none}
+.pbox:has(.pv:not([hidden])) .pbox-ch{display:block}
+.prm{padding:8px 2px 0;font-size:13px}
+.prm[hidden]{display:none}
+.polaroid.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.4}
+.rolepick button{gap:2px}
+.onb .big{font-size:2.5rem}
 </style>
 <style>
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--navy);z-index:30}
@@ -359,6 +389,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="checkups.js"></script>
 <script src="album.js"></script>
 <script src="charges.js"></script>
+<script src="characters.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
 const WFA=[[0.3809,3.2322,0.14171],[0.1714,4.1873,0.13724],[0.0962,5.1282,0.13000],[0.0402,5.8458,0.12619],[-0.0050,6.4237,0.12402],[-0.0430,6.8985,0.12274],[-0.0756,7.2970,0.12204],[-0.1039,7.6422,0.12178],[-0.1288,7.9487,0.12181],[-0.1507,8.2254,0.12199],[-0.1700,8.4800,0.12223],[-0.1872,8.7192,0.12247],[-0.2024,8.9481,0.12268],[-0.2158,9.1699,0.12283],[-0.2278,9.3870,0.12294],[-0.2384,9.6008,0.12299],[-0.2478,9.8124,0.12303],[-0.2562,10.0226,0.12306],[-0.2637,10.2315,0.12309],[-0.2703,10.4393,0.12315],[-0.2762,10.6464,0.12323],[-0.2815,10.8534,0.12335],[-0.2862,11.0608,0.12350],[-0.2903,11.2688,0.12369],[-0.2941,11.4775,0.12390]];
@@ -402,7 +433,7 @@ const fmt=(k,v)=>String(+(+v).toFixed(KINDS[k].dec));
 const safeImg=s=>typeof s==='string'&&(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s)||/^https:\/\/firebasestorage\.googleapis\.com\/[^"'<>\s]+$/.test(s))?s:'';
 let pending;
 function readPhoto(file,big){const LIM=big?380000:180000;return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{const max=big?1600:900,sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);let q=.82,d=c.toDataURL('image/jpeg',q);while(d.length>LIM&&q>.35){q-=.08;d=c.toDataURL('image/jpeg',q)}if(d.length>LIM){const c2=document.createElement('canvas');c2.width=c.width/2;c2.height=c.height/2;c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);d=c2.toDataURL('image/jpeg',.7)}res(d)};img.src=fr.result};fr.readAsDataURL(file)})}
-function photoField(src,label,big){return `<div class="field"><span>${label||'사진 (선택)'}</span><div class="pickrow"><img id="pv" class="pv" alt="" ${src?`src="${src}"`:'hidden'}><label class="secondary pick">사진 고르기<input type="file" accept="image/*" id="f-photo" ${big?'data-big="1"':''} hidden></label><button class="danger" data-act="rmphoto" ${src?'':'hidden'}>빼기</button></div></div>`}
+function photoField(src,label,big){return `<div class="field"><span>${label||'사진 (선택)'}</span><label class="pbox"><img id="pv" class="pv" alt="" ${src?`src="${src}"`:'hidden'}><span class="pbox-in">${I_CAM}<b>여기를 눌러 사진 고르기</b><small>찍은 날짜도 알아서 읽어요</small></span><span class="pbox-ch">사진 바꾸기</span><input type="file" accept="image/*" id="f-photo" ${big?'data-big="1"':''} hidden></label><button class="danger prm" data-act="rmphoto" ${src?'':'hidden'}>사진 빼기</button></div>`}
 document.addEventListener('change',async e=>{if(e.target.id!=='f-photo'||!e.target.files[0])return;const f0=e.target.files[0],dEl=document.getElementById('m-date')||document.getElementById('af-date');try{const tk=dEl?await ALBUM.photoDate(f0):'';pending=await readPhoto(f0,e.target.dataset.big==='1');if(tk&&tk>=S.profile.birth&&tk<=today()&&dEl.value!==tk){dEl.value=tk;toast('사진 찍은 날짜('+fmtK(tk,true)+')로 맞췄어요')}const pv=document.getElementById('pv');pv.src=pending;pv.hidden=false;const rm=document.querySelector('[data-act=rmphoto]');if(rm)rm.hidden=false}catch(err){toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요')}});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -489,7 +520,7 @@ const I_BADGE='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" strok
 async function setRole(r){try{localStorage.setItem('investigator',r)}catch(e){}S.me.role=r;render();try{await run('setMyRole',r)}catch(e){}}
 function openRole(){openSheet(`<h3>어느 수사관이신가요?</h3>
   <p class="hint" style="margin:-8px 0 12px">이 폰에서 남기는 기록에 수사관 이름이 붙어요. 나중에 대상 정보에서 바꿀 수 있어요.</p>
-  <div class="rolepick"><button data-act="role" data-v="엄마">${I_BADGE.replace('16','30').replace('16','30')}엄마</button><button data-act="role" data-v="아빠">${I_BADGE.replace('16','30').replace('16','30')}아빠</button></div>`)}
+  <div class="rolepick"><button data-act="role" data-v="엄마">${CHARS.svg('mom','heart',{size:84})}엄마</button><button data-act="role" data-v="아빠">${CHARS.svg('dad','lens',{size:84})}아빠</button></div>`)}
 
 function openInv(role){
   const k=role==='엄마'?'mom':'dad',p=S.profile;pending=undefined;
@@ -529,7 +560,7 @@ const I_CAM='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke=
 const I_FILE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"></path><path d="M8 14l2.5 2.5L16 11"></path></svg>';
 
 function render(){
-  if(S.mode==='loading'){$app.innerHTML='<div class="loading">사건 파일을 여는 중…</div>';$tab.innerHTML='';return}
+  if(S.mode==='loading'){$app.innerHTML=`<div class="loading">${CHARS.svg('baby','lens',{size:110})}사건 파일을 여는 중…</div>`;$tab.innerHTML='';return}
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
   $tab.innerHTML=[['grow','성장 수사',I_LENS],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN],['album','사건 앨범',I_CAM]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
@@ -549,7 +580,7 @@ function renderGrow(){
   const [by,bm,bd]=p.birth.split('-').map(Number);
   const photo=safeImg(PHOTOS.profile);
   const pol=photo?`<button class="polaroid" data-view="profile" aria-label="사진 크게 보기"><img src="${photo}" alt="${esc(p.name)} 사진"><span class="cap">${fmtDate(t)}</span>${CLIP}</button>`
-                 :`<button class="polaroid empty" data-act="settings">사진 증거<br>추가하기</button>`;
+                 :`<button class="polaroid empty" data-act="settings">${CHARS.svg('baby','camera',{size:96})}<span>사진 증거<br>추가하기</span></button>`;
   const np=nextPeriod();
   let next='';
   if(np){const vs=vacsOf(np.id).filter(v=>!v.done),dt=pDate(np),late=daysBetween(t,dt)<0;
@@ -581,11 +612,12 @@ function renderGrow(){
 
   return `
   <div class="filebar"><span>사건 파일 No.${fileNo()}</span><button class="ghost" data-act="settings">대상 정보</button></div>
-  <div class="squad"><span class="lab">담당 수사관</span><div class="badges">${['엄마','아빠'].map(r=>{const k=r==='엄마'?'mom':'dad',nm=p[k],ph=safeImg(PHOTOS[k]);return `<button class="idb ${myRole()===r?'me':''}" ${ph?`data-view="${k}"`:`data-act="inv" data-v="${r}"`}>${ph?`<img class="ph" src="${ph}" alt="${r} 수사관 사진">`:`<span class="ph">${I_BADGE.replace(/16/g,'26')}</span>`}<span class="tx"><b>${r} 수사관</b><span>${nm?esc(nm):'사진, 이름 추가'}</span>${myRole()===r?'<em style="align-self:flex-start;margin-top:2px">나</em>':''}</span></button>`}).join('')}</div></div>
+  <div class="squad"><span class="lab">담당 수사관</span><div class="badges">${['엄마','아빠'].map(r=>{const k=r==='엄마'?'mom':'dad',nm=p[k],ph=safeImg(PHOTOS[k]);return `<button class="idb ${myRole()===r?'me':''}" ${ph?`data-view="${k}"`:`data-act="inv" data-v="${r}"`}>${ph?`<img class="ph" src="${ph}" alt="${r} 수사관 사진">`:`<span class="ph chrph">${CHARS.svg(k,'',{face:1,size:52})}</span>`}<span class="tx"><b>${r} 수사관</b><span>${nm?esc(nm):'사진, 이름 추가'}</span>${myRole()===r?'<em style="align-self:flex-start;margin-top:2px">나</em>':''}</span></button>`}).join('')}</div></div>
   <div class="suspect">${pol}
     <div class="info"><span class="lab">수사 대상</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
   </div>
   <div class="dday" aria-label="생후 ${d}일"><span>수사</span><b>${d}</b><span>일째</span></div>
+  ${CHARS.guide('grow')}
   ${next}${CHECKUPS.nextCard()}
   ${CHARGES.html()}
   <section><h2 class="sh">증거 기록</h2><div class="stats">${stats}</div></section>
@@ -628,7 +660,7 @@ function renderVac(){
   const vseg=`<div class="seg" style="margin-top:14px"><button class="${S.vacView==='check'?'':'on'}" data-ck="view" data-v="vac">예방접종</button><button class="${S.vacView==='check'?'on':''}" data-ck="view" data-v="check">영유아검진</button></div>`;
   if(S.vacView==='check')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>영유아검진 출동 기록부</h1><p>검진 기간은 태어난 날로 계산했어요. 받으면 "검진 받았어요"로 해결 처리해 주세요.</p></header>${vseg}${CHECKUPS.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>예방접종 출동 기록부</h1>
-    <p>해결 ${doneN}건, 남은 접종 ${left}건. 권장일은 표준 일정으로 계산했어요. 병원 예약을 하면 날짜를 바꿔 두세요.</p></header>${vseg}
+    <p>해결 ${doneN}건, 남은 접종 ${left}건. 권장일은 표준 일정으로 계산했어요. 병원 예약을 하면 날짜를 바꿔 두세요.</p></header>${CHARS.guide('vac')}${vseg}
   ${up.map((p,i)=>caseHtml(p,i===0,false)).join('')}
   <button class="addperiod" data-act="newp">+ 접종 시기 추가</button>
   ${sol.length?'<h2 class="subh">해결된 사건</h2>'+sol.map(p=>caseHtml(p,false,true)).join(''):''}
@@ -673,6 +705,7 @@ function chart(k){
 
 function renderOnboarding(){
   $app.innerHTML=`<div class="onb">
+    <div style="display:flex;gap:4px;align-items:flex-end;margin-bottom:6px">${CHARS.svg('mom','heart',{size:86})}${CHARS.svg('baby','lens',{size:110})}${CHARS.svg('dad','note',{size:86})}</div>
     <p class="big">성장 수사 일지</p>
     <p>수사 대상의 이름과 태어난 날을 알려 주세요. 생후 일수, 성장곡선, 예방접종 일정을 자동으로 계산해요.</p>
     <label class="field"><span>이름 (애칭도 좋아요)</span><input id="ob-name" maxlength="20" placeholder="우리 아기"></label>
@@ -738,7 +771,7 @@ function renderSick(){
   const closed=S.eps.filter(e=>e.end).sort((a,b)=>a.start<b.start?1:-1);
   const closedHtml=closed.length?'<h2 class="subh">종결된 사건</h2>'+closed.map(e=>{const L=logsOf(e.id),tm=L.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x)),mc=L.filter(l=>l.kind==='med').length;
     return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><span class="stamp" style="font-size:16px;top:14px">해결</span><b>${esc(e.title)}</b><small>${fmtK(e.start,true)} ~ ${fmtK(e.end,true)}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
-  return `${HOSP.quickHtml()}<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1><p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>
+  return `${HOSP.quickHtml()}<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1><p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
   <section><h2 class="sh" style="align-items:center"><span>진료 기록</span><button class="ghost" data-act="editvisit" data-id="">+ 진료 추가</button></h2>${visits}</section>
   ${closedHtml}`;
@@ -798,7 +831,7 @@ function renderAlbum(){
     return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
   const aseg=`<div class="seg aview"><button class="${S.albumView==='board'?'':'on'}" data-act="aview" data-v="album">앨범</button><button class="${S.albumView==='board'?'on':''}" data-act="aview" data-v="board">수사 보드</button></div>`;
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${aseg}
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${CHARS.guide('album')}${aseg}
   <button class="nextcard" data-act="report" style="margin-top:14px"><span><small>${d<100?fmtK(d100,true)+' 공개 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>${d<100?'미리 보기':'보고서 보기'}</small></span><span class="d">${d<100?'D-'+(100-d):'100일'}</span></button>
   <button class="ghost rpick" data-al="report" style="width:100%;margin-top:8px">📷 ${ALBUM.reportDoc()?'보고서 사진 바꾸기':'보고서 사진 미리 올리기'}</button>
   <section><h2 class="sh"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div></section>
@@ -890,7 +923,7 @@ function renderFood(){
   // 센터 식단
   const ym=curMenuMonth(),[yy,mm]=ym.split('-').map(Number),mn=S.menus.filter(m=>m.month===ym);
   const menus=mn.length?`<div class="menus">${mn.map(m=>{const ph=safeImg(PHOTOS[m.id]);return `<button data-act="viewmenu" data-id="${m.id}">${ph?`<img src="${ph}" alt="${esc(m.title)}">`:`<span class="noph">${m.photo?'불러오는 중':'사진 없음'}</span>`}${esc(m.title||'식단표')}</button>`}).join('')}</div>`:'<p class="vempty">센터 식단표(PDF·사진)나 표준레시피 엑셀을 올려두면 두 수사관이 같이 볼 수 있어요.</p>';
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>급식 수사대</h1><p>이유식 기록, 새 식재료 심문, 냉동 큐브 보관</p></header>
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>급식 수사대</h1><p>이유식 기록, 새 식재료 심문, 냉동 큐브 보관</p></header>${CHARS.guide('food')}
   ${head}${band}
   <p class="foot" style="margin-top:8px">돌 전에는 꿀, 간(소금·설탕), 음료로 주는 생우유는 피해요. 새 재료는 한 번에 하나씩, 오전에 먹여 반응을 봐요.</p>
   <section><h2 class="sh" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">용의자 심문</span><span>새 식재료 3일 관찰</span></h2>
@@ -973,7 +1006,7 @@ function viewMenu(id){const m=S.menus.find(x=>x.id===id),ph=safeImg(PHOTOS[id]);
 
 // ---------- sheets ----------
 const $sheet=document.getElementById('sheet'),$scrim=document.getElementById('scrim');
-function openSheet(html){$sheet.innerHTML=html;$scrim.classList.add('open');$sheet.classList.add('open');$sheet.scrollTop=0}
+function openSheet(html){const w=myRole()==='아빠'?'dad':myRole()==='엄마'?'mom':'baby';$sheet.innerHTML=html.replace('<h3>',`<h3><span class="shc">${CHARS.svg(w,'',{face:1,size:40})}</span>`);$scrim.classList.add('open');$sheet.classList.add('open');$sheet.scrollTop=0}
 function closeSheet(){$sheet.classList.remove('open');$scrim.classList.remove('open')}
 $scrim.addEventListener('click',closeSheet);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('rec'))openRecord(e.target.dataset.id)});
