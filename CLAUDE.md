@@ -1,6 +1,6 @@
 # 소은이 성장 수사 일지 — 작업 규칙
 - 앱: GitHub Pages(main/root) 배포 PWA, Firebase(Auth/Firestore/Storage)
-- 요청한 부분만 바꾸고 기존 기능·탭 5개(성장 수사/예방접종/급식 수사/긴급 출동/사건 앨범)는 유지
+- 요청한 부분만 바꾸고 기존 기능·탭 6개(성장 수사/예방접종/급식 수사/긴급 출동/사건 앨범/동네 탐문)는 유지 (동네 탐문은 2026.10 사용자 요청으로 추가)
 - 파일을 바꾸면 sw.js의 VERSION을 반드시 올릴 것 (형식: YYYY.MM.DD-n)
 - config.js는 절대 수정하지 말 것
 - 디자인 유지: 탐정 수첩 테마, 남색 #1F2A44, 크라프트지, 도장 빨강 #B3261E, 글꼴 Jua(제목) + Gowun Dodum(본문) (2026.10 사용자 요청으로 Black Han Sans + Nanum Gothic Coding에서 바꿈)
@@ -22,8 +22,8 @@
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
-- town.js: 동네 탐문 (S.view='town'): 산책 지수(날씨+미세먼지 점수, 성장 수사 탭 카드), 강원 행사·축제, 어린이 감염병 동향(긴급 출동 탭 카드). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
-- posts.js: 육아 자료실 (S.view='posts'): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 성장 수사 탭에 한 줄 카드, 읽은 글 표시(localStorage soeun-posts-read)
+- town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수), 미세먼지, 강원 행사·축제. 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
+- posts.js: 육아 자료실 (S.view='posts'): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 어느 화면에서나 떠 있는 동그라미 버튼(길게 눌러 옮기기, 위치 localStorage soeun-posts-pos, 새 글 빨간 점), 읽은 글 표시(soeun-posts-read)
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)

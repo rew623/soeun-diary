@@ -568,18 +568,19 @@ const I_LENS='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke
 const I_SIREN='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18v-5a6 6 0 0 1 12 0v5"></path><path d="M4 18h16v3H4z"></path><path d="M12 3V1"></path><path d="M4.5 6.5 3 5"></path><path d="M19.5 6.5 21 5"></path></svg>';
 const I_SPOON='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="7" rx="3.5" ry="5"></ellipse><path d="M8 12v10"></path><path d="M15 2v7a2 2 0 0 0 4 0V2"></path><path d="M17 2v20"></path></svg>';
 const I_CAM='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"></path><circle cx="12" cy="13" r="4"></circle></svg>';
+const I_PIN='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"></path><circle cx="12" cy="11" r="2.2"></circle><path d="M4 21h16"></path></svg>';
 const I_FILE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"></path><path d="M8 14l2.5 2.5L16 11"></path></svg>';
 
 function render(){
   if(S.mode==='loading'){$app.innerHTML=`<div class="loading">${CHARS.svg('baby','lens',{size:110})}사건 파일을 여는 중…</div>`;$tab.innerHTML='';return}
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
-  $tab.innerHTML=[['grow','성장 수사',I_LENS],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN],['album','사건 앨범',I_CAM]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
-  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='food'?renderFood():renderGrow();
+  $tab.innerHTML=[['grow','성장 수사',I_LENS],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN],['album','사건 앨범',I_CAM],['town','동네 탐문',I_PIN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
+  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();stayAfterRender();ALBUM.afterRender();
+  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();
 }
 
 const REC_SHOW=5;   // 수사 기록은 최근 몇 건만 펼쳐 두고 나머지는 접어요
@@ -628,7 +629,7 @@ function renderGrow(){
     <div class="info"><span class="lab">수사 대상</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
   </div>
   <div class="dday" aria-label="생후 ${d}일"><span>수사</span><b>${d}</b><span>일째</span></div>
-  ${CHARS.guide('grow')}${TOWN.card()}${POSTS.card()}
+  ${CHARS.guide('grow')}
   ${next}${CHECKUPS.nextCard()}
   ${CHARGES.html()}
   <section><h2 class="sh">증거 기록</h2><div class="stats">${stats}</div></section>
@@ -675,7 +676,8 @@ function renderVac(){
   ${up.map((p,i)=>caseHtml(p,i===0,false)).join('')}
   <button class="addperiod" data-act="newp">+ 접종 시기 추가</button>
   ${sol.length?'<h2 class="subh">해결된 사건</h2>'+sol.map(p=>caseHtml(p,false,true)).join(''):''}
-  <p class="foot">표준 일정은 질병관리청 국가예방접종 일정을 바탕으로 넣었어요. 병원 안내나 예방접종도우미 기록과 다르면 편집해서 맞춰 주세요.</p>`;
+  <p class="foot">표준 일정은 질병관리청 국가예방접종 일정을 바탕으로 넣었어요. 병원 안내나 예방접종도우미 기록과 다르면 편집해서 맞춰 주세요.</p>
+  ${TOWN.disHtml()}`;
 }
 
 function chart(k){
@@ -782,7 +784,7 @@ function renderSick(){
   const closed=S.eps.filter(e=>e.end).sort((a,b)=>a.start<b.start?1:-1);
   const closedHtml=closed.length?'<h2 class="subh">종결된 사건</h2>'+closed.map(e=>{const L=logsOf(e.id),tm=L.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x)),mc=L.filter(l=>l.kind==='med').length;
     return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><span class="stamp" style="font-size:16px;top:14px">해결</span><b>${esc(e.title)}</b><small>${fmtK(e.start,true)} ~ ${fmtK(e.end,true)}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
-  return `${HOSP.quickHtml()}<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1><p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}${TOWN.sickCard()}
+  return `${HOSP.quickHtml()}<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1><p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
   <section><h2 class="sh" style="align-items:center"><span>진료 기록</span><button class="ghost" data-act="editvisit" data-id="">+ 진료 추가</button></h2>${visits}</section>
   ${closedHtml}`;

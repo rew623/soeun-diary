@@ -1,4 +1,5 @@
 // 육아 자료실 — 네이버 블로그·카페에서 월령별·주제별·우리 동네 육아 글을 모아 보여 줘요 (S.view='posts')
+// 어느 화면에서나 오른쪽 위에 동그랗게 떠 있고, 길게 누르면 옮길 수 있어요 (위치는 이 폰에 기억)
 // 데이터: Actions(town.yml)가 하루 한 번 만드는 data/posts.json. 글은 원래 사이트(네이버)에서 열려요
 (function () {
 const P = { data: null, at: 0, loading: false, tab: 'month', topic: '', month: null, read: {} };
@@ -16,12 +17,57 @@ async function load(force) {
   if (S.mode === 'ok') render();
 }
 
-// 성장 수사 탭에 붙는 한 줄 카드
-function card() {
-  if (!P.at) { load(); return ''; }
-  const m = myMonth(), L = P.data && P.data.months && P.data.months[m];
-  const top = L && L[0];
-  return `<button class="postcard" data-post="open"><span class="pci" aria-hidden="true">📚</span><span class="pct"><small>육아 자료실 · ${m === 0 ? '신생아' : m + '개월'} 아기 글${P.data ? ` · ${esc(P.data.updated || '')}` : ''}</small><b>${top ? esc(top.t) : '네이버 블로그·카페 육아 글 모아 보기'}</b></span><span class="pcgo">›</span></button>`;
+// ---------- 떠 있는 동그라미 ----------
+const POSK = 'soeun-posts-pos', SEENK = 'soeun-posts-seen', SZ = 54;
+const bub = document.createElement('button');
+bub.type = 'button'; bub.className = 'pbub'; bub.hidden = true; bub.setAttribute('aria-label', '육아 자료실 열기 (길게 누르면 옮기기)');
+bub.innerHTML = '<span aria-hidden="true">📚</span><small>자료실</small><i hidden></i>';
+document.body.appendChild(bub);
+let pos = null; try { pos = JSON.parse(localStorage.getItem(POSK) || 'null'); } catch (e) {}
+const clampY = y => Math.max(56, Math.min(innerHeight - SZ - 150, y));   // 아래 메뉴·+버튼은 피해요
+function place(x, y) { bub.style.transform = `translate3d(${Math.round(x)}px,${Math.round(y)}px,0)`; }
+function home() {
+  const W = innerWidth, side = pos && pos.side === 'l' ? 'l' : 'r';
+  const x = side === 'l' ? 10 : Math.min(W, 560 + (W - 560) / 2) - SZ - 10;   // 화면이 넓어도 앱 폭 안에
+  place(Math.max(10, x), clampY(pos ? pos.y * innerHeight : 96));
+}
+addEventListener('resize', () => { if (!bub.hidden) home(); });
+let pressT = 0, start = null, dragging = false, moved = false, eat = false;
+bub.addEventListener('pointerdown', e => {
+  start = { x: e.clientX, y: e.clientY }; moved = false; dragging = false;
+  try { bub.setPointerCapture(e.pointerId); } catch (x) {}
+  clearTimeout(pressT);
+  pressT = setTimeout(() => { dragging = true; bub.classList.add('drag'); try { navigator.vibrate && navigator.vibrate(15); } catch (x) {} }, 350);
+});
+bub.addEventListener('pointermove', e => {
+  if (!start) return;
+  if (dragging) { place(e.clientX - SZ / 2, e.clientY - SZ / 2); return; }
+  if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) { moved = true; clearTimeout(pressT); }
+});
+const end = e => {
+  clearTimeout(pressT);
+  if (dragging) {
+    // 가까운 옆쪽으로 붙이고 기억해요
+    pos = { side: e.clientX < innerWidth / 2 ? 'l' : 'r', y: clampY(e.clientY - SZ / 2) / innerHeight };
+    try { localStorage.setItem(POSK, JSON.stringify(pos)); } catch (x) {}
+    bub.classList.remove('drag'); home(); eat = true;
+  } else if (moved) eat = true;
+  dragging = false; start = null;
+};
+bub.addEventListener('pointerup', end);
+bub.addEventListener('pointercancel', end);
+bub.addEventListener('click', () => {
+  if (eat) { eat = false; return; }
+  S.view = 'posts'; P.month = null; render(); window.scrollTo(0, 0); load();
+});
+// 화면을 그릴 때마다: 보일지, 새 글 점(오늘 새로 모은 글을 아직 안 봤으면)
+function sync() {
+  const show = S.mode === 'ok' && S.profile && S.profile.birth && S.view !== 'posts';
+  if (!show) { bub.hidden = true; return; }
+  if (bub.hidden) { bub.hidden = false; home(); }
+  if (!P.at) load();
+  let seen = ''; try { seen = localStorage.getItem(SEENK) || ''; } catch (e) {}
+  bub.querySelector('i').hidden = !(P.data && P.data.updated && P.data.updated !== seen);
 }
 
 function list(L) {
@@ -33,6 +79,7 @@ function list(L) {
 
 function render_() {
   if (!P.at) load();
+  if (P.data && P.data.updated) try { localStorage.setItem(SEENK, P.data.updated); } catch (e) {}
   const D = P.data || {}, m = P.month == null ? myMonth() : P.month, code = reg();
   const topics = D.topicNames || ['수면', '이유식', '발달', '아플 때', '육아템', '외출', '예방접종', '엄마·아빠'];
   const tp = P.topic || topics[0];
@@ -55,7 +102,6 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-post]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.post) {
-    case 'open': S.view = 'posts'; P.month = null; render(); window.scrollTo(0, 0); load(); break;
     case 'close': S.view = ''; render(); window.scrollTo(0, 0); break;
     case 'tab': P.tab = v; render(); break;
     case 'mon': P.month = Math.max(0, Math.min(24, (P.month == null ? myMonth() : P.month) + +v)); render(); break;
@@ -66,11 +112,15 @@ document.addEventListener('click', e => {
 
 const css = document.createElement('style');
 css.textContent = `
-.postcard{width:100%;display:flex;align-items:center;gap:10px;margin-top:10px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:18px;padding:10px 12px;text-align:left;box-shadow:0 3px 0 #E6D2AE}
-.pci{flex-shrink:0;width:42px;height:42px;border-radius:50%;background:var(--butter);display:grid;place-items:center;font-size:22px}
-.pct{flex:1;display:flex;flex-direction:column;min-width:0}.pct small{font-size:12px;color:var(--muted)}
-.pct b{font-size:14.5px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcgo{font-size:24px;color:var(--muted)}
+.pbub{position:fixed;left:0;top:0;z-index:8;width:54px;height:54px;border-radius:50%;border:2px solid #fff;background:var(--butter);box-shadow:0 4px 0 #E0C590,0 8px 18px rgba(31,42,68,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
+.pbub[hidden]{display:none}
+.pbub span{font-size:22px;line-height:1}
+.pbub small{font-size:9.5px;font-weight:700;color:var(--navy);margin-top:1px}
+.pbub i{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.pbub i[hidden]{display:none}
+.pbub.drag{transition:none;box-shadow:0 10px 24px rgba(31,42,68,.35);scale:1.12}
+.pbub:active:not(.drag){scale:.94}
+@media (prefers-reduced-motion:reduce){.pbub{transition:none}}
 .pmon{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px}
 .pmon b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--navy)}
 .pmon em{font-style:normal;font-size:11px;background:var(--red);color:#fff;border-radius:99px;padding:1px 8px}
@@ -89,5 +139,5 @@ css.textContent = `
 .post.read b{color:var(--muted);font-weight:400}`;
 document.head.appendChild(css);
 
-window.POSTS = { card, render: render_, load };
+window.POSTS = { render: render_, load, sync };
 })();

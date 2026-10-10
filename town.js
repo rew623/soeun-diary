@@ -1,4 +1,4 @@
-// 동네 탐문 — 산책 지수(날씨+미세먼지), 강원 육아·가족 행사, 어린이 감염병 동향
+// 동네 탐문 탭(S.tab='town') — 산책 지수(날씨+미세먼지·특보), 강원 행사·축제 / 어린이 감염병 동향은 예방접종 탭 맨 아래(기본 접힘)
 // 데이터는 Actions(town.yml)가 data/town.json · events.json · disease.json 으로 만들어 둬요 (시·군은 병원 수사와 같은 칸을 써요)
 (function () {
 const T = { town: null, events: null, dis: null, at: 0, loading: false, evAll: false, evKid: false, evMore: 12 };
@@ -96,17 +96,6 @@ function babyNote(t) {
 }
 const leaf = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c9 0 14-6 14-15-9 0-14 5-14 15z"/><path d="M5 19l7-7"/></svg>';
 
-// 성장 수사 탭 카드
-function card() {
-  if (!T.at) { load(); return ''; }
-  const code = reg(), P = plan(code);
-  if (!P) return `<button class="walkcard wait" data-town="open">${CHARS.svg('baby', 'acorn', { size: 64 })}<span class="wtx"><small>오늘 산책 지수 · ${NAMES[code]}</small><b>동네 탐문 준비 중</b><span>날씨·미세먼지를 받아 오면 여기에 떠요. 눌러서 행사 보기</span></span></button>`;
-  const [lab, stamp, cls] = LV(P.top);
-  return `<button class="walkcard ${cls}" data-town="open"><span class="wico" aria-hidden="true">${P.ico}</span>
-    <span class="wtx"><small>${P.when} 산책 지수 · ${NAMES[code]}</small>${P.when === '오늘' ? alertHtml(code) : ''}<b>${lab}</b><span>${P.top >= 40 ? `${P.from}~${P.to}시 추천 · ` : ''}${P.tmp}℃${P.ag != null ? ` · 미세먼지 ${GN[P.ag]}` : ''}</span></span>
-    <span class="wscore"><b>${P.top}</b><i>${stamp}</i></span></button>`;
-}
-
 // ---------- 감염병 ----------
 const DNOTE = { 홍역: '12개월 전(MMR 접종 전) 아기는 사람 많은 곳을 피해요', 백일해: '어린 아기에게 위험해요. 가족도 Tdap 접종 권장', 수두: '12~15개월 접종 전엔 수두 환자와 접촉 주의', 유행성이하선염: 'MMR 접종으로 예방해요', 성홍열: '열·목 통증·딸기 혀면 소아과로', 장출혈성대장균감염증: '고기는 완전히 익히고 손 씻기', A형간염: '물·음식 위생, 12개월부터 접종', 일본뇌염: '모기 조심 (12개월부터 접종)', 쯔쯔가무시증: '풀밭에 앉지 않기, 긴 옷', '중증열성혈소판감소증후군(SFTS)': '진드기 조심, 풀밭 피하기' };
 const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
@@ -121,19 +110,17 @@ function trend(x, D) {
   const last = w[w.length - 2] ?? 0, a = avg(w.slice(-6, -2)), up = a ? (last - a) / a : last ? 1 : 0;
   return { last, up, i: w.length - 2, hot: (x.name === '홍역' && last > 0) || (up >= 0.5 && last >= 10) };
 }
-function disHtml(compact) {
+// 예방접종 탭 맨 아래: 제목 한 줄로 접혀 있다가 누르면 펼쳐져요
+function disHtml() {
+  if (!T.at) { load(); return ''; }
   const D = T.dis; if (!D || !D.items || !D.items.length) return '';
   const live = D.live !== false;
   const L = D.items.map(x => ({ ...x, ...trend(x, D) })).sort((a, b) => (b.hot - a.hot) || (b.up - a.up));
-  const show = compact ? L.filter(x => x.hot).slice(0, 3) : L;
+  const hot = L.filter(x => x.hot).length;
   const wkLab = live ? (D.weeks[D.weeks.length - 2] || '').replace(/^(\d{4})-(\d+)/, (m, y, w) => `${+w}주`) : `${D.week}주 전후`;
   const arrow = x => x.up >= 0.15 ? `▲ ${Math.round(x.up * 100)}%` : x.up <= -0.15 ? `▼ ${Math.round(-x.up * 100)}%` : '비슷';
   const row = x => `<div class="drow ${x.hot ? 'hot' : ''}"><span class="dn"><b>${esc(x.name)}</b>${DNOTE[x.name] ? `<small>${esc(DNOTE[x.name])}</small>` : ''}</span><span class="dv"><b>${x.last}</b><small>${live ? arrow(x) : x.up >= 0.15 ? '이맘때 늘어요' : x.hot ? '이맘때 발생' : x.up <= -0.15 ? '이맘때 줄어요' : '비슷'}</small></span>${spark(live ? x.weeks.slice(0, -1) : x.weeks, live ? -1 : x.i)}</div>`;
-  if (compact) {
-    if (!live && !show.length) return '';   // 작년 자료로는 늘어나는 게 있을 때만 알려요
-    return `<button class="discard ${show.length ? 'hot' : ''}" data-town="open" data-v="dis">${CHARS.svg('baby', 'thermo', { size: 52, face: true })}<span><small>${live ? `어린이 감염병 동향 · 전국 ${wkLab}` : '작년 이맘때 늘었던 감염병 · 전국'}</small><b>${show.length ? show.map(x => esc(x.name)).join(', ') + (live ? ' 늘고 있어요' : ' 조심할 때예요') : '크게 늘어난 감염병은 없어요'}</b><span>눌러서 자세히</span></span></button>`;
-  }
-  return `<section id="tdis"><h2 class="sh"><span>어린이 감염병 동향</span><span>${live ? `전국 · 지난주(${wkLab}) 신고` : `작년 ${wkLab} · 전국`}</span></h2>
+  return `<section id="tdis" class="dsec${isFold('v-dis', true) ? ' folded' : ''}"><h2 class="sh" data-fold="v-dis"><span>어린이 감염병 동향</span><span>${hot ? `<b class="dhot">늘어남 ${hot}</b>` : ''}${live ? `전국 ${wkLab}` : `작년 ${wkLab}`}</span></h2>
     ${live ? '' : `<p class="hint" style="margin:0 0 6px">올해 주별 숫자는 아직 공개 전이라, 작년 같은 때 전국 신고 수로 "이맘때 많아지는 병"을 보여 줘요. 그래프의 점이 이번 주예요.</p>`}${L.map(row).join('')}
     <p class="foot" style="margin-top:8px">질병관리청 전수신고 자료예요. 수족구·독감·RSV는 표본감시라 여기엔 없어요.${live ? ' 이번 주 숫자는 신고가 늦게 들어와 지난주 기준으로 봐요.' : ''}</p></section>`;
 }
@@ -175,7 +162,7 @@ function render_() {
     const [lab, stamp, cls] = LV(P.top), note = babyNote(P.tmp);
     const bar = x => { const h = +x.h[0].slice(8, 10), c = x.s >= 80 ? 'ok' : x.s >= 60 ? 'ok2' : x.s >= 40 ? 'mid' : 'no'; return `<span class="whb ${c}" title="${h}시 ${x.s}점"><i style="height:${Math.max(6, x.s)}%"></i><b>${x.h[1]}°</b><small>${h}</small>${x.h[3] > 0 ? '<em>☂</em>' : ''}</span>`; };
     walk = `<section class="walk ${cls}"><h2 class="sh"><span>${P.when} 산책 지수</span><span>${esc(T.town.updated || '')} 기준</span></h2>
-      <div class="wtop"><span class="wbig">${P.top}</span><span class="wlab"><b>${lab}</b><span>${P.top >= 40 ? `${P.from}시~${P.to}시가 제일 좋아요` : esc(P.why.join(', ') || '밖은 오늘 쉬어요')}</span></span><span class="stamp">${stamp}</span></div>
+      <div class="wtop"><span class="wbig">${P.top}</span><span class="wlab"><b>${P.ico} ${lab}</b><span>${P.top >= 40 ? `${P.from}시~${P.to}시가 제일 좋아요` : esc(P.why.join(', ') || '밖은 오늘 쉬어요')}</span></span><span class="stamp">${stamp}</span></div>
       ${P.when === '오늘' && alerts(code).length ? `<div class="walerts">${alertHtml(code)}<small>기상청·에어코리아 발표, 오늘 점수에 반영했어요</small></div>` : ''}
       <div class="hbars">${P.list.map(bar).join('')}</div>
       <div class="wtips"><p><b>옷차림</b> ${cloth(P.tmp)} (${P.tmp}℃)</p>${note ? `<p><b>아기 수사관 메모</b> ${note}</p>` : ''}</div></section>`;
@@ -183,10 +170,9 @@ function render_() {
   const dust = A ? `<section><h2 class="sh"><span>지금 미세먼지</span><span>${esc(A.t || '')}${A.near ? ` · ${esc(A.near)} 측정소 값` : ''}</span></h2>
     <div class="dust">${[['미세먼지', A.pm10, g10(A.pm10), '㎍/㎥'], ['초미세먼지', A.pm25, g25(A.pm25), '㎍/㎥']].map(([n, v, g, u]) => `<div><small>${n}</small><b style="color:${g != null ? GC[g] : 'var(--muted)'}">${g != null ? GN[g] : '—'}</b><span>${v != null ? v + u : '측정 중'}</span></div>`).join('')}</div>
     ${fcLine(code)}</section>` : '';
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사, 어린이 감염병을 한곳에서 봐요.</p></header>
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${CHARS.guide('town')}
     <div class="treg"><span>탐문 지역</span>${sel}</div>
-    ${walk}${dust}${disHtml(false)}${evHtml()}
-    <button class="secondary" data-town="close" style="width:100%;margin-top:18px">돌아가기</button>`;
+    ${walk}${dust}${evHtml()}`;
 }
 function fcLine(code) {
   const f = T.town.air.fc || {}, side = (T.town.air.east || []).includes(code) ? 'e' : 'w', d0 = today(), d1 = addDays(d0, 1);
@@ -198,8 +184,7 @@ function fcLine(code) {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-town]'); if (!b) return;
   switch (b.dataset.town) {
-    case 'open': S.view = 'town'; render(); window.scrollTo(0, 0); if (b.dataset.v === 'dis') setTimeout(() => { const el = document.getElementById('tdis'); if (el) el.scrollIntoView({ block: 'start' }); }, 50); load(true); break;
-    case 'close': S.view = ''; render(); window.scrollTo(0, 0); break;
+    case 'open': S.tab = 'town'; S.view = ''; render(); window.scrollTo(0, 0); load(true); break;
     case 'evreg': T.evAll = b.dataset.v === '1'; T.evMore = 12; render(); break;
     case 'evkid': T.evKid = !T.evKid; T.evMore = 12; render(); break;
     case 'evmore': T.evMore += 12; render(); break;
@@ -209,20 +194,11 @@ document.addEventListener('change', e => { if (e.target.id === 'town-reg') { set
 
 const css = document.createElement('style');
 css.textContent = `
-.walkcard{width:100%;display:flex;align-items:center;gap:8px;margin-top:12px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:22px;padding:8px 12px 8px 6px;text-align:left;box-shadow:0 4px 0 #E6D2AE;outline:1.5px dashed var(--stitch);outline-offset:-7px}
-.walkcard .chr{flex-shrink:0}
-.wico{flex-shrink:0;width:58px;height:58px;display:grid;place-items:center;font-size:36px;background:var(--sky);border-radius:50%;margin-left:6px}
-.wtx{flex:1;display:flex;flex-direction:column;min-width:0}
-.wtx small{font-size:12px;color:var(--muted)}
-.wtx b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--navy);line-height:1.3}
-.wtx span{font-size:13px}
-.walkcard.wait .wtx b{font-size:17px}
-.wscore{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-right:4px}
-.wscore b{font-family:var(--display);font-weight:400;font-size:34px;line-height:1;color:#2E7D5B}
-.walkcard.mid .wscore b{color:#C8551E}.walkcard.no .wscore b{color:var(--red)}
-.wscore i{font-style:normal;font-size:11px;color:var(--red);border:2px solid currentColor;border-radius:6px;padding:0 5px;transform:rotate(-6deg);margin-top:4px;white-space:nowrap}
 .walert{display:inline-block;align-self:flex-start;font-size:11.5px;font-weight:700;color:#fff;background:var(--red);border-radius:99px;padding:1px 9px;margin:2px 4px 2px 0}
 .walerts{margin-top:10px}.walerts small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.dhot{display:inline-block;background:var(--red);color:#fff;border-radius:99px;padding:0 8px;font-size:11px;margin-right:6px;letter-spacing:0}
+#app section.dsec.folded{padding:10px 14px;box-shadow:0 2px 0 #E6D2AE}
+#app section.dsec.folded>.sh{font-size:12px}
 .treg{display:flex;align-items:center;gap:10px;margin:14px 0 0;font-size:13px;color:var(--muted)}
 .tsel{flex:1;min-height:44px;border:1.5px solid var(--line);border-radius:14px;background:#FFFDF7;padding:0 12px;font:inherit;font-size:16px;color:var(--ink)}
 .wtop{position:relative;display:flex;align-items:center;gap:12px}
@@ -247,10 +223,6 @@ css.textContent = `
 .drow.hot .dn b,.drow.hot .dv b,.drow.hot .dv small{color:var(--red)}
 .drow.hot{color:var(--red)}
 .dsp{flex-shrink:0}
-.discard{width:100%;display:flex;align-items:center;gap:10px;margin-top:12px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:18px;padding:8px 12px;text-align:left;box-shadow:0 3px 0 #E6D2AE}
-.discard .chr{flex-shrink:0;border-radius:50%;background:#FCEBD3}
-.discard>span{display:flex;flex-direction:column;min-width:0}.discard small{font-size:12px;color:var(--muted)}.discard b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}.discard>span>span{font-size:12px;color:var(--muted)}
-.discard.hot{border-color:var(--red);background:#FFF3EF}.discard.hot b{color:var(--red)}
 .ev{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);align-items:flex-start}
 .ev img,.evph{width:72px;height:72px;border-radius:14px;object-fit:cover;flex-shrink:0;background:var(--card2);display:grid;place-items:center;color:var(--muted)}
 .evt{flex:1;display:flex;flex-direction:column;min-width:0}.evt b{font-size:15px;line-height:1.35;word-break:keep-all}.evt small{font-size:12px;color:var(--muted)}
@@ -259,5 +231,5 @@ css.textContent = `
 .evd{flex-shrink:0;font-family:var(--display);font-size:13px;color:var(--navy);white-space:nowrap}.evd.on{color:var(--red)}`;
 document.head.appendChild(css);
 
-window.TOWN = { card, render: render_, sickCard: () => (T.at ? disHtml(true) : (load(), '')), load };
+window.TOWN = { render: render_, disHtml, load };
 })();
