@@ -532,15 +532,19 @@ document.addEventListener('click', async e => {
   if (act === 'logout') { if (confirm('이 폰에서 로그아웃할까요?')) await logout(); return; }
   if (act === 'invite') {
     if (isViewer()) { app().toast('보기 전용으로 들어와서 초대 코드는 엄마·아빠만 만들 수 있어요'); return; }
+    // 지금은 엄마·아빠 둘만 써서 바로 함께 기록 코드를 만들어요 (보기 전용 초대는 아래 invite2 data-v="1"로 남겨 둠)
+    if (!b.dataset.choose) { b.dataset.v = ''; return inviteCode(b, false); }
     openSheet(`<h3>누구를 초대할까요?</h3>
       <div class="rolepick"><button data-fam="invite2" data-v="">함께 기록<br><small style="font-family:var(--body);font-size:13px">엄마·아빠 수사관</small></button><button data-fam="invite2" data-v="1">보기 전용<br><small style="font-family:var(--body);font-size:13px">할머니·이모 등 가족</small></button></div>
       <p class="hint">보기 전용으로 들어온 가족은 사진·기록을 볼 수만 있고, 남기거나 고칠 수는 없어요.</p>
       <div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
     return;
   }
-  if (act === 'invite2') {
+  if (act === 'invite2') return inviteCode(b, b.dataset.v === '1');
+});
+async function inviteCode(b, viewer) {
+  {
     b.disabled = true;
-    const viewer = b.dataset.v === '1';
     try {
       const code = await makeInvite(viewer), url = location.origin + location.pathname;
       openSheet(`<h3>${viewer ? '보기 전용 초대 코드' : '가족 초대 코드'}</h3>
@@ -550,8 +554,11 @@ document.addEventListener('click', async e => {
         <div class="actions"><button class="secondary" data-act="close">닫기</button><button class="primary" data-fam="share" data-code="${code}">보내기</button></div>`);
     } catch (x) { app().toast('코드를 만들지 못했어요: ' + (x.message || '')); }
     finally { b.disabled = false; }
-    return;
   }
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-fam]'); if (!b) return;
+  const act = b.dataset.fam;
   if (act === 'push-on' || act === 'push-off') {
     b.disabled = true;
     try { await H[act === 'push-on' ? 'enablePush' : 'disablePush'](); app().toast(act === 'push-on' ? '알림을 켰어요. 매일 아침 8시 50분에 챙길 일이 있으면 알려 줄게요' : '이 폰의 알림을 껐어요'); app().closeSheet(); }

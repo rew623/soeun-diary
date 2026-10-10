@@ -408,6 +408,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="memories.js"></script>
 <script src="dev.js"></script>
 <script src="book.js"></script>
+<script src="fun.js"></script>
 <script src="push-key.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
@@ -587,12 +588,12 @@ function render(){
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
   $tab.innerHTML=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
-  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='play'?GAME.play():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
+  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();
+  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();FUN.check();FUN.afterRender();
 }
 
 const REC_SHOW=5;   // 수사 기록은 최근 몇 건만 펼쳐 두고 나머지는 접어요
@@ -864,7 +865,7 @@ function renderAlbum(){
     return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
   const av=S.albumView==='board'||S.albumView==='family'?S.albumView:'album';
   const aseg=`<div class="seg aview">${[['album','앨범'],['family','가족'],['board','수사 보드']].map(([k,l])=>`<button class="${av===k?'on':''}" data-act="aview" data-v="${k}">${l}</button>`).join('')}</div>`;
-  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1><p>소은이와 함께한 가족들의 사진을 사람별로 모아요.</p></header>${aseg}${FAMILY.render()}`;
+  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1><p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${aseg}${FAMILY.render()}`;
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${CHARS.guide('album')}${aseg}${MEMO.onThisDay()}
   <button class="nextcard" data-act="report" style="margin-top:14px"><span><small>${d<100?fmtK(d100,true)+' 공개 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>${d<100?'미리 보기':'보고서 보기'}</small></span><span class="d">${d<100?'D-'+(100-d):'100일'}</span></button>

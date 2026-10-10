@@ -25,7 +25,8 @@
 - town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수), 미세먼지, 강원 행사·축제. 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
 - posts.js: 육아 글 모음 (S.view='posts', 떠 있는 '📚 육아 글' 버튼): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 어느 화면에서나 떠 있는 버튼(짧게 누르면 열기, 0.6초 길게 누른 채 끌면 옮기기, 위치 localStorage soeun-posts-pos, 새 글 빨간 점), 읽은 글 표시(soeun-posts-read)
 - game.js: 게임 요소 — 수사관 계급(기록 by로 경험치 계산, 신분증에 계급), 오늘의 수사 지령(하루 3개, 성장 수사 탭 카드), 연속 수사, 훈장 24개, 도토리·소은 탐정 모자 가게(CHARS HATS, 명절·생일엔 저절로 모자), 다람쥐 집 꾸미기, 몸무게 예측 대결(guess 컬렉션, 성장 수사 탭), 놀이터(생후 며칠 퀴즈, 사진 짝맞추기). 계급·훈장은 기록으로 계산(두 폰 같음), 도토리·모자·최고 기록은 이 폰에만(localStorage soeun-game). 화면 S.view='medals'/'play'
-- family.js: 사건 앨범 > 가족(S.albumView='family'): 가족 수사팀 명단(엄마·아빠 + people 컬렉션), 사람별로 모아 보기, 가족 사진은 mom type:'fam' who=사람 id들(ALBUM.queue로 올림)
+- family.js: 사건 앨범 > 가족(S.albumView='family'): 엄마·아빠·소은이 가족 사진 (전체/엄마랑/아빠랑/셋이 다 같이), mom type:'fam' who='mom,dad'(ALBUM.queue로 올림). 친척 카드(people)는 사용자 요청으로 뺌 — 아직 둘만 씀
+- fun.js: 게임 요소 2 — 오늘 누가? 룰렛(집안일 배정, 과제 목록 localStorage soeun-roulette), 오늘의 운세 포춘 쿠키(날짜로 골라 두 폰 같게), 숨은 도토리 찾기(날짜로 정한 탭에 하루 1개), 스티커 뽑기(도토리 3개)·스티커북 30종, 소은 탐정 카드(기록으로 만든 트레이딩 카드), 수사 출석부(기록한 날 도장), 주간 MVP(월요일). 화면 S.view='fun'
 - memories.js: 사건 앨범 맨 위 '지난 오늘'(지난달·작년 같은 날 사진), '성장 스토리'(월별 사진 인스타 스토리처럼, 뒤로가기로 닫힘 SLIDE.close)
 - dev.js: 예방접종 탭 > 발달 체크(S.vacView='dev'), 2~24개월 8단계(CDC 발달 이정표 참고), dev 컬렉션
 - book.js: 성장 앨범 책(S.view='book'): 표지 + 달마다 한 쪽, 인쇄·PDF로 저장(window.print, @media print)
@@ -44,7 +45,7 @@
 
 ## Firestore 구조
 - users/{uid}: { fid } 내가 속한 가족 공간
-- invites/{6자리 코드}: { fid, by, exp } 7일짜리 초대 코드 (V로 시작해 9로 끝나면 보기 전용 초대 → 앱에서 쓰기 막음, 이 폰 localStorage viewer-{fid})
+- invites/{6자리 코드}: { fid, by, exp } 7일짜리 초대 코드 (V로 시작해 9로 끝나면 보기 전용 초대 → 앱에서 쓰기 막음, 이 폰 localStorage viewer-{fid}. 지금은 둘만 써서 초대 단추는 바로 일반 코드를 만들고, 보기 전용 고르기 창은 숨겨 둠)
 - families/{fid}: 아기 프로필 (name, birth, sex, mom, dad, 사진 URL)
 - families/{fid} 하위 컬렉션:
   - members/{uid}: { role(엄마/아빠), name, email, viewer(보기 전용이면 true) }

@@ -15,12 +15,13 @@ const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i-
 
 // ---------- 수사관 계급 ----------
 const WEIGHT = { records: 10, meals: 5, logs: 3, moments: 12, foods: 10, visits: 10 };
-function xp(role, since) {
+function xp(role, since, until) {
   let x = 0;
   const dOf = (k, o) => k === 'logs' ? String(o.at || '').slice(0, 10) : k === 'foods' ? o.start : o.date;
-  for (const [k, w] of Object.entries(WEIGHT)) (S[k] || []).forEach(o => { if (o.by === role && (!since || (dOf(k, o) || '') >= since)) x += w + (o.photo ? 3 : 0); });
-  (S.vaccines || []).forEach(v => { if (v.done && v.by === role && (!since || v.done >= since)) x += 15; });
-  (S.checkups || []).forEach(c => { if (c.done && c.by === role && (!since || c.done >= since)) x += 20; });
+  const inR = d => (!since || (d || '') >= since) && (!until || (d || '') < until);
+  for (const [k, w] of Object.entries(WEIGHT)) (S[k] || []).forEach(o => { if (o.by === role && inR(dOf(k, o))) x += w + (o.photo ? 3 : 0); });
+  (S.vaccines || []).forEach(v => { if (v.done && v.by === role && inR(v.done)) x += 15; });
+  (S.checkups || []).forEach(c => { if (c.done && c.by === role && inR(c.done)) x += 20; });
   return x;
 }
 const RANKS = [[0, '순경'], [40, '경장'], [120, '경사'], [250, '경위'], [450, '경감'], [700, '경정'], [1000, '총경'], [1400, '경무관'], [1900, '치안감'], [2500, '치안정감'], [3200, '치안총감']];
@@ -61,6 +62,9 @@ const POOL = [
   { id: 'quiz', t: '놀이터: 생후 며칠 퀴즈 한 판', ok: () => played('quiz'), when: () => photoPool().length >= 4, view: 'play' },
   { id: 'mem', t: '놀이터: 사진 짝맞추기 한 판', ok: () => played('mem'), when: () => true, view: 'play' },
   { id: 'temp', t: '체온 재서 남기기', ok: () => S.logs.some(l => l.kind === 'temp' && String(l.at).startsWith(today())), when: () => typeof activeEp === 'function' && !!activeEp(), tab: 'sick' },
+  { id: 'cookie', t: '🥠 오늘의 운세 쿠키 깨기 (훈장 수첩)', ok: () => played('cookie'), when: () => true, view: 'medals' },
+  { id: 'hunt', t: '🔍 숨은 도토리 찾기', ok: () => played('hunt'), when: () => true, tab: 'hunt' },
+  { id: 'roulette', t: '🎡 오늘 누가? 룰렛 돌리기', ok: () => played('roulette'), when: () => true, view: 'medals' },
   { id: 'board', t: '마음에 드는 사진 보드에 붙이기', ok: () => played('board'), when: () => photoPool().length >= 3, tab: 'album' }
 ];
 function missions() {
@@ -170,6 +174,7 @@ function medalsView() {
     <section><h2 class="sh"><span>놀이터</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
       <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 생후 며칠인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
       <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>소은이 사진 카드 짝 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button></div></section>
+    ${window.FUN ? FUN.sections() : ''}
     <section><h2 class="sh"><span>훈장</span><span>${on.length}/${MEDALS.length}</span></h2>
       <div class="gmed">${MEDALS.map(([id, ic, nm, how]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small></div>`).join('')}</div></section>
     <button class="secondary" data-game="close" style="width:100%;margin-top:14px">돌아가기</button>`;
@@ -335,6 +340,7 @@ document.addEventListener('click', async e => {
       if (m.act === 'addrec') { const f = document.querySelector('.fab'); if (f) f.click(); }
       else if (m.view === 'play') { S.view = 'medals'; render(); setTimeout(() => { const el = document.querySelector('.gplay'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 60); }
       else if (m.view) { S.view = m.view; render(); window.scrollTo(0, 0); }
+      else if (m.tab === 'hunt') { S.tab = FUN.hunt(); S.view = ''; render(); window.scrollTo(0, 0); toast('이 탭 어딘가에 도토리가 숨어 있어요 🔍'); }
       else if (m.tab) { S.tab = m.tab; S.view = ''; if (m.tab === 'album') S.albumView = 'album'; render(); window.scrollTo(0, 0); }
       break;
     }
@@ -430,5 +436,5 @@ css.textContent = `
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { rankHtml, card, check, mark, skin, medals: medalsView, play: playView, guessHtml };
+window.GAME = { rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save } };
 })();
