@@ -5,7 +5,7 @@
 const KEY = 'soeun-game';
 function st() {
   let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-  return Object.assign({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {} }, s || {});
+  return Object.assign({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '' }, s || {});
 }
 function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
 const played = k => st().played[k] === today();
@@ -124,6 +124,12 @@ function check() {
     const on = medalsOn();
     if (s.seenMedals) on.filter(id => !s.seenMedals.includes(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id); msgs.push(`${m[1]} 훈장 획득: ${m[2]}`); });
     s.seenMedals = on;
+    // 몸무게 예측 결과 (새로 끝난 대결)
+    const done = rounds().filter(r => !r.open), lr = done[done.length - 1];
+    if (lr && s.seenGuess !== lr.next.id) {
+      { const me = myRole(); msgs.push(lr.win === '무승부' ? '⚖️ 몸무게 예측 대결 무승부!' : `⚖️ 몸무게 예측 대결: ${lr.win} 수사관 승! (차이 ${Math.round(lr.diff * 1000)}g)${lr.win === me ? ' 도토리 🌰 +2' : ''}`); if (lr.win === me) s.acorn += 2; }
+      s.seenGuess = lr.next.id;
+    }
     // 오늘의 지령 완수 → 도토리 3개
     const ms = missions();
     if (ms.length && ms.every(m => m.on) && !s.done.includes(today())) { s.done.push(today()); s.done = s.done.slice(-400); s.acorn += 3; msgs.push('📜 오늘의 지령 완수! 도토리 🌰 +3'); }
@@ -154,6 +160,9 @@ function medalsView() {
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>훈장 수첩</h1><p>기록을 남길수록 수사관 계급이 올라가요. 기록 하나하나가 경험치예요.</p></header>
     <section><h2 class="sh"><span>수사관 계급</span><span>${wm || wd ? `이번 주 ${wm === wd ? '동점!' : (wm > wd ? '엄마' : '아빠') + ' 수사관 우세'}` : ''}</span></h2>${card('엄마')}${card('아빠')}
       <p class="foot" style="margin-top:8px">경험치: 성장 기록 10 · 사진 +3 · 최초 목격 12 · 예방접종 15 · 검진 20 · 식재료 10 · 급식 5 · 체온·투약 3</p></section>
+    <section><h2 class="sh"><span>🏠 소은 탐정의 집</span><span>${s.room.length}/${ROOM.length}</span></h2>${roomSvg()}
+      ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:6px 0 0">오늘은 ${e[1]}! 소은 탐정이 특별 모자를 썼어요.</p>` : ''; })()}
+      <div class="gshop">${ROOM.map(([id, nm, c]) => { const own = s.room.includes(id); return `<button class="${own ? 'own' : ''}" data-game="buy" data-id="${id}" ${own ? 'disabled' : ''}>${nm}<small>${own ? '놓았어요' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
     <section><h2 class="sh"><span>도토리 주머니</span><span>🌰 ${s.acorn}개 · 🔥 ${sk}일 연속</span></h2>
       <p class="hint" style="margin:0 0 10px">도토리는 오늘의 지령 완수(+3)와 놀이터에서 모여요. 모자를 사서 소은 탐정에게 씌워 보세요. (이 폰에만 저장)</p>
       <div class="ghats">${HATS.map(([id, nm, c]) => { const own = s.hats.includes(id), cur = s.hat === id;
@@ -164,6 +173,84 @@ function medalsView() {
     <section><h2 class="sh"><span>훈장</span><span>${on.length}/${MEDALS.length}</span></h2>
       <div class="gmed">${MEDALS.map(([id, ic, nm, how]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small></div>`).join('')}</div></section>
     <button class="secondary" data-game="close" style="width:100%;margin-top:14px">돌아가기</button>`;
+}
+
+// ---------- 명절·기념일 모자 (기본 탐정 모자일 때만 저절로) ----------
+const EVENTS = [
+  [['2026-02-15', '2026-02-18'], 'bok', '설날'], [['2026-09-23', '2026-09-27'], 'bok', '추석'],
+  [['2027-02-05', '2027-02-09'], 'bok', '설날'], [['2027-09-13', '2027-09-17'], 'bok', '추석'],
+  [['2028-01-25', '2028-01-28'], 'bok', '설날'], [['2028-10-02', '2028-10-05'], 'bok', '추석']
+];
+function eventHat() {
+  const t = today(), md = t.slice(5), b = S.profile && S.profile.birth;
+  for (const [[a, z], h, nm] of EVENTS) if (t >= a && t <= z) return [h, nm];
+  if (md >= '12-20' && md <= '12-26') return ['santa', '크리스마스'];
+  if (b && t > b && md === b.slice(5)) return ['party', '생일'];
+  if (b && (dayNo(t) === 100 || dayNo(t) === 200)) return ['party', `${dayNo(t)}일`];
+  if (md === '05-05') return ['party', '어린이날'];
+  return null;
+}
+function skin() { const s = st(); if (s.hat !== 'det') return s.hat; const e = S.profile ? eventHat() : null; return e ? e[0] : 'det'; }
+
+// ---------- 다람쥐 집 꾸미기 (도토리로 가구 사기) ----------
+const ROOM = [
+  ['rug', '동그란 러그', 4, '<ellipse cx="160" cy="166" rx="92" ry="14" fill="#F6B4AA" opacity=".85"/><ellipse cx="160" cy="166" rx="70" ry="9" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="5 5"/>'],
+  ['plant', '화분', 5, '<path d="M38 152h24l-4 20H42z" fill="#C97B4A"/><path d="M50 152c-14-10-16-26-6-34 2 12 6 18 6 34zM50 152c12-12 18-24 10-34-4 12-8 20-10 34zM50 152c-2-16 2-28 0-40" stroke="#5E9E57" stroke-width="4" fill="#7FB77E" stroke-linecap="round"/>'],
+  ['frame', '소은이 액자', 6, 'FRAME'],
+  ['mobile', '모빌', 7, '<path d="M200 0v18M180 18h40M180 18v12M220 18v12M200 18v20" stroke="#B9A889" stroke-width="1.5"/><circle cx="180" cy="34" r="5" fill="#F4C542"/><path d="M216 30l4 8 4-8z" fill="#7FC4E8"/><circle cx="200" cy="42" r="5" fill="#F49C9C"/>'],
+  ['lamp', '스탠드', 8, '<path d="M272 172h20M282 172v-52" stroke="#1F2A44" stroke-width="3"/><path d="M268 122l14-24 14 24z" fill="#FCE8B4" stroke="#E0C590"/><ellipse cx="282" cy="124" rx="22" ry="5" fill="#FCE8B4" opacity=".5"/>'],
+  ['shelf', '책장', 10, '<rect x="232" y="96" width="40" height="72" rx="3" fill="#B97648"/><path d="M234 120h36M234 144h36" stroke="#8C5530" stroke-width="2"/><rect x="237" y="102" width="6" height="16" fill="#7FC4E8"/><rect x="245" y="104" width="6" height="14" fill="#F49C9C"/><rect x="253" y="101" width="6" height="17" fill="#F4C542"/><rect x="238" y="126" width="16" height="16" rx="3" fill="#FCEBD3"/><circle cx="262" cy="134" r="6" fill="#D99A5B"/>'],
+  ['jar', '도토리 항아리', 12, '<path d="M88 168c-12 0-14-24-4-30h20c10 6 8 30-4 30z" fill="#E8C770" stroke="#C99A1E"/><ellipse cx="94" cy="138" rx="10" ry="3" fill="#C99A1E"/><ellipse cx="90" cy="134" rx="5" ry="6" fill="#D99A5B"/><path d="M85 131q5-6 10 0z" fill="#7A4B2A"/><ellipse cx="99" cy="133" rx="5" ry="6" fill="#D99A5B"/><path d="M94 130q5-6 10 0z" fill="#7A4B2A"/>'],
+  ['garland', '가랜드', 9, '<path d="M60 18q100 30 200 0" stroke="#B9A889" stroke-width="1.5" fill="none"/>' + [70, 95, 120, 145, 170, 195, 220, 245].map((x, i) => `<path d="M${x} ${20 + Math.sin(i / 7 * Math.PI) * 18}l8 0-4 10z" fill="${['#F49C9C', '#FCE8B4', '#7FC4E8', '#7FB77E'][i % 4]}"/>`).join('')]
+];
+function roomSvg() {
+  const own = st().room, ph = safeImg(PHOTOS.profile);
+  const item = ([id, , , g]) => !own.includes(id) ? '' : g === 'FRAME'
+    ? `<rect x="112" y="40" width="44" height="52" rx="3" fill="#B97648"/><rect x="117" y="45" width="34" height="42" fill="#FCEBD3"/>${ph ? `<image href="${ph}" x="117" y="45" width="34" height="42" preserveAspectRatio="xMidYMid slice"/>` : ''}` : g;
+  return `<svg class="groom" viewBox="0 0 320 180" aria-label="다람쥐 집">
+    <rect width="320" height="180" fill="#FFF3DD"/><rect y="130" width="320" height="50" fill="#E8C9A0"/><path d="M0 130h320" stroke="#D7B486" stroke-width="2"/>
+    <rect x="22" y="34" width="62" height="54" rx="6" fill="#DCE7F1" stroke="#fff" stroke-width="4"/><path d="M53 34v54M22 61h62" stroke="#fff" stroke-width="3"/><circle cx="70" cy="48" r="6" fill="#FCE8B4"/>
+    ${ROOM.filter(r => r[0] === 'rug').map(item).join('')}${ROOM.filter(r => r[0] !== 'rug').map(item).join('')}
+    <g transform="translate(118 72) scale(.82)">${CHARS.svg('baby', '', { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g></svg>`;
+}
+
+// ---------- 몸무게 예측 대결 ----------
+// guess 문서: { role, value, at, base(예측할 때의 마지막 측정 기록 id), by } — 다음 몸무게 기록이 생기면 가까운 쪽 승리
+const wrecs = () => (S.records || []).filter(r => r.weight != null && r.weight !== '').sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1));
+function rounds() {
+  const W = wrecs(), G = S.guesses || [], out = [];
+  for (let i = 0; i < W.length; i++) {
+    const base = W[i], next = W[i + 1], gs = {};
+    G.filter(g => g.base === base.id).forEach(g => { if (!gs[g.role] || g.at >= gs[g.role].at) gs[g.role] = g; });
+    if (!Object.keys(gs).length) continue;
+    if (!next) { out.push({ base, open: true, gs }); continue; }
+    const real = +next.weight, ds = Object.values(gs).map(g => [g.role, Math.abs(+g.value - real)]).sort((a, b) => a[1] - b[1]);
+    const win = ds.length > 1 && ds[0][1] === ds[1][1] ? '무승부' : ds[0][0];
+    out.push({ base, next, real, gs, win, diff: ds[0][1] });
+  }
+  return out;
+}
+function guessHtml() {
+  const W = wrecs(); if (!W.length) return '';
+  const R = rounds(), last = W[W.length - 1], open = R.find(r => r.open && r.base.id === last.id), done = R.filter(r => !r.open);
+  const tally = { 엄마: 0, 아빠: 0 }; done.forEach(r => { if (tally[r.win] != null) tally[r.win]++; });
+  const lr = done[done.length - 1], me = myRole();
+  const row = role => { const g = open && open.gs[role]; return `<span class="gg${g ? ' on' : ''}"><b>${role}</b>${g ? (role === me ? `${(+g.value).toFixed(2)}kg` : '예측 완료 🤫') : '아직'}</span>`; };
+  return `<section class="gguess"><h2 class="sh"><span>⚖️ 몸무게 예측 대결</span><span>엄마 ${tally.엄마}승 · 아빠 ${tally.아빠}승</span></h2>
+    <p class="hint" style="margin:0 0 8px">다음에 잴 때 몇 kg일까요? 지난 측정 ${fmt('weight', last.weight)}kg (${fmtK(last.date, true)}). 다음 기록이 생기면 더 가까운 수사관이 이겨요.</p>
+    <div class="ggs">${row('엄마')}${row('아빠')}${me ? `<button class="ghost" data-game="guess">${open && open.gs[me] ? '예측 바꾸기' : '내 예측 걸기'}</button>` : ''}</div>
+    ${lr ? `<p class="foot" style="margin:8px 0 0">지난 대결: 실제 ${lr.real.toFixed(2)}kg → ${lr.win === '무승부' ? '무승부!' : `<b style="color:var(--red)">${lr.win} 수사관 승</b> (차이 ${Math.round(lr.diff * 1000)}g)`} · ${Object.values(lr.gs).map(g => `${g.role} ${(+g.value).toFixed(2)}`).join(' / ')}</p>` : ''}
+  </section>`;
+}
+function openGuess() {
+  const W = wrecs(), last = W[W.length - 1]; if (!last) return;
+  const R = rounds(), open = R.find(r => r.open && r.base.id === last.id), mine = open && open.gs[myRole()];
+  const est = (+last.weight + Math.max(0, daysBetween(last.date, today()) + 14) * (dayNo(today()) < 120 ? 0.028 : 0.015)).toFixed(2);
+  openSheet(`<h3>몸무게 예측 걸기</h3>
+    <p class="hint">지난 측정 ${fmt('weight', last.weight)}kg (${fmtK(last.date, true)}). 상대 수사관에겐 다음 측정 전까지 숫자가 안 보여요.</p>
+    <label class="field"><span>다음 측정 때 몸무게</span><div class="unitwrap"><input id="gs-v" inputmode="decimal" value="${mine ? (+mine.value).toFixed(2) : est}"><em>kg</em></div></label>
+    <p class="err" id="gs-err"></p>
+    <div class="actions"><button class="secondary" data-act="close">취소</button><button class="primary" data-game="guess-save">걸기</button></div>`);
 }
 
 // ---------- 놀이터 ----------
@@ -237,7 +324,7 @@ function memFlip(i) {
   }
 }
 
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const b = e.target.closest('[data-game]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.game) {
@@ -261,6 +348,19 @@ document.addEventListener('click', e => {
     case 'qn': { const q = G.q; q.i++; q.picked = null; if (q.i >= q.rounds.length) quizEnd(); render(); window.scrollTo(0, 0); break; }
     case 'mem': memStart(); G.game = 'mem'; S.view = 'play'; render(); window.scrollTo(0, 0); break;
     case 'mc': memFlip(+b.dataset.i); break;
+    case 'buy': {
+      const s = st(), it = ROOM.find(x => x[0] === b.dataset.id); if (!it || s.room.includes(it[0])) return;
+      if (s.acorn < it[2]) { toast(`도토리가 ${it[2] - s.acorn}개 더 필요해요`); return; }
+      s.acorn -= it[2]; s.room.push(it[0]); save(s); confetti(); toast(`${it[1]}을(를) 집에 놓았어요!`); render(); break;
+    }
+    case 'guess': openGuess(); break;
+    case 'guess-save': {
+      const v = parseFloat(String(document.getElementById('gs-v').value).replace(',', '.')), W = wrecs(), last = W[W.length - 1];
+      if (!(v > 1 && v < 30)) { document.getElementById('gs-err').textContent = '몸무게를 kg으로 넣어 주세요 (예: 6.3)'; return; }
+      const id = 'g' + last.id + '_' + (myRole() === '아빠' ? 'd' : 'm');
+      if (await write('saveItem', 'guess', { id, role: myRole(), value: v.toFixed(2), at: today(), base: last.id, by: myRole() })) { closeSheet(); toast('예측을 걸었어요! 다음 측정을 기다려요'); }
+      break;
+    }
   }
 });
 
@@ -316,11 +416,19 @@ css.textContent = `
 .gc .face img{width:100%;height:100%;object-fit:cover}.gc .face b{font-size:38px}
 .gc.open .back{transform:rotateY(180deg)}.gc.open .face{transform:none}
 .gc.done .face{border-color:#5E9E57;box-shadow:0 0 0 3px #CFE6C3}
+.groom{width:100%;height:auto;display:block;border-radius:16px;border:1.5px solid var(--line)}
+.gshop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.gshop button{display:flex;flex-direction:column;align-items:center;gap:1px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:12px;padding:6px 2px;font-size:12px}
+.gshop small{font-size:10.5px;color:var(--muted)}.gshop .own{background:#F3F8EE;border-color:#B9D7A8}.gshop .own small{color:#5E9E57}
+.ggs{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.gg{display:flex;flex-direction:column;align-items:center;min-width:84px;background:#FFFDF7;border:1.5px dashed var(--line);border-radius:14px;padding:6px 10px;font-size:13px}
+.gg b{font-family:var(--display);font-weight:400;font-size:14px;color:var(--navy)}.gg.on{border-style:solid;border-color:var(--navy)}
+.ggs .ghost{margin-left:auto}
 .gconf{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
 .gconf i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:gfall 1.4s cubic-bezier(.3,.6,.5,1) forwards}
 @keyframes gfall{to{top:105%;transform:translateX(30px) rotate(540deg)}}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { rankHtml, card, check, mark, skin: () => st().hat, medals: medalsView, play: playView };
+window.GAME = { rankHtml, card, check, mark, skin, medals: medalsView, play: playView, guessHtml };
 })();

@@ -22,9 +22,11 @@ const TBL = {
   meal: ['date', 'slot', 'menu', 'amount', 'eat', 'memo', 'photo', 'by'],
   cube: ['name', 'count', 'made', 'memo'],
   menu: ['month', 'title', 'photo'],
-  people: ['name', 'rel', 'photo', 'by']   // 가족 앨범의 가족 (할머니·이모…)
+  people: ['name', 'rel', 'photo', 'by'],   // 가족 앨범의 가족 (할머니·이모…)
+  dev: ['at', 'by'],                        // 발달 체크 (문서 id = 항목 id, at = 확인한 날)
+  guess: ['role', 'value', 'at', 'base', 'by']   // 몸무게 예측 대결 (예측한 날 at, kg value, base = 그때 마지막 측정 기록 id)
 };
-const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people' };
+const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses' };
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
 const SCHEDULE = [
   ['출생', 0, [['B형간염 1차', '']]],
@@ -49,6 +51,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const newId = p => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4);
 const role_ = r => (r === '엄마' || r === '아빠') ? r : '';
 const myRole = () => (M.member && M.member.role) || '';
+// 보기 전용 초대(할머니 등): 초대 코드가 V로 시작해 9로 끝나요. 이 폰과 members 문서에 viewer 표시
+const VIEW_CODE = /^V[A-Z2-9]{4}9$/;
+const isViewer = () => { if (M.member && M.member.viewer) return true; try { return localStorage.getItem('viewer-' + M.fid) === '1'; } catch (e) { return false; } };
 const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
@@ -76,7 +81,7 @@ function build() {
   });
   const d = {
     profile: { name: f.name || '', birth: f.birth || '', sex: f.sex === 'M' ? 'M' : 'F', photo: !!f.photoUrl, mom: f.mom || '', dad: f.dad || '', momPhoto: !!f.momPhotoUrl, dadPhoto: !!f.dadPhotoUrl },
-    me: { role: myRole(), hasEmail: true },
+    me: { role: myRole(), hasEmail: true, viewer: isViewer() },
     records: list('records').filter(r => r.date).map(r => ({ id: r.id, date: r.date, weight: numOrNull(r.weight), height: numOrNull(r.height), head: numOrNull(r.head), memo: r.memo || '', photo: !!r.photoUrl, by: r.by || '' })),
     periods: list('periods').map(p => ({ id: p.id, name: String(p.name || ''), month: p.month === '' || p.month == null ? '' : Number(p.month), confirmed: p.confirmed || '', hospital: p.hospital || '' })),
     vaccines: list('vaccines').map(v => ({ id: v.id, period: String(v.period || ''), name: String(v.name || ''), sub: v.sub || '', done: v.done || '', memo: v.memo || '', by: v.by || '' }))
@@ -303,9 +308,38 @@ const H = {
   }
 };
 
+// ---------- 알림 (Firebase Cloud Messaging) ----------
+// 열쇠(VAPID 공개키)는 push-key.js. 받은 토큰은 families/{fid}/push/{id} 에 두고, Actions(notify.yml)가 아침마다 보내요
+const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(x => x.toString(16).padStart(2, '0')).join('');
+async function messaging() {
+  const m = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js');
+  if (!(await m.isSupported())) throw new Error('이 브라우저는 알림을 지원하지 않아요 (크롬에서 홈 화면 앱으로 열어 주세요)');
+  return m;
+}
+H.enablePush = async () => {
+  if (!window.PUSH_VAPID) throw new Error('알림 열쇠가 아직 설정되지 않았어요');
+  const m = await messaging();
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('알림이 허용되지 않았어요. 폰 설정 → 앱 → 크롬(또는 이 앱) → 알림에서 켜 주세요');
+  const reg = await navigator.serviceWorker.ready;
+  const token = await m.getToken(m.getMessaging(fb), { vapidKey: window.PUSH_VAPID, serviceWorkerRegistration: reg });
+  if (!token) throw new Error('알림 토큰을 받지 못했어요');
+  const id = (await sha(token)).slice(0, 40);
+  await setDoc(doc(db, 'families', M.fid, 'push', id), { token, uid: M.uid, role: myRole(), viewer: isViewer(), at: serverTimestamp(), ua: navigator.userAgent.slice(0, 120) });
+  try { localStorage.setItem('soeun-push', id); } catch (e) {}
+  return { ok: true };
+};
+H.disablePush = async () => {
+  let id = ''; try { id = localStorage.getItem('soeun-push') || ''; localStorage.removeItem('soeun-push'); } catch (e) {}
+  if (id) { try { await deleteDoc(doc(db, 'families', M.fid, 'push', id)); } catch (e) {} }
+  try { const m = await messaging(); await m.deleteToken(m.getMessaging(fb)); } catch (e) {}
+  return { ok: true };
+};
+
 const API = {
   async call(fn, args) {
     if (!H[fn]) throw new Error('알 수 없는 기능: ' + fn);
+    if (isViewer() && !['getData', 'getPhotos', 'getPhoto', 'enablePush', 'disablePush'].includes(fn)) throw new Error('보기 전용 초대라 기록은 엄마·아빠 수사관만 남길 수 있어요');
     try { return await H[fn](...args); }
     catch (e) {
       const msg = e && e.code === 'permission-denied' ? '이 가족 공간에 쓸 권한이 없어요'
@@ -380,11 +414,16 @@ async function joinFamily(code) {
   if (inv.exp && inv.exp.toMillis() < Date.now()) throw new Error('기간이 지난 초대 코드예요. 새 코드를 받아 주세요');
   const u = auth.currentUser;
   await setDoc(doc(db, 'families', inv.fid, 'members', u.uid), Object.assign({ role: '', code, joinedAt: serverTimestamp() }, who(u)));
+  if (VIEW_CODE.test(code)) {
+    try { localStorage.setItem('viewer-' + inv.fid, '1'); } catch (e) {}
+    try { await setDoc(doc(db, 'families', inv.fid, 'members', u.uid), { viewer: true }, { merge: true }); } catch (e) { console.warn('보기 전용 표시를 저장하지 못했어요', e); }
+  }
   await enter(inv.fid);
 }
-async function makeInvite() {
-  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const code = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => A[x % A.length]).join('');
+async function makeInvite(viewer) {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', rnd = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => A[x % A.length]).join('');
+  let code = viewer ? 'V' + rnd(4) + '9' : rnd(6);
+  while (!viewer && VIEW_CODE.test(code)) code = rnd(6);
   await setDoc(doc(db, 'invites', code), { fid: M.fid, by: M.uid, exp: Timestamp.fromMillis(Date.now() + 7 * 864e5) });
   return code;
 }
@@ -472,14 +511,17 @@ onAuthStateChanged(auth, async u => {
 // ---------- 대상 정보 안의 '가족 공간' ----------
 window.FAM = {
   settingsHtml() {
-    const ms = M.members.map(m => esc((m.name || m.email || '수사관') + (m.role ? '(' + m.role + ')' : ''))).join(', ') || '나';
+    const ms = M.members.map(m => esc((m.name || m.email || '수사관') + (m.viewer ? '(보기 전용)' : m.role ? '(' + m.role + ')' : ''))).join(', ') || '나';
     return `<div class="field"><span>가족 공간</span>
       <p class="hint" style="margin:0 0 8px">함께하는 수사관: ${ms}</p>
       <div class="quick" style="flex-wrap:wrap">
         <button data-fam="invite">가족 초대 코드</button>
         <button data-fam="import">예전 기록 가져오기</button>
         <button data-fam="logout">로그아웃</button>
-      </div></div>`;
+      </div></div>
+      <div class="field"><span>🔔 아침 알림 (08:50)</span>
+      <p class="hint" style="margin:0 0 8px">${isViewer() ? '100일·생일 같은 기념일을 알려 드려요.' : '예방접종 D-3·당일, 영유아검진 기간 시작, 이유식 3일 관찰 끝, 기념일을 이 폰으로 알려 줘요.'}</p>
+      <div class="quick">${(() => { let on = ''; try { on = localStorage.getItem('soeun-push') || ''; } catch (e) {} return on ? '<span style="align-self:center;font-size:13px;color:#2E7D5B;font-weight:700">이 폰은 알림 받는 중</span><button data-fam="push-test">시험 알림</button><button data-fam="push-off">끄기</button>' : '<button data-fam="push-on">이 폰에서 알림 받기</button>'; })()}</div></div>`;
   }
 };
 const openSheet = h => app().openSheet(h);
@@ -489,20 +531,40 @@ document.addEventListener('click', async e => {
   const act = b.dataset.fam;
   if (act === 'logout') { if (confirm('이 폰에서 로그아웃할까요?')) await logout(); return; }
   if (act === 'invite') {
+    if (isViewer()) { app().toast('보기 전용으로 들어와서 초대 코드는 엄마·아빠만 만들 수 있어요'); return; }
+    openSheet(`<h3>누구를 초대할까요?</h3>
+      <div class="rolepick"><button data-fam="invite2" data-v="">함께 기록<br><small style="font-family:var(--body);font-size:13px">엄마·아빠 수사관</small></button><button data-fam="invite2" data-v="1">보기 전용<br><small style="font-family:var(--body);font-size:13px">할머니·이모 등 가족</small></button></div>
+      <p class="hint">보기 전용으로 들어온 가족은 사진·기록을 볼 수만 있고, 남기거나 고칠 수는 없어요.</p>
+      <div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
+    return;
+  }
+  if (act === 'invite2') {
     b.disabled = true;
+    const viewer = b.dataset.v === '1';
     try {
-      const code = await makeInvite(), url = location.origin + location.pathname;
-      openSheet(`<h3>가족 초대 코드</h3>
+      const code = await makeInvite(viewer), url = location.origin + location.pathname;
+      openSheet(`<h3>${viewer ? '보기 전용 초대 코드' : '가족 초대 코드'}</h3>
         <div class="famcode">${code}</div>
-        <p class="hint">7일 동안 쓸 수 있어요. 가족이 앱 주소로 들어와 구글 계정으로 출입한 뒤 이 코드를 넣으면 같은 기록을 함께 봐요.</p>
+        <p class="hint">7일 동안 쓸 수 있어요. 가족이 앱 주소로 들어와 구글 계정으로 출입한 뒤 이 코드를 넣으면 같은 기록을 ${viewer ? '볼 수 있어요 (기록은 못 남겨요)' : '함께 봐요'}.</p>
         <p class="hint" style="word-break:break-all">앱 주소: ${esc(url)}</p>
         <div class="actions"><button class="secondary" data-act="close">닫기</button><button class="primary" data-fam="share" data-code="${code}">보내기</button></div>`);
     } catch (x) { app().toast('코드를 만들지 못했어요: ' + (x.message || '')); }
     finally { b.disabled = false; }
     return;
   }
+  if (act === 'push-on' || act === 'push-off') {
+    b.disabled = true;
+    try { await H[act === 'push-on' ? 'enablePush' : 'disablePush'](); app().toast(act === 'push-on' ? '알림을 켰어요. 매일 아침 8시 50분에 챙길 일이 있으면 알려 줄게요' : '이 폰의 알림을 껐어요'); app().closeSheet(); }
+    catch (x) { console.error(x); app().toast(x.message || '알림을 켜지 못했어요'); }
+    finally { b.disabled = false; }
+    return;
+  }
+  if (act === 'push-test') {
+    try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('🐿️ 소은 탐정 시험 알림', { body: '알림이 이렇게 와요. 챙길 일이 있는 날 아침에만 와요', icon: './icons/icon-192.png', tag: 'test' }); } catch (x) { app().toast('알림을 띄우지 못했어요: ' + (x.message || '')); }
+    return;
+  }
   if (act === 'share') {
-    const url = location.origin + location.pathname, text = `성장 수사 일지 초대 코드: ${b.dataset.code}\n${url}`;
+    const url = location.origin + location.pathname, text = `${/^V[A-Z2-9]{4}9$/.test(b.dataset.code) ? '소은이 사진 구경하러 오세요! ' : ''}성장 수사 일지 초대 코드: ${b.dataset.code}\n${url}`;
     try { if (navigator.share) await navigator.share({ title: '성장 수사 일지 초대', text }); else { await navigator.clipboard.writeText(text); app().toast('복사했어요'); } } catch (x) {}
     return;
   }

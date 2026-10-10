@@ -1,0 +1,31 @@
+# 아침 알림: 예방접종·영유아검진·이유식 관찰·기념일을 폰으로 보내요
+name: 아침 알림 보내기
+
+on:
+  schedule:
+    - cron: '50 23 * * *'   # 매일 08:50 (KST)
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '1이면 보내지 않고 무엇을 보낼지만 보여 줘요'
+        default: '0'
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: firebase-admin 설치
+        run: npm install --no-save --no-package-lock firebase-admin@12
+      - name: 알림 보내기
+        run: node .github/scripts/notify.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY: ${{ inputs.dry || '0' }}

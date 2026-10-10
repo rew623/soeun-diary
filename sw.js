@@ -1,7 +1,7 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.10.10-11';
+const VERSION = '2026.10.10-12';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
 
 self.addEventListener('install', e => {
@@ -12,6 +12,24 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); });
+
+// 알림 (Actions notify.yml이 Firebase Cloud Messaging으로 보내요: data { title, body, tag })
+self.addEventListener('push', e => {
+  let j = {}; try { j = e.data ? e.data.json() : {}; } catch (x) { j = { data: { title: '성장 수사 일지', body: e.data ? e.data.text() : '' } }; }
+  const d = j.data || j.notification || j;
+  e.waitUntil(self.registration.showNotification(d.title || '성장 수사 일지', {
+    body: d.body || '', tag: d.tag || 'soeun', renotify: true,
+    icon: './icons/icon-192.png', badge: './icons/icon-192.png', data: { url: d.url || self.registration.scope }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || self.registration.scope;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => {
+    const w = ws.find(c => c.url.startsWith(self.registration.scope));
+    return w ? w.focus() : self.clients.openWindow(url);
+  }));
+});
 
 async function trim(name, max) {
   const c = await caches.open(name), ks = await c.keys();
