@@ -1,4 +1,4 @@
-// 게임 요소 — 수사관 계급(경험치), 훈장 수첩, 연속 수사, 오늘의 수사 지령, 도토리·모자 가게, 놀이터(생후 며칠 퀴즈, 사진 짝맞추기)
+// 게임 요소 — 도토리 놀이터(놀이 | 꾸미기 | 계급·훈장), 수사관 계급(경험치), 훈장, 연속 수사, 오늘의 수사 지령, 도토리·모자 가게, 놀이터(생후 며칠 퀴즈, 사진 짝맞추기)
 // 계급·훈장·연속 수사는 이미 남긴 기록(by·날짜)으로 계산해서 두 폰에 같게 보여요 (저장 안 함)
 // 도토리·모자·게임 최고 기록은 이 폰에만 저장 (localStorage soeun-game)
 (function () {
@@ -62,9 +62,9 @@ const POOL = [
   { id: 'quiz', t: '놀이터: 생후 며칠 퀴즈 한 판', ok: () => played('quiz'), when: () => photoPool().length >= 4, view: 'play' },
   { id: 'mem', t: '놀이터: 사진 짝맞추기 한 판', ok: () => played('mem'), when: () => true, view: 'play' },
   { id: 'temp', t: '체온 재서 남기기', ok: () => S.logs.some(l => l.kind === 'temp' && String(l.at).startsWith(today())), when: () => typeof activeEp === 'function' && !!activeEp(), tab: 'sick' },
-  { id: 'cookie', t: '🥠 오늘의 운세 쿠키 깨기 (훈장 수첩)', ok: () => played('cookie'), when: () => true, view: 'medals' },
+  { id: 'cookie', t: '🥠 놀이터에서 오늘의 운세 쿠키 깨기', ok: () => played('cookie'), when: () => true, view: 'play' },
   { id: 'hunt', t: '🔍 숨은 도토리 찾기', ok: () => played('hunt'), when: () => true, tab: 'hunt' },
-  { id: 'roulette', t: '🎡 오늘 누가? 룰렛 돌리기', ok: () => played('roulette'), when: () => true, view: 'medals' },
+  { id: 'roulette', t: '🎡 놀이터에서 오늘 누가? 룰렛 돌리기', ok: () => played('roulette'), when: () => true, view: 'play' },
   { id: 'board', t: '마음에 드는 사진 보드에 붙이기', ok: () => played('board'), when: () => photoPool().length >= 3, tab: 'album' }
 ];
 function missions() {
@@ -147,39 +147,51 @@ function card() {
   if (!S.profile || !S.profile.birth) return '';
   const ms = missions(), n = ms.filter(m => m.on).length, all = ms.length && n === ms.length, s = st(), sk = streak();
   return `<section class="gcard${all ? ' all' : ''}">
-    <div class="gtop"><span class="gchip">🔥 ${sk ? sk + '일 연속 수사' : '오늘 첫 수사를 시작해요'}</span><span class="gchip">🌰 ${s.acorn}</span><button class="ghost" data-game="medals">훈장 수첩 ›</button></div>
+    <div class="gtop"><button class="gchip" data-game="medals" data-v="rank">🔥 ${sk ? sk + '일 연속 수사' : '오늘 첫 수사를 시작해요'}</button><button class="gchip" data-game="medals" data-v="deco">🌰 ${s.acorn} · 꾸미기</button><button class="ghost" data-game="medals" data-v="play">🎮 놀이터 ›</button></div>
     <h2 class="sh"><span>오늘의 수사 지령</span><span>${n}/${ms.length} 완료</span></h2>
     <div class="gms">${ms.map(m => `<button class="gm${m.on ? ' on' : ''}" data-game="go" data-id="${m.id}"><i>${m.on ? '✓' : ''}</i><span>${esc(m.t)}</span>${m.on ? '' : '<em>›</em>'}</button>`).join('')}</div>
-    ${all ? '<span class="stamp gdone">지령 완수</span>' : '<p class="foot" style="margin:6px 0 0">셋 다 하면 도토리 🌰 3개! 도토리로 소은 탐정 모자를 바꿀 수 있어요.</p>'}
+    ${all ? '<span class="stamp gdone">지령 완수</span>' : '<p class="foot" style="margin:6px 0 0">셋 다 하면 도토리 🌰 3개! 모은 도토리로 첫 화면 방을 꾸며요.</p>'}
   </section>`;
 }
 
-// ---------- 훈장 수첩 화면 ----------
+// ---------- 도토리 놀이터 화면 (S.view='medals') : 놀이 | 꾸미기 | 계급·훈장 ----------
 const HATS = [['det', '탐정 모자', 0], ['flower', '꽃 화관', 5], ['party', '생일 고깔', 8], ['chef', '요리사 모자', 10], ['santa', '산타 모자', 12], ['crown', '왕관', 15]];
+const HUB = [['play', '🎮 놀이'], ['deco', '🛋️ 꾸미기'], ['rank', '🏅 계급·훈장']];
 function medalsView() {
-  const s = st(), on = medalsOn(), sk = streak(), wk = addDays(today(), -6);
-  const card = role => { const r = rank(role), k = role === '엄마' ? 'mom' : 'dad', w = xp(role, wk);
-    return `<div class="grc"><span class="grf">${CHARS.svg(k, '', { face: true, size: 56 })}</span><span class="grt"><small>${role} 수사관 · Lv.${r.lv}</small><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점` : '최고 계급!'} · 이번 주 +${w}점</small></span></div>`; };
-  const wm = xp('엄마', wk), wd = xp('아빠', wk);
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>훈장 수첩</h1><p>기록을 남길수록 수사관 계급이 올라가요. 기록 하나하나가 경험치예요.</p></header>
-    <section><h2 class="sh"><span>수사관 계급</span><span>${wm || wd ? `이번 주 ${wm === wd ? '동점!' : (wm > wd ? '엄마' : '아빠') + ' 수사관 우세'}` : ''}</span></h2>${card('엄마')}${card('아빠')}
-      <p class="foot" style="margin-top:8px">경험치: 성장 기록 10 · 사진 +3 · 최초 목격 12 · 예방접종 15 · 검진 20 · 식재료 10 · 급식 5 · 체온·투약 3</p></section>
-    <section id="ghomeshop"><h2 class="sh"><span>🏠 성장 수사 방 꾸미기</span><span>${s.room.length}/${ROOM.length}</span></h2>
-      <p class="hint" style="margin:0 0 8px">여기서 산 가구와 벽지는 성장 수사(첫 화면)의 소은 탐정 방에 놓여요. 창밖은 시간에 따라 낮·저녁·밤으로 바뀌어요.</p>${roomSvg()}
-      <div class="gwall">${WALLS.map(([id, nm, c, col]) => { const own = s.walls.includes(id), cur = s.wall === id; return `<button class="${cur ? 'cur' : ''}" data-game="wall" data-id="${id}"><i style="background:${col}"></i>${nm}<small>${cur ? '쓰는 중' : own ? '바르기' : `🌰 ${c}`}</small></button>`; }).join('')}</div>
-      ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:6px 0 0">오늘은 ${e[1]}! 소은 탐정이 특별 모자를 썼어요.</p>` : ''; })()}
-      <div class="gshop">${ROOM.map(([id, nm, c]) => { const own = s.room.includes(id); return `<button class="${own ? 'own' : ''}" data-game="buy" data-id="${id}" ${own ? 'disabled' : ''}>${nm}<small>${own ? '놓았어요' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
-    <section><h2 class="sh"><span>도토리 주머니</span><span>🌰 ${s.acorn}개 · 🔥 ${sk}일 연속</span></h2>
-      <p class="hint" style="margin:0 0 10px">도토리는 오늘의 지령 완수(+3)와 놀이터에서 모여요. 모자를 사서 소은 탐정에게 씌워 보세요. (이 폰에만 저장)</p>
-      <div class="ghats">${HATS.map(([id, nm, c]) => { const own = s.hats.includes(id), cur = s.hat === id;
-        return `<button class="ghat${cur ? ' cur' : ''}" data-game="hat" data-id="${id}">${CHARS.svg('baby', '', { face: true, size: 58, hat: id })}<b>${nm}</b><small>${cur ? '쓰는 중' : own ? '쓰기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
-    <section><h2 class="sh"><span>놀이터</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
+  const s = st(), on = medalsOn(), sk = streak(), wk = addDays(today(), -6), tab = G.hub || 'play';
+  const head = `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>도토리 놀이터</h1><p>놀이로 도토리를 모으고, 모은 도토리로 첫 화면 방을 꾸며요. 수사관 계급과 훈장도 여기서 봐요.</p></header>
+    <div class="ghubtop"><span class="gchip big">🌰 도토리 ${s.acorn}개</span><span class="gchip">🔥 ${sk}일 연속</span><span class="gchip">🏅 훈장 ${on.length}/${MEDALS.length}</span></div>
+    <div class="seg ghub">${HUB.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-game="hub" data-v="${k}">${l}</button>`).join('')}</div>`;
+  let body = '';
+  if (tab === 'play') {
+    body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
       <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 생후 며칠인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
       <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>소은이 사진 카드 짝 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button></div></section>
-    ${window.FUN ? FUN.sections() : ''}
-    <section><h2 class="sh"><span>훈장</span><span>${on.length}/${MEDALS.length}</span></h2>
-      <div class="gmed">${MEDALS.map(([id, ic, nm, how]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small></div>`).join('')}</div></section>
-    <button class="secondary" data-game="close" style="width:100%;margin-top:14px">돌아가기</button>`;
+      ${window.FUN ? FUN.playSection() : ''}
+      <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
+  } else if (tab === 'deco') {
+    body = `<section id="ghomeshop"><h2 class="sh"><span>🏠 첫 화면 방 꾸미기</span><span>가구 ${s.room.length}/${ROOM.length}</span></h2>
+      <p class="hint" style="margin:0 0 8px">여기서 산 가구와 벽지는 성장 수사(첫 화면)의 소은 탐정 방에 놓여요. 창밖은 시간에 따라 낮·저녁·밤으로 바뀌어요.</p>${roomSvg()}
+      <h3 class="ghh">벽지</h3>
+      <div class="gwall">${WALLS.map(([id, nm, c, col]) => { const own = s.walls.includes(id), cur = s.wall === id; return `<button class="${cur ? 'cur' : ''}" data-game="wall" data-id="${id}"><i style="background:${col}"></i>${nm}<small>${cur ? '쓰는 중' : own ? '바르기' : `🌰 ${c}`}</small></button>`; }).join('')}</div>
+      <h3 class="ghh">가구</h3>
+      <div class="gshop">${ROOM.map(([id, nm, c]) => { const own = s.room.includes(id); return `<button class="${own ? 'own' : ''}" data-game="buy" data-id="${id}" ${own ? 'disabled' : ''}>${nm}<small>${own ? '놓았어요' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
+    <section><h2 class="sh"><span>🎩 소은 탐정 모자</span><span>앱 곳곳의 다람쥐가 써요</span></h2>
+      ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:0 0 8px">오늘은 ${e[1]}! 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.</p>` : ''; })()}
+      <div class="ghats">${HATS.map(([id, nm, c]) => { const own = s.hats.includes(id), cur = s.hat === id;
+        return `<button class="ghat${cur ? ' cur' : ''}" data-game="hat" data-id="${id}">${CHARS.svg('baby', '', { face: true, size: 58, hat: id })}<b>${nm}</b><small>${cur ? '쓰는 중' : own ? '쓰기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
+    <p class="foot">도토리·가구·모자는 이 폰에만 저장돼요.</p>`;
+  } else {
+    const card = role => { const r = rank(role), k = role === '엄마' ? 'mom' : 'dad', w = xp(role, wk);
+      return `<div class="grc"><span class="grf">${CHARS.svg(k, '', { face: true, size: 56 })}</span><span class="grt"><small>${role} 수사관 · Lv.${r.lv}</small><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점` : '최고 계급!'} · 이번 주 +${w}점</small></span></div>`; };
+    const wm = xp('엄마', wk), wd = xp('아빠', wk);
+    body = `<section><h2 class="sh"><span>수사관 계급</span><span>${wm || wd ? `이번 주 ${wm === wd ? '동점!' : (wm > wd ? '엄마' : '아빠') + ' 수사관 우세'}` : ''}</span></h2>${card('엄마')}${card('아빠')}
+        <p class="foot" style="margin-top:8px">기록을 남길수록 계급이 올라가요. 경험치: 성장 기록 10 · 사진 +3 · 최초 목격 12 · 예방접종 15 · 검진 20 · 식재료 10 · 급식 5 · 체온·투약 3</p></section>
+      ${window.FUN ? FUN.attend() : ''}
+      <section><h2 class="sh"><span>훈장</span><span>${on.length}/${MEDALS.length}</span></h2>
+        <div class="gmed">${MEDALS.map(([id, ic, nm, how]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small></div>`).join('')}</div></section>`;
+  }
+  return head + body + '<button class="secondary" data-game="close" style="width:100%;margin-top:14px">첫 화면으로</button>';
 }
 
 // ---------- 명절·기념일 모자 (기본 탐정 모자일 때만 저절로) ----------
@@ -271,9 +283,9 @@ function openGuess() {
 }
 
 // ---------- 놀이터 ----------
-const G = { game: '', q: null, m: null };
+const G = { game: '', q: null, m: null, hub: 'play' };
 function playView() {
-  const back = '<button class="secondary" data-game="medals" style="width:100%;margin-top:14px">훈장 수첩으로</button>';
+  const back = '<button class="secondary" data-game="medals" style="width:100%;margin-top:14px">놀이터로</button>';
   if (G.game === 'quiz') return quizView() + back;
   if (G.game === 'mem') return memView() + back;
   return medalsView();
@@ -345,12 +357,13 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-game]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.game) {
-    case 'medals': S.view = 'medals'; G.game = ''; render(); window.scrollTo(0, 0); break;
+    case 'medals': S.view = 'medals'; G.game = ''; if (v) G.hub = v; render(); window.scrollTo(0, 0); break;
+    case 'hub': G.hub = v; render(); break;
     case 'close': S.view = ''; G.game = ''; render(); window.scrollTo(0, 0); break;
     case 'go': {
       const m = POOL.find(x => x.id === b.dataset.id); if (!m) return;
       if (m.act === 'addrec') { const f = document.querySelector('.fab'); if (f) f.click(); }
-      else if (m.view === 'play') { S.view = 'medals'; render(); setTimeout(() => { const el = document.querySelector('.gplay'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 60); }
+      else if (m.view === 'play') { S.view = 'medals'; G.hub = 'play'; render(); window.scrollTo(0, 0); }
       else if (m.view) { S.view = m.view; render(); window.scrollTo(0, 0); }
       else if (m.tab === 'hunt') { S.tab = FUN.hunt(); S.view = ''; render(); window.scrollTo(0, 0); toast('이 탭 어딘가에 도토리가 숨어 있어요 🔍'); }
       else if (m.tab) { S.tab = m.tab; S.view = ''; if (m.tab === 'album') S.albumView = 'album'; render(); window.scrollTo(0, 0); }
@@ -377,7 +390,7 @@ document.addEventListener('click', async e => {
       if (!s.walls.includes(w[0])) { if (s.acorn < w[2]) { toast(`도토리가 ${w[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= w[2]; s.walls.push(w[0]); toast(`${w[1]} 벽지를 발랐어요!`); }
       s.wall = w[0]; save(s); render(); break;
     }
-    case 'shop': S.view = 'medals'; render(); setTimeout(() => { const el = document.getElementById('ghomeshop'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); break;
+    case 'shop': S.view = 'medals'; G.hub = 'deco'; render(); window.scrollTo(0, 0); break;
     case 'guess-save': {
       const v = parseFloat(String(document.getElementById('gs-v').value).replace(',', '.')), W = wrecs(), last = W[W.length - 1];
       if (!(v > 1 && v < 30)) { document.getElementById('gs-err').textContent = '몸무게를 kg으로 넣어 주세요 (예: 6.3)'; return; }
@@ -395,6 +408,10 @@ css.textContent = `
 .grank i{flex:1;height:5px;border-radius:99px;background:var(--card2);overflow:hidden;min-width:24px}
 .grank u{display:block;height:100%;background:var(--red);border-radius:99px}
 .gcard{position:relative}
+.ghubtop{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}.gchip.big{font-weight:700;color:var(--navy);border-color:#E8C770;background:#FFF8E1}
+.ghub{margin-top:10px}.ghub button{font-size:13.5px}
+.ghh{font-size:13px;color:var(--navy);margin:12px 0 0}
+button.gchip{min-height:30px}
 .gtop{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .gchip{font-size:12.5px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:99px;padding:3px 10px;white-space:nowrap}
 .gtop .ghost{margin-left:auto;min-height:32px;padding:3px 12px;font-size:12.5px}

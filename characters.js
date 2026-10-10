@@ -113,7 +113,7 @@ function guide(tab) {
   const L = lines(tab); if (!L.length) return '';
   if (seen[tab] == null) seen[tab] = 0;
   const i = seen[tab] % L.length, [w, prop, text] = L[i], [who, name] = WHO[w];
-  // 성장 수사(첫 화면)는 소은 탐정의 방 (훈장 수첩에서 도토리로 꾸민 가구·벽지가 보여요)
+  // 성장 수사(첫 화면)는 소은 탐정의 방 (도토리 놀이터 > 꾸미기에서 도토리로 산 가구·벽지가 보여요)
   if (tab === 'grow' && window.GAME && GAME.roomSvg) return `<div class="guide ghome g-${who}" aria-live="polite"><button class="gchar groomb" data-guide="${tab}" aria-label="다음 말 듣기">${GAME.roomSvg()}</button><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button>
     <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 방을 누르면 다음 말` : ''}</small></div></div>`;
   return `<div class="guide g-${who}" aria-live="polite"><button class="gchar" data-guide="${tab}" aria-label="다음 말 듣기">${svg(who, prop, { size: 84 })}</button>

@@ -1,4 +1,4 @@
-// 게임 요소 2 — 오늘 누가? 룰렛(집안일 배정), 오늘의 소은 운세(포춘 쿠키), 숨은 도토리 찾기, 스티커 뽑기·스티커북, 소은 탐정 카드, 수사 출석부, 주간 MVP
+// 게임 요소 2 (도토리 놀이터의 놀이·계급 칸에 붙어요) — 오늘 누가? 룰렛(집안일 배정), 오늘의 소은 운세(포춘 쿠키), 숨은 도토리 찾기, 스티커 뽑기·스티커북, 소은 탐정 카드, 수사 출석부, 주간 MVP
 // 도토리·스티커는 game.js와 같은 저장소(localStorage soeun-game, 이 폰에만). 화면은 S.view='fun' + FUN 모드
 (function () {
 const st = () => GAME.store.get(), save = s => GAME.store.set(s);
@@ -27,7 +27,7 @@ function rouletteView() {
       ${wheel(sp ? sp.rot : 0)}
       <button class="primary" data-fun="spin" style="width:100%" ${sp && sp.busy ? 'disabled' : ''}>${F.task ? `"${esc(F.task)}" 돌리기` : '랜덤 과제로 돌리기'}</button>
       <div id="rres">${sp && !sp.busy ? resultHtml(sp) : ''}</div></section>
-    <button class="secondary" data-game="medals" style="width:100%;margin-top:14px">훈장 수첩으로</button>`;
+    <button class="secondary" data-game="medals" style="width:100%;margin-top:14px">놀이터로</button>`;
 }
 const resultHtml = sp => `<div class="rres"><small>${esc(sp.task)}</small><b>${sp.who === '둘이 같이' ? '둘이 같이 해요 💕' : sp.who === '가위바위보!' ? '가위바위보로 정해요 ✊✌️🖐' : `${sp.who} 수사관 당첨!`}</b><span class="stamp">${sp.who === '둘이 같이' ? '협동 수사' : sp.who === '가위바위보!' ? '재심' : '배정 완료'}</span></div>`;
 function spin() {
@@ -95,7 +95,7 @@ function stickerView() {
       <button class="primary" data-fun="draw" style="width:100%">🌰 3개로 뽑기 (지금 ${s.acorn}개)</button></section>
     <section><h2 class="sh"><span>스티커북</span><span>${own.length}/${STICK.length}</span></h2>
       <div class="sbook">${STICK.map(([id, e, nm, r]) => own.includes(id) ? `<span class="sb r${r}"><i>${e}</i><small>${nm}</small></span>` : `<span class="sb off"><i>?</i><small>${RAR[r]}</small></span>`).join('')}</div></section>
-    <button class="secondary" data-game="medals" style="width:100%;margin-top:14px">훈장 수첩으로</button>`;
+    <button class="secondary" data-game="medals" style="width:100%;margin-top:14px">놀이터로</button>`;
 }
 
 // ---------- 소은 탐정 카드 (지금 기록으로 만드는 트레이딩 카드) ----------
@@ -118,7 +118,7 @@ function cardView() {
       <div class="tcbk">${CHARS.svg('baby', 'lens', { size: 150 })}<b>성장 수사 일지</b><small>사건 파일 No.${fileNo()} · ${today().replace(/-/g, '.')} 발급</small></div>
     </div></div>
     <p class="foot" style="text-align:center">일반 → 레어(1개월) → 에픽(100일·6개월) → 전설(첫 돌). 화면을 캡처해서 가족에게 자랑해 보세요.</p>
-    <button class="secondary" data-game="medals" style="width:100%;margin-top:10px">훈장 수첩으로</button>`;
+    <button class="secondary" data-game="medals" style="width:100%;margin-top:10px">놀이터로</button>`;
 }
 
 // ---------- 수사 출석부 (기록한 날 도장) ----------
@@ -140,17 +140,16 @@ function attendHtml() {
     <p class="foot" style="margin:6px 0 0">이달 ${cnt}일 출석 · 성장·급식·체온·접종·진료 기록을 남긴 날에 도장이 찍혀요.</p></section>`;
 }
 
-// ---------- 훈장 수첩에 붙는 칸 ----------
-function sections() {
+// ---------- 도토리 놀이터에 붙는 칸: 놀이 칸(함께 놀기), 계급·훈장 칸(출석부) ----------
+function playSection() {
   const s = st(), hunt = GAME.played('hunt');
-  return `<section><h2 class="sh"><span>놀이터 2</span><span>${hunt ? '오늘 숨은 도토리 찾음 ✓' : `🔍 오늘 도토리는 <b style="color:var(--red)">${TAB_N[huntTab()]}</b> 어딘가에`}</span></h2>
+  return `<section><h2 class="sh"><span>함께 놀기</span><span>${hunt ? '오늘 숨은 도토리 찾음 ✓' : `🔍 오늘 도토리는 <b style="color:var(--red)">${TAB_N[huntTab()]}</b> 어딘가에`}</span></h2>
       <div class="gplay">
         <button data-fun="open" data-v="roulette"><span>🎡</span><b>오늘 누가?</b><small>집안일 당번 룰렛</small></button>
         <button data-fun="cookie"><span>🥠</span><b>오늘의 운세</b><small>${GAME.played('cookie') ? '오늘 운세 다시 보기' : '포춘 쿠키 깨기'}</small></button>
         <button data-fun="open" data-v="stickers"><span>🥚</span><b>스티커 뽑기</b><small>스티커북 ${(s.stickers || []).length}/${STICK.length}</small></button>
-        <button data-fun="open" data-v="card"><span>🃏</span><b>소은 탐정 카드</b><small>지금 기록으로 만든 카드</small></button>
-      </div></section>
-    ${attendHtml()}`;
+        <button data-fun="open" data-v="card"><span>🪪</span><b>소은 탐정 카드</b><small>지금 기록으로 만든 카드</small></button>
+      </div></section>`;
 }
 function render_() {
   if (F.mode === 'roulette') return rouletteView();
@@ -262,5 +261,5 @@ css.textContent = `
 @media (prefers-reduced-motion:reduce){.hidacorn,.tcard.leg .tcf{animation:none}}`;
 document.head.appendChild(css);
 
-window.FUN = { render: render_, sections, afterRender, check, hunt: huntTab };
+window.FUN = { render: render_, playSection, attend: attendHtml, afterRender, check, hunt: huntTab };
 })();
