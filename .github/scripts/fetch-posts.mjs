@@ -82,14 +82,21 @@ for (const r of REGIONS) {
 }
 // 동네 소식: 우리 시·군의 아이 대상 행사·체험·공연 소식 (블로그·카페·뉴스 최신순, 3주 안)
 const FRESH = new Date(Date.now() + 9 * 3600e3 - 21 * 864e5).toISOString().slice(0, 10);
-const KIDW = /아이|어린이|아기|유아|키즈|가족|초등|영유아|자녀|엄마|아빠/, EVW = /행사|축제|체험|공연|프로그램|모집|열려|열린|개최|무료|이벤트|플리마켓|마켓|페스티벌|전시|놀이|캠프|교실|강좌|인형극|버블|마술/;
-const EXTRA = { wonju: ['원주 기업도시 아이 행사', '원주 혁신도시 아이 행사', '원주 어린이 공연'], chuncheon: ['춘천 어린이 공연'], gangneung: ['강릉 어린이 공연'] };
+const KIDW = /아이|어린이|아기|유아|키즈|가족|초등|영유아|자녀|육아|그림책|동화/, EVW = /행사|축제|체험|공연|프로그램|모집|개최|이벤트|플리마켓|페스티벌|전시|놀이터|캠프|교실|인형극|버블쇼|마술|뮤지컬|박람회|한마당|운동회|마당/;
+// 맛집·가게 홍보·여행 상품·부동산 같은 건 빼기
+const NOTEV = /맛집|갈비|고기집|식당|메뉴|카페 추천|분양|아파트|부동산|매매|화환|꽃배달|패키지|여행사|타로|숙소|펜션|호텔|리조트 할인|쿠폰|구인|알바|채용|중고|판매합니다/;
+// 시·군 이름이 다른 낱말 속에 든 경우 (강릉원주대 → 원주 아님)
+const NOTIN = { wonju: /강릉원주/, goseong: /경남 고성|고성군청 경남/ };
+const EXTRA = { wonju: ['원주 기업도시 아이 행사', '원주 혁신도시 아이 행사', '원주 어린이 공연', '원주 가족 축제'], chuncheon: ['춘천 어린이 공연'], gangneung: ['강릉 어린이 공연'] };
+const PLACEW = { wonju: /원주|기업도시|혁신도시|문막|지정면/ };
 out.news = {};
 for (const r of REGIONS) {
-  const base = r.name.replace(/[시군]$/, ''), ok = x => (x.t + ' ' + x.d).includes(base) && KIDW.test(x.t + ' ' + x.d) && EVW.test(x.t + ' ' + x.d) && (!x.dt || x.dt >= FRESH);
+  const base = r.name.replace(/[시군]$/, ''), place = PLACEW[r.code] || new RegExp(base);
+  // 제목에 시·군과 행사 낱말이 있어야 하고, 아이 관련 말은 제목이나 요약에
+  const ok = x => { const all = x.t + ' ' + x.d; return place.test(x.t) && !(NOTIN[r.code] && NOTIN[r.code].test(x.t)) && EVW.test(x.t) && KIDW.test(all) && !NOTEV.test(all) && (!x.dt || x.dt >= FRESH); };
   const qs = [`${base} 아이 체험 행사`, `${base} 어린이 행사`, ...(EXTRA[r.code] || [])], got = [], seen = new Set();
-  for (const q of qs) for (const kind of ['news', 'blog', 'cafearticle']) {
-    for (const x of await search(kind, q, 'date', 10, ok)) if (!seen.has(x.t)) { seen.add(x.t); got.push(x); }
+  for (const q of qs) for (const kind of ['news', 'blog', 'cafearticle']) for (const sort of ['date', 'sim']) {
+    for (const x of await search(kind, q, sort, 10, ok)) if (!seen.has(x.t) && !seen.has(x.u)) { seen.add(x.t); seen.add(x.u); got.push(x); }
     await sleep(120);
   }
   out.news[r.code] = got.sort((a, b) => (b.dt || '0') < (a.dt || '0') ? -1 : (b.dt || '0') > (a.dt || '0') ? 1 : 0).slice(0, 15);
