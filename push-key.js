@@ -1,3 +1,3 @@
 // 알림 열쇠: Firebase 콘솔 → 프로젝트 설정 → 클라우드 메시징 → 웹 푸시 인증서의 "키 쌍"(공개키)
 // 공개용이라 여기 넣어도 괜찮아요. 비어 있으면 알림 받기 단추가 안내만 보여 줘요. 바꾸면 sw.js VERSION도 올릴 것
-window.PUSH_VAPID = '';
+window.PUSH_VAPID = 'BNseIfA8eAkPlspS7v1qqXQ91rOJjrG6PCbDNG0S0kZgyId_2UFYf3eWKYVYbGwol_BlrQtHNBPJVYzixjmt4iQ';

@@ -7,7 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       dry:
-        description: '1이면 보내지 않고 무엇을 보낼지만 보여 줘요'
+        description: '1이면 보내지 않고 어떤 알림이 몇 개 갈지만 보여 줘요'
+        default: '0'
+      test:
+        description: '1이면 기록과 상관없이 알림 받는 폰마다 시험 알림 하나를 보내요'
         default: '0'
 
 concurrency:
@@ -30,3 +33,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           DRY: ${{ inputs.dry || '0' }}
+          TEST: ${{ inputs.test || '0' }}

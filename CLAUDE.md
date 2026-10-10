@@ -12,7 +12,7 @@
 
 ## 파일 지도
 - index.html: 화면 대부분 (탭 렌더링, 편집창 sheet, 그래프, 클릭 처리 switch, 상태 S, 미리보기용 MOCK/DB)
-- app.js: Firebase 연결 (로그인, 가족 공간, onSnapshot 구독, 저장 API, 사진 업로드, 새 버전 안내)
+- app.js: Firebase 연결 (로그인, 가족 공간, onSnapshot 구독, 저장 API, 사진 업로드, 새 버전 안내, 알림 켜기(대상 정보 → 🔔 아침 알림)·알림 켠 폰은 하루 한 번 토큰 다시 받기 refreshPush)
 - config.js: Firebase 설정 (수정 금지)
 - sw.js: 서비스 워커 (앱 파일 캐시 우선, 사진 캐시, data/*.json 네트워크 우선, 공유로 받은 사진 POST ./share-in → share-in 캐시 → ./?shared=1), VERSION
 - manifest.webmanifest: 설치용 정보 + share_target(갤러리 앱 '공유 → 수사 일지', 안드로이드 크롬 설치 앱만, 아이폰은 안 됨). 앱이 열리면 ALBUM.shared()가 꺼내 '현장 사진첩 / 가족 사진' 골라 올림
@@ -44,14 +44,14 @@
 - capsule.js: 봉인된 증거물(S.view='capsule', 성장 수사 탭 CAPSULE.banner): 편지(5000자)+사진을 첫 돌·두 돌·초등학교 입학(만 6세 다음 해 3월 2일)·열 살·스무 살 생일·다음 100일·직접 날짜로 봉인, 그날까지 쓴 사람도 못 열고 못 고침(지우기만, 앱에서 지키는 봉인), 처음 열 때 봉인 해제 장면(localStorage soeun-capsule-seen), 사진은 열린 뒤에만 불러옴. capsule 컬렉션, 열리는 날 아침 알림
 - paper.js: 월간 소은일보(S.view='paper', 매달 1~5일 성장 수사 탭 PAPER.banner): 그달 기록으로 canvas 신문(1080×1600) — 제호(이름+일보, 제1호=태어난 달), 큰 제목(지난 기념일→최초 목격→kg 돌파→접종→사진 수), 대표 사진·사진 줄·이달의 숫자, 두 단 기사(성장·다가오는 날·사건사고·보건·수배·닮은꼴·탐험·급식·발달·봉인·독자 투고·이달의 날씨·광고, 넘치면 뺌) → 카톡·저장·인쇄(@media print). 매달 1일 아침 알림
 - explore.js: 소은이 탐험 지도(S.view='explore', 동네 탐문 탭 EXPLORE.townCard): 앨범 사진의 geo(올릴 때 EXIF GPS, album.js photoMeta)로 장소(200m 안은 같은 곳, 다녀간 날 가장 많은 곳=본부), 카카오맵 사진 핀(HOSP.sdk, 지도 요소는 다시 그려도 유지), 처음 가 본 곳, 탐험 일지(그날 사진을 찍은 시각 tm 순서로 이은 길·직선 거리·첫~마지막 사진 시각 — GPS로 계속 따라간 길은 아님), 강원 18개 시·군 도장판·강원 밖, 탐험 배지, 위치 없는 사진 직접 꽂기(지금 위치/지도에서, setGeo). 동네 이름은 카카오 coord2RegionCode → localStorage soeun-geo-rg
-- push-key.js: 알림 VAPID 공개키(Firebase 콘솔 → 클라우드 메시징 → 웹 푸시 인증서). 비어 있으면 알림 끔. 바꾸면 VERSION 올릴 것
+- push-key.js: 알림 VAPID 공개키(Firebase 콘솔 → 클라우드 메시징 → 웹 푸시 인증서, 2026.10.11 넣음). 비어 있으면 알림 끔. 바꾸면 VERSION 올릴 것
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
 - data/town.json(날씨·미세먼지, 3시간마다, 날씨 시간별 [시각, 기온, 하늘, 강수형태, 강수확률, 풍속, 습도, 강수량mm, 적설cm]) · events.json(강원 행사) · disease.json(감염병 주간) · posts.json(육아 인기글)·news.json(시·군 아이 행사 소식)·posts-meta.json(글 바뀐 날) 하루 한 번 · wx-YYYY-MM.json(날씨 일기: 시·군별 하루 요약 [최저, 최고, 하늘, 비·눈 시간, 강수mm, 적설cm, 시간 수], 그날 첫 실행 때 한 번, 소은일보 '이달의 날씨'): .github/workflows/town.yml이 만듦 (직접 고치지 않음)
-- .github/workflows/storage-cors.yml + scripts/storage-cors.mjs: 사진 저장소(Storage 버킷)에 앱 주소(https://rew623.github.io)의 사진 읽기(CORS GET) 허용 — 사진관·영상·신문이 사진을 canvas로 그리려면 꼭 필요. 스크립트를 바꾸면 저절로 한 번 실행, 시크릿 FIREBASE_SERVICE_ACCOUNT. 시크릿이 없으면 Google Cloud Shell에서: echo '[{"origin":["https://rew623.github.io"],"method":["GET","HEAD"],"maxAgeSeconds":3600}]' > cors.json && gcloud storage buckets update gs://soeun-diary.firebasestorage.app --cors-file=cors.json
+- .github/workflows/storage-cors.yml + scripts/storage-cors.mjs: 사진 저장소(Storage 버킷)에 앱 주소(https://rew623.github.io)의 사진 읽기(CORS GET) 허용 — 사진관·영상·신문이 사진을 canvas로 그리려면 꼭 필요. 스크립트를 바꾸면 저절로 한 번 실행, 시크릿 FIREBASE_SERVICE_ACCOUNT (2026.10.11 설정 완료 — 확인: storage.googleapis.com/버킷/아무경로에 Origin 붙여 OPTIONS 보내면 access-control-allow-origin이 앱 주소로 옴). 시크릿이 없으면 Google Cloud Shell에서: echo '[{"origin":["https://rew623.github.io"],"method":["GET","HEAD"],"maxAgeSeconds":3600}]' > cors.json && gcloud storage buckets update gs://soeun-diary.firebasestorage.app --cors-file=cors.json
 - .github/workflows/hospitals.yml: 병원 정보 받기 (매주 월 03:00 KST + 수동), 시크릿 DATA_GO_KR_KEY
-- .github/workflows/notify.yml: 아침 알림 (매일 08:50 KST, notify.mjs + firebase-admin), 시크릿 FIREBASE_SERVICE_ACCOUNT(없으면 건너뜀). 예방접종 D-3·1·당일, 영유아검진 기간 시작·마감 7일 전, 이유식 3일째, 100·200일·생일·매달 그날. 보기 전용 가족에겐 기념일만
+- .github/workflows/notify.yml: 아침 알림 (매일 08:50 KST, notify.mjs + firebase-admin), 시크릿 FIREBASE_SERVICE_ACCOUNT(없으면 건너뜀). 예방접종 D-3·1·당일, 영유아검진 기간 시작·마감 7일 전, 이유식 3일째, 100·200일·생일·매달 그날. 보기 전용 가족에겐 기념일만. 수동 실행 test=1이면 알림 받는 폰마다 시험 알림 하나, dry=1이면 연습(안 보냄). 저장소가 공개라 로그엔 알림 종류·개수만(이름·접종 내용 X)
 - .github/workflows/town.yml: 동네 정보 받기 (3시간마다 fetch-town.mjs, 하루 한 번 KST 05시대 fetch-daily.mjs, 수동 실행 what=town/daily/all)
 - .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통(XML), api.mjs 공통(JSON), 시·군 목록 REGIONS, build-regions.mjs)
   - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보·중기예보(육상 강원영서/영동, 기온 시·군 지점 MID_TA)·기상특보, 에어코리아 대기오염정보·측정소정보·미세먼지 경보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic, 올해 주별이 없으면 작년 같은 때로 live:false)

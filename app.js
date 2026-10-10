@@ -384,13 +384,28 @@ H.enablePush = async () => {
   const reg = await navigator.serviceWorker.ready;
   const token = await m.getToken(m.getMessaging(fb), { vapidKey: window.PUSH_VAPID, serviceWorkerRegistration: reg });
   if (!token) throw new Error('알림 토큰을 받지 못했어요');
-  const id = (await sha(token)).slice(0, 40);
-  await setDoc(doc(db, 'families', M.fid, 'push', id), { token, uid: M.uid, role: myRole(), viewer: isViewer(), at: serverTimestamp(), ua: navigator.userAgent.slice(0, 120) });
-  try { localStorage.setItem('soeun-push', id); } catch (e) {}
+  await savePush(token);
   return { ok: true };
 };
+async function savePush(token) {
+  const id = (await sha(token)).slice(0, 40);
+  await setDoc(doc(db, 'families', M.fid, 'push', id), { token, uid: M.uid, role: myRole(), viewer: isViewer(), at: serverTimestamp(), ua: navigator.userAgent.slice(0, 120) });
+  try { localStorage.setItem('soeun-push', id); localStorage.setItem('soeun-push-at', new Date().toISOString().slice(0, 10)); } catch (e) {}
+  return id;
+}
+// 알림을 켠 폰은 하루 한 번 조용히 토큰을 다시 받아 둬요 (Firebase 권장: 오래 안 받으면 끊길 수 있고, 바뀌었으면 바꿔 저장)
+async function refreshPush() {
+  let id = '', at = ''; try { id = localStorage.getItem('soeun-push') || ''; at = localStorage.getItem('soeun-push-at') || ''; } catch (e) {}
+  if (!id || at === new Date().toISOString().slice(0, 10) || !window.PUSH_VAPID || !M.fid || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try {
+    const m = await messaging(), reg = await navigator.serviceWorker.ready;
+    const token = await m.getToken(m.getMessaging(fb), { vapidKey: window.PUSH_VAPID, serviceWorkerRegistration: reg }); if (!token) return;
+    const nid = await savePush(token);
+    if (nid !== id) { try { await deleteDoc(doc(db, 'families', M.fid, 'push', id)); } catch (e) {} }
+  } catch (e) { console.warn('알림 토큰을 새로 받지 못했어요', e); }
+}
 H.disablePush = async () => {
-  let id = ''; try { id = localStorage.getItem('soeun-push') || ''; localStorage.removeItem('soeun-push'); } catch (e) {}
+  let id = ''; try { id = localStorage.getItem('soeun-push') || ''; localStorage.removeItem('soeun-push'); localStorage.removeItem('soeun-push-at'); } catch (e) {}
   if (id) { try { await deleteDoc(doc(db, 'families', M.fid, 'push', id)); } catch (e) {} }
   try { const m = await messaging(); await m.deleteToken(m.getMessaging(fb)); } catch (e) {}
   return { ok: true };
@@ -416,7 +431,7 @@ function start(fid) {
   stopAll();
   M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map(); M.checkups = new Map(); M.game = null; M.gameSrv = false;
   const need = new Set(['family', 'member', ...COLS]);
-  const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); } };
+  const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); setTimeout(refreshPush, 8000); } };
   const fail = e => {
     console.error(e);
     if (e && e.code === 'permission-denied') { stopAll(); try { localStorage.removeItem('fam-' + M.uid); } catch (x) {} showGate('choose', '이 가족 공간에 들어갈 권한이 없어요. 초대 코드로 다시 들어와 주세요.'); }

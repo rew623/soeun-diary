@@ -8,6 +8,7 @@ if (!raw) { console.log('FIREBASE_SERVICE_ACCOUNT 시크릿이 없어 건너뛰�
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
 const db = admin.firestore(), fcm = admin.messaging();
 const DRY = process.env.DRY === '1';
+const TEST = process.env.TEST === '1';   // 수동 실행 test=1: 기록과 상관없이 알림 받는 폰마다 시험 알림 하나
 const URL = 'https://rew623.github.io/soeun-diary/';
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
@@ -20,10 +21,11 @@ const CHECKS = [['g1', '영유아검진 1차', { d: 14 }, { d: 35 }], ['g2', '�
 const win = (b, f, t) => f.d != null ? [addDays(b, f.d), addDays(b, t.d)] : [addMonths(b, f.m), addDays(addMonths(b, t.m + 1), -1)];
 const all = async (ref, c) => (await ref.collection(c).get()).docs.map(d => ({ id: d.id, ...d.data() }));
 
-let sent = 0, dropped = 0;
+let sent = 0, dropped = 0, phones = 0;
 for (const fam of (await db.collection('families').get()).docs) {
   const f = fam.data(), b = f.birth; if (!b) continue;
   const tokens = await all(fam.ref, 'push'); if (!tokens.length) continue;
+  phones += tokens.length;
   const name = (f.name || '우리 아기').replace(/^[가-힣](?=[가-힣]{2}$)/, ''), msgs = [];   // 성 빼고 부르기 (소은)
   const add = (title, body, tag, all) => msgs.push({ title, body, tag, all: !!all });
   // 예방접종
@@ -53,8 +55,10 @@ for (const fam of (await db.collection('families').get()).docs) {
   for (const c of await all(fam.ref, 'capsule')) if (c.open === today) add('🔓 오늘 봉인된 증거물이 열려요', `${c.by || '수사관'} 수사관이 ${String(c.sealed || '').replace(/-/g, '.')}에 봉인한 편지예요. 사건 앨범 → 봉인된 증거물에서 열어 보세요`, 'cap-' + c.id, true);
   // 매달 1일: 지난달 소은일보 발행
   if (today.slice(8) === '01' && addDays(today, -1).slice(0, 7) >= b.slice(0, 7)) add(`📰 ${name}일보 ${+addDays(today, -1).slice(5, 7)}월호 발행`, '지난달 소식이 신문 한 장에 담겼어요. 가족 단톡방에 보내 볼까요?', 'paper', true);
+  if (TEST) msgs.splice(0, msgs.length, { title: `🐿️ ${name} 탐정 시험 알림`, body: '서버에서 보낸 진짜 알림이에요. 챙길 일이 있는 날 아침 8시 50분에 이렇게 와요', tag: 'test', all: true });
   if (!msgs.length) continue;
-  console.log(`${fam.id}: ${msgs.map(m => m.title).join(' / ')} → ${tokens.length}대`);
+  // 저장소가 공개라 Actions 기록엔 이름·접종 내용 없이 알림 종류와 개수만 남겨요
+  console.log(`가족 ${fam.id.slice(0, 4)}…: ${msgs.map(m => m.tag.replace(/-.*/, '')).join(', ')} → ${tokens.length}대`);
   for (const t of tokens) {
     for (const m of msgs) {
       if (t.viewer && !m.all) continue;   // 보기 전용 가족에겐 기념일만
@@ -62,11 +66,11 @@ for (const fam of (await db.collection('families').get()).docs) {
       try { await fcm.send({ token: t.token, data: { title: m.title, body: m.body, tag: m.tag, url: URL }, webpush: { headers: { Urgency: 'high', TTL: '43200' } } }); sent++; }
       catch (e) {
         const c = e.errorInfo && e.errorInfo.code || e.code || '';
-        if (/registration-token-not-registered|invalid-registration-token|invalid-argument/.test(c)) { await fam.ref.collection('push').doc(t.id).delete(); dropped++; console.log(`  끊긴 폰 정리: ${t.id.slice(0, 8)}`); }
+        if (/registration-token-not-registered|invalid-registration-token|invalid-argument/.test(c)) { await fam.ref.collection('push').doc(t.id).delete(); dropped++; console.log(`  끊긴 폰 정리: ${t.id.slice(0, 8)}`); break; }   // 끊긴 폰엔 남은 알림을 보내지 않아요
         else console.warn(`  보내기 실패 ${t.id.slice(0, 8)}: ${c} ${e.message}`);
       }
     }
   }
 }
-console.log(`보낸 알림 ${sent}개, 정리한 폰 ${dropped}대${DRY ? ' (연습 모드)' : ''}`);
+console.log(`알림 받는 폰 ${phones}대, 보낸 알림 ${sent}개, 정리한 폰 ${dropped}대${DRY ? ' (연습 모드)' : ''}${TEST ? ' (시험 알림)' : ''}`);
 process.exit(0);
