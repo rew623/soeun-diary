@@ -1,4 +1,4 @@
-// 추억 — 사건 앨범 "성장 스토리"(월별 사진을 인스타 스토리처럼 넘겨 보기)
+// 추억 — 사건 앨범 맨 위 "지난 오늘"(지난달·작년 같은 날 사진)과 "성장 스토리"(월별 사진을 인스타 스토리처럼 넘겨 보기)
 (function () {
 // ---------- 사진 모으기 ----------
 function allPhotos() {
@@ -6,6 +6,20 @@ function allPhotos() {
   (S.moments || []).forEach(m => { if (m.photo && m.date && m.type !== 'report' && safeImg(PHOTOS[m.id])) out.push({ key: m.id, date: m.date, type: m.type || 'first', title: m.title || '' }); });
   (S.records || []).forEach(r => { if (r.photo && safeImg(PHOTOS[r.id])) out.push({ key: r.id, date: r.date, type: 'rec', title: '' }); });
   return out;
+}
+
+// ---------- 지난 오늘 ----------
+function onThisDay() {
+  const t = today(), dd = t.slice(8), md = t.slice(5), b = S.profile.birth;
+  const L = allPhotos().filter(p => p.date < t && p.date >= b && (p.date.slice(8) === dd || p.date.slice(5) === md));
+  if (!L.length) return '';
+  const groups = {};
+  L.forEach(p => (groups[p.date] = groups[p.date] || []).push(p));
+  const label = d => { const [ty, tm] = t.split('-').map(Number), [y, m] = d.split('-').map(Number), n = (ty - y) * 12 + (tm - m);
+    return n % 12 === 0 && n >= 12 ? `${n / 12}년 전 오늘` : `${n}개월 전 오늘`; };
+  const days = Object.keys(groups).sort().reverse();
+  return `<section class="otd"><h2 class="sh"><span>📅 지난 오늘</span><span>${L.length}장</span></h2>
+    <div class="otdr">${days.map(d => `<div class="otdg"><b>${label(d)}</b><small>${fmtK(d, true)} · 생후 ${dayNo(d)}일</small><div class="otdi">${groups[d].slice(0, 6).map(p => `<button data-view="${p.key}"><img src="${safeImg(PHOTOS[p.key])}" alt="" loading="lazy"></button>`).join('')}</div></div>`).join('')}</div></section>`;
 }
 
 // ---------- 성장 스토리 ----------
@@ -66,6 +80,11 @@ document.addEventListener('click', e => { if (e.target.closest('[data-story]')) 
 
 const css = document.createElement('style');
 css.textContent = `
+.otdr{display:flex;flex-direction:column;gap:10px}
+.otdg b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}.otdg small{margin-left:6px;font-size:11.5px;color:var(--muted)}
+.otdi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
+.otdi button{border:0;padding:0;background:var(--card2);aspect-ratio:1;border-radius:12px;overflow:hidden}
+.otdi img{width:100%;height:100%;object-fit:cover;display:block}
 .storybtn{width:100%;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:99px;min-height:48px;background:linear-gradient(90deg,#F49C9C,#F4C542 50%,#7FC4E8);color:#1F2A44;font-family:var(--display);font-size:16px;box-shadow:0 3px 0 #D9A35A}
 .story{position:fixed;inset:0;z-index:60;background:#111;color:#fff;user-select:none;touch-action:none}
 .stbars{position:absolute;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;gap:4px;z-index:3}
@@ -87,5 +106,6 @@ css.textContent = `
 @media (prefers-reduced-motion:reduce){.kb1,.kb2{animation:none}}`;
 document.head.appendChild(css);
 
+window.MEMO = { onThisDay };
 window.SLIDE = { open, close };
 })();
