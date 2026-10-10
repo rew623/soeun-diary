@@ -330,7 +330,7 @@ function medalsView() {
   let body = '';
   if (tab === 'play') {
     body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
-      <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 생후 며칠인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
+      <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
       <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>소은이 사진 카드 짝 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
@@ -449,14 +449,23 @@ function playView() {
   return medalsView();
 }
 // 생후 며칠 퀴즈
+// 사진만 보고 하루 차이는 못 맞히니까 기간으로 골라요: 2달 전엔 1주, 200일까지 2주, 그 뒤엔 한 달 단위
+function qSize() { const n = dayNo(today()); return n <= 60 ? 7 : n <= 200 ? 14 : 30; }
+function qLabel(b, z) {
+  const a = b * z + 1, e = Math.min((b + 1) * z, dayNo(today()));
+  return z === 7 ? `생후 ${a}~${e}일<small>${b + 1}주차</small>` : z === 30 ? `생후 ${a}~${e}일<small>${b ? `${b}개월쯤` : '첫 달'}</small>` : `생후 ${a}~${e}일<small>${Math.round(a / 7) + 1}~${Math.round(e / 7)}주</small>`;
+}
 function quizStart() {
-  const pool = shuffle(photoPool());
+  const z = qSize(), last = Math.floor((dayNo(today()) - 1) / z), pool = shuffle(photoPool().filter(p => dayNo(p.date) >= 1));
   if (pool.length < 4) { toast('사진이 4장 이상 있어야 할 수 있어요'); return false; }
+  if (last < 1) { toast('아직 태어난 지 얼마 안 돼서 퀴즈는 조금 더 지나서 해요'); return false; }
+  const n = Math.min(4, last + 1);
   const rounds = pool.slice(0, Math.min(10, pool.length)).map(p => {
-    const ans = dayNo(p.date), opts = new Set([ans]);
-    for (let k = 0; opts.size < 4 && k < 300; k++) { const o = ans + (Math.random() < .5 ? -1 : 1) * (3 + Math.floor(Math.random() * Math.max(10, ans * .4))); if (o >= 1 && o <= dayNo(today())) opts.add(o); }
-    for (let k = 1; opts.size < 4; k++) opts.add(ans + k * 5);
-    return { ...p, ans, opts: shuffle([...opts]) };
+    const day = dayNo(p.date), ans = Math.floor((day - 1) / z), opts = new Set([ans]);
+    // 오답은 가까운 기간부터 (1~3칸 떨어진 곳), 범위 밖이면 반대쪽
+    for (const dist of shuffle([1, 1, 2, 2, 3])) { if (opts.size >= n) break; const sgn = Math.random() < .5 ? -1 : 1; for (const c of [ans + sgn * dist, ans - sgn * dist]) if (c >= 0 && c <= last && !opts.has(c)) { opts.add(c); break; } }
+    for (let c = 0; opts.size < n && c <= last; c++) opts.add(c);
+    return { ...p, day, ans, z, opts: [...opts].sort((a, b) => a - b) };
   });
   G.q = { rounds, i: 0, score: 0, picked: null }; return true;
 }
@@ -469,8 +478,9 @@ function quizView() {
   const r = q.rounds[q.i], ph = safeImg(PHOTOS[r.key]);
   return `<header class="vhead"><span class="no">놀이터 · ${q.i + 1}/${q.rounds.length} · ${q.score}점</span><h1>생후 며칠?</h1></header>
     <section class="gq"><img src="${ph}" alt="">${r.t ? `<small class="gqt">${esc(r.t)}</small>` : ''}
-      <div class="gqo">${r.opts.map(o => `<button data-game="qa" data-v="${o}" class="${q.picked == null ? '' : o === r.ans ? 'right' : o === q.picked ? 'wrong' : 'dim'}" ${q.picked == null ? '' : 'disabled'}>생후 ${o}일</button>`).join('')}</div>
-      ${q.picked == null ? '' : `<p class="gqa">${q.picked === r.ans ? '⭕ 정답!' : '❌ 아쉬워요'} ${fmtK(r.date, true)}, 생후 ${r.ans}일이었어요</p><button class="primary" data-game="qn" style="width:100%">${q.i + 1 < q.rounds.length ? '다음 사진' : '결과 보기'}</button>`}</section>`;
+      <p class="hint" style="text-align:center;margin:8px 0 0">이 사진은 언제쯤일까요? (${r.z === 7 ? '1주' : r.z === 14 ? '2주' : '한 달'} 단위)</p>
+      <div class="gqo">${r.opts.map(o => `<button data-game="qa" data-v="${o}" class="${q.picked == null ? '' : o === r.ans ? 'right' : o === q.picked ? 'wrong' : 'dim'}" ${q.picked == null ? '' : 'disabled'}>${qLabel(o, r.z)}</button>`).join('')}</div>
+      ${q.picked == null ? '' : `<p class="gqa">${q.picked === r.ans ? '⭕ 정답!' : '❌ 아쉬워요'} ${fmtK(r.date, true)}, 생후 ${r.day}일이었어요</p><button class="primary" data-game="qn" style="width:100%">${q.i + 1 < q.rounds.length ? '다음 사진' : '결과 보기'}</button>`}</section>`;
 }
 function quizEnd() {
   const q = G.q, s = st(); let gain = 0;
@@ -599,6 +609,7 @@ button.gchip{min-height:30px}
 .idcwk{margin:8px 0 6px;font-size:13.5px}.idcwk b{color:var(--red)}
 .idcs{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px}
 .idcs span{display:flex;flex-direction:column;align-items:center;background:var(--card2);border-radius:12px;padding:6px 2px}.idcs em{font-style:normal;font-size:16px}.idcs b{font-family:var(--display);font-weight:400;font-size:19px;color:var(--navy)}.idcs small{font-size:10.5px;color:var(--muted)}
+.gqo button small{display:block;font-size:11px;opacity:.75;font-family:var(--body);margin-top:1px}
 .gwho{margin-bottom:8px}.gwear{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.gwear>*{display:flex;flex-direction:column;align-items:center;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:6px 2px}.gwear .on{border:2.5px solid var(--red)}.ghat.lock .chr{opacity:.6;filter:grayscale(.3)}.gwear b{font-size:13px;color:var(--navy)}.gwear small{font-size:11px;color:var(--muted)}
 .gcl .chr{border-radius:14px!important;background:#FFF8EC!important}
 .ghats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
