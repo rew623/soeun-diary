@@ -152,19 +152,23 @@ function preview(c) {
   const inner = id === 'roundwin' ? windowSvg(true) : slot === 'win' ? windowSvg(false) + draw(id) : draw(id);
   return `<svg class="rpv" viewBox="${vb}">${inner}</svg>`;
 }
+// 자리마다 접기 (기본 접힘, data-fold r-{자리} → localStorage soeun-fold), 위·아래에 모두 펼치기/접기
 function shopHtml() {
-  const s = state();
-  return SLOTS.map(([slot, nm, opt]) => {
-    const L = CAT.filter(c => c[1] === slot), cur = s.slot[slot] || '';
-    return `<h3 class="ghh">${nm}</h3><div class="rshop">${opt ? `<button class="rit${!cur ? ' cur' : ''}" data-room="${slot}" data-id=""><span class="rpp">∅</span><b>비우기</b><small>${!cur ? '비어 있음' : ''}</small></button>` : ''}${L.map(c => {
+  const s = state(), allOpen = SLOTS.every(([slot]) => !isFold('r-' + slot, true));
+  const bar = `<div class="rbar"><button class="ghost" data-roomfold="${allOpen ? 'close' : 'open'}">${allOpen ? '모두 접기 ▴' : '모두 펼치기 ▾'}</button></div>`;
+  return bar + SLOTS.map(([slot, nm, opt]) => {
+    const L = CAT.filter(c => c[1] === slot), cur = s.slot[slot] || '', ci = cur && item(cur), have = L.filter(c => owns(s, c[0])).length;
+    return `<div class="amon rgrp${isFold('r-' + slot, true) ? ' folded' : ''}"><h3 class="agh" data-fold="r-${slot}"><span>${nm}</span><small class="rcur">${ci ? ci[2] : '비어 있음'} · ${have}/${L.length}</small></h3><div class="rshop">${opt ? `<button class="rit${!cur ? ' cur' : ''}" data-room="${slot}" data-id=""><span class="rpp">∅</span><b>비우기</b><small>${!cur ? '비어 있음' : ''}</small></button>` : ''}${L.map(c => {
       const own = owns(s, c[0]), on = cur === c[0];
       return `<button class="rit${on ? ' cur' : ''}${own ? '' : ' lock'}" data-room="${slot}" data-id="${c[0]}">${preview(c)}<b>${c[2]}</b><small>${on ? '놓는 중' : own ? '놓기' : `🌰 ${c[3]}`}</small></button>`;
-    }).join('')}</div>`;
-  }).join('');
+    }).join('')}</div></div>`;
+  }).join('') + bar;
 }
 function count() { const s = state(); return { own: CAT.filter(c => c[3] > 0 && s.room.includes(c[0])).length, all: CAT.filter(c => c[3] > 0).length }; }
 
 document.addEventListener('click', e => {
+  const f = e.target.closest('[data-roomfold]');
+  if (f) { const v = f.dataset.roomfold === 'close'; SLOTS.forEach(([slot]) => setFold('r-' + slot, v)); render(); if (v) { const el = document.getElementById('ghomeshop'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); } return; }
   const b = e.target.closest('[data-room]'); if (!b) return;
   const slot = b.dataset.room, id = b.dataset.id, s = state();
   if (!id) { delete s.slot[slot]; save(s); render(); return; }
@@ -178,6 +182,8 @@ document.addEventListener('click', e => {
 
 const css = document.createElement('style');
 css.textContent = `
+.rbar{display:flex;justify-content:flex-end;margin:8px 0 0}.rbar .ghost{font-size:12.5px;min-height:34px}
+.rgrp .agh{margin:8px 0 4px}.rgrp .rcur{margin-left:8px;font-size:11.5px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .rshop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
 .rit{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:12px;padding:6px 3px;font-size:11.5px;min-width:0}
 .rit b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}

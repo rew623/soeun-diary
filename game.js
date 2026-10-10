@@ -156,6 +156,12 @@ function card() {
 
 // ---------- 도토리 놀이터 화면 (S.view='medals') : 놀이 | 꾸미기 | 계급·훈장 ----------
 const HATS = [['det', '탐정 모자', 0], ['flower', '꽃 화관', 5], ['party', '생일 고깔', 8], ['chef', '요리사 모자', 10], ['santa', '산타 모자', 12], ['crown', '왕관', 15]];
+// 옷: 한 번 사면 셋 다 입을 수 있고, 입는 옷은 사람마다 따로 (s.clothes 산 옷, s.wear {baby, mom, dad})
+const CLOTHES = [['', '기본', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
+  ['hoodie', '곰 후드티', 8], ['sailor', '세일러복', 8], ['bee', '꿀벌 옷', 9], ['tiger', '호랑이 옷', 9], ['soccer', '축구 유니폼', 9], ['dress', '꽃무늬 원피스', 10], ['trench', '탐정 코트', 10],
+  ['dino', '공룡 옷', 10], ['tutu', '발레 튜튜', 11], ['suit', '정장', 12], ['santa', '산타 옷', 12], ['hanbok', '색동 한복', 15], ['hanbokB', '파랑 한복', 15]];
+const WHO = [['baby', '소은'], ['mom', '엄마'], ['dad', '아빠']];
+function wear(who) { const s = st(); return (s.wear || {})[who] || ''; }
 const HUB = [['play', '🎮 놀이'], ['deco', '🛋️ 꾸미기'], ['rank', '🏅 계급·훈장']];
 function medalsView() {
   const s = st(), on = medalsOn(), sk = streak(), wk = addDays(today(), -6), tab = G.hub || 'play';
@@ -178,7 +184,8 @@ function medalsView() {
       ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:0 0 8px">오늘은 ${e[1]}! 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.</p>` : ''; })()}
       <div class="ghats">${HATS.map(([id, nm, c]) => { const own = s.hats.includes(id), cur = s.hat === id;
         return `<button class="ghat${cur ? ' cur' : ''}" data-game="hat" data-id="${id}">${CHARS.svg('baby', '', { face: true, size: 58, hat: id })}<b>${nm}</b><small>${cur ? '쓰는 중' : own ? '쓰기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
-    <p class="foot">도토리·가구·모자는 이 폰에만 저장돼요.</p>`;
+    ${clothesHtml(s)}
+    <p class="foot">도토리·가구·모자·옷은 이 폰에만 저장돼요.</p>`;
   } else {
     const card = role => { const r = rank(role), k = role === '엄마' ? 'mom' : 'dad', w = xp(role, wk);
       return `<div class="grc"><span class="grf">${CHARS.svg(k, '', { face: true, size: 56 })}</span><span class="grt"><small>${role} 수사관 · Lv.${r.lv}</small><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점` : '최고 계급!'} · 이번 주 +${w}점</small></span></div>`; };
@@ -190,6 +197,16 @@ function medalsView() {
         <div class="gmed">${MEDALS.map(([id, ic, nm, how]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small></div>`).join('')}</div></section>`;
   }
   return head + body + '<button class="secondary" data-game="close" style="width:100%;margin-top:14px">첫 화면으로</button>';
+}
+
+function clothesHtml(s) {
+  const who = G.wearWho || 'baby', cur = (s.wear || {})[who] || '', own = s.clothes || [];
+  return `<section id="gclothes"><h2 class="sh"><span>👕 옷 가게</span><span>모은 옷 ${own.length}/${CLOTHES.length - 1}</span></h2>
+    <p class="hint" style="margin:0 0 8px">한 번 사면 소은·엄마·아빠 모두 입을 수 있어요. 누구에게 입힐지 먼저 골라요.</p>
+    <div class="seg gwho">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="gwear">${WHO.map(([k, l]) => `<span class="${who === k ? 'on' : ''}">${CHARS.svg(k, '', { size: 78 })}<b>${l}</b><small>${(CLOTHES.find(c => c[0] === ((s.wear || {})[k] || '')) || CLOTHES[0])[1]}</small></span>`).join('')}</div>
+    <div class="ghats gcl">${CLOTHES.map(([id, nm, c]) => { const has = !id || own.includes(id), on = cur === id;
+      return `<button class="ghat${on ? ' cur' : ''}" data-game="wear" data-id="${id}">${CHARS.svg(who, '', { size: 64, outfit: id })}<b>${nm}</b><small>${on ? '입는 중' : has ? '입히기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>`;
 }
 
 // ---------- 명절·기념일 모자 (기본 탐정 모자일 때만 저절로) ----------
@@ -338,6 +355,13 @@ document.addEventListener('click', async e => {
       else if (m.tab) { S.tab = m.tab; S.view = ''; if (m.tab === 'album') S.albumView = 'album'; render(); window.scrollTo(0, 0); }
       break;
     }
+    case 'wearwho': G.wearWho = b.dataset.v; render(); break;
+    case 'wear': {
+      const s = st(), c = CLOTHES.find(x => x[0] === b.dataset.id), who = G.wearWho || 'baby'; if (!c) return;
+      s.clothes = s.clothes || []; s.wear = s.wear || {};
+      if (c[0] && !s.clothes.includes(c[0])) { if (s.acorn < c[2]) { toast(`도토리가 ${c[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= c[2]; s.clothes.push(c[0]); toast(`${c[1]}을(를) 샀어요!`); confetti(); }
+      s.wear[who] = c[0]; save(s); render(); break;
+    }
     case 'hat': {
       const s = st(), h = HATS.find(x => x[0] === b.dataset.id); if (!h) return;
       if (!s.hats.includes(h[0])) { if (s.acorn < h[2]) { toast(`도토리가 ${h[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= h[2]; s.hats.push(h[0]); toast(`${h[1]}을(를) 샀어요!`); confetti(); }
@@ -386,6 +410,8 @@ button.gchip{min-height:30px}
 .grt{flex:1;display:flex;flex-direction:column;min-width:0}.grt small{font-size:12px;color:var(--muted)}
 .grt b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--navy);line-height:1.2}
 .grt i{display:block;height:8px;border-radius:99px;background:var(--card2);overflow:hidden;margin:3px 0}.grt u{display:block;height:100%;background:var(--red);border-radius:99px}
+.gwho{margin-bottom:8px}.gwear{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.gwear span{display:flex;flex-direction:column;align-items:center;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:6px 2px}.gwear span.on{border:2.5px solid var(--red)}.gwear b{font-size:13px;color:var(--navy)}.gwear small{font-size:11px;color:var(--muted)}
+.gcl .chr{border-radius:14px!important;background:#FFF8EC!important}
 .ghats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ghat{display:flex;flex-direction:column;align-items:center;gap:2px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:8px 4px}
 .ghat .chr{border-radius:50%;background:#FCEBD3}
@@ -433,5 +459,5 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save } };
+window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear };
 })();
