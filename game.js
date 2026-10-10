@@ -3,7 +3,7 @@
 // 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic'];
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid'];
 const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -109,32 +109,61 @@ function missions() {
 // ---------- 훈장 ----------
 const fp = () => (S.foods || []).filter(f => f.result === '통과').length;
 const photos = () => (S.moments || []).filter(m => m.photo).length + (S.records || []).filter(r => r.photo).length;
+const famN = () => (S.moments || []).filter(m => m.type === 'fam' && m.photo).length;
+const firstN = () => (S.moments || []).filter(m => m.type === 'first' || !m.type).length;
+const vacN = () => (S.vaccines || []).filter(v => v.done).length;
+const attN = () => { const b = S.profile.birth, t = today(); return [...activeDays()].filter(d => d >= b && d <= t).length; };
+// [id, 그림, 이름, 조건 설명, 조건, 도토리] — 계속 쓰면 단계별로 계속 받게 칸을 촘촘히
 const MEDALS = [
-  ['first-rec', '🔎', '첫 증거', '성장 기록 1건', () => S.records.length >= 1],
-  ['rec10', '📏', '증거 수집가', '성장 기록 10건', () => S.records.length >= 10],
-  ['rec30', '📐', '측정의 달인', '성장 기록 30건', () => S.records.length >= 30],
-  ['ph30', '📷', '사진 수사관', '사진 30장', () => photos() >= 30],
-  ['ph100', '🎞️', '사진 100장 돌파', '사진 100장', () => photos() >= 100],
-  ['ph300', '🖼️', '전속 사진사', '사진 300장', () => photos() >= 300],
-  ['first1', '👀', '첫 목격자', '최초 목격 1건', () => S.moments.some(m => m.type === 'first' || !m.type)],
-  ['first5', '🕵️', '목격 전문가', '최초 목격 5건', () => S.moments.filter(m => m.type === 'first' || !m.type).length >= 5],
-  ['vac5', '💉', '주사 용사', '예방접종 5건 해결', () => S.vaccines.filter(v => v.done).length >= 5],
-  ['vac15', '🛡️', '면역 요새', '예방접종 15건 해결', () => S.vaccines.filter(v => v.done).length >= 15],
-  ['food5', '🥄', '미식 탐정', '식재료 5개 통과', () => fp() >= 5],
-  ['food15', '🍲', '미식가', '식재료 15개 통과', () => fp() >= 15],
-  ['d50', '🎈', '50일 통과', '생후 50일', () => dayNo(today()) >= 50],
-  ['d100', '💯', '100일 돌파', '생후 100일', () => dayNo(today()) >= 100],
-  ['d200', '🌟', '200일 돌파', '생후 200일', () => dayNo(today()) >= 200],
-  ['d365', '🎂', '첫 돌', '생후 1년', () => dayNo(today()) >= 366],
-  ['st3', '🔥', '3일 연속 수사', '3일 연속 기록', () => streak() >= 3],
-  ['st7', '⚡', '일주일 개근', '7일 연속 기록', () => streak() >= 7],
-  ['st30', '🏅', '한 달 개근', '30일 연속 기록', () => streak() >= 30],
-  ['team', '🤝', '환상의 팀워크', '엄마·아빠 모두 경장 이상', () => rank('엄마').lv >= 2 && rank('아빠').lv >= 2],
-  ['mis5', '📜', '지령 수행자', '오늘의 지령 5번 완수', () => st().done.length >= 5],
-  ['mis30', '🎖️', '특급 요원', '오늘의 지령 30번 완수', () => st().done.length >= 30],
-  ['quiz', '🧠', '눈썰미 왕', '생후 며칠 퀴즈 8점 이상', () => st().quizBest >= 8],
-  ['mem', '🃏', '기억력 왕', '짝맞추기 10번 안에 성공', () => st().memBest > 0 && st().memBest <= 10]
+  ['first-rec', '🔎', '첫 증거', '성장 기록 1건', () => S.records.length >= 1, 3],
+  ['rec10', '📏', '증거 수집가', '성장 기록 10건', () => S.records.length >= 10, 5],
+  ['rec30', '📐', '측정의 달인', '성장 기록 30건', () => S.records.length >= 30, 8],
+  ['rec50', '📊', '성장 분석가', '성장 기록 50건', () => S.records.length >= 50, 10],
+  ['rec100', '📈', '성장 박사', '성장 기록 100건', () => S.records.length >= 100, 15],
+  ['ph30', '📷', '사진 수사관', '사진 30장', () => photos() >= 30, 5],
+  ['ph100', '🎞️', '사진 100장 돌파', '사진 100장', () => photos() >= 100, 8],
+  ['ph300', '🖼️', '전속 사진사', '사진 300장', () => photos() >= 300, 12],
+  ['ph500', '📸', '사진 500장 돌파', '사진 500장', () => photos() >= 500, 15],
+  ['ph1000', '🏞️', '사진 박물관장', '사진 1000장', () => photos() >= 1000, 25],
+  ['fam10', '👨‍👩‍👧', '가족 사진가', '가족 사진 10장', () => famN() >= 10, 5],
+  ['fam50', '🏡', '우리 가족 앨범', '가족 사진 50장', () => famN() >= 50, 10],
+  ['first1', '👀', '첫 목격자', '최초 목격 1건', () => firstN() >= 1, 3],
+  ['first5', '🕵️', '목격 전문가', '최초 목격 5건', () => firstN() >= 5, 6],
+  ['first10', '🔭', '목격 베테랑', '최초 목격 10건', () => firstN() >= 10, 8],
+  ['first20', '🌠', '전설의 목격자', '최초 목격 20건', () => firstN() >= 20, 12],
+  ['vac5', '💉', '주사 용사', '예방접종 5건 해결', () => vacN() >= 5, 5],
+  ['vac15', '🛡️', '면역 요새', '예방접종 15건 해결', () => vacN() >= 15, 10],
+  ['vac25', '🏰', '면역 성벽', '예방접종 25건 해결', () => vacN() >= 25, 15],
+  ['food5', '🥄', '미식 탐정', '식재료 5개 통과', () => fp() >= 5, 5],
+  ['food15', '🍲', '미식가', '식재료 15개 통과', () => fp() >= 15, 8],
+  ['food30', '🍱', '미식 평론가', '식재료 30개 통과', () => fp() >= 30, 12],
+  ['d50', '🎈', '50일 통과', '생후 50일', () => dayNo(today()) >= 50, 5],
+  ['d100', '💯', '100일 돌파', '생후 100일', () => dayNo(today()) >= 100, 10],
+  ['d200', '🌟', '200일 돌파', '생후 200일', () => dayNo(today()) >= 200, 10],
+  ['d300', '✨', '300일 돌파', '생후 300일', () => dayNo(today()) >= 300, 10],
+  ['d365', '🎂', '첫 돌', '생후 1년', () => dayNo(today()) >= 366, 20],
+  ['d500', '🎉', '500일 돌파', '생후 500일', () => dayNo(today()) >= 500, 15],
+  ['d730', '🎊', '두 돌', '생후 2년', () => dayNo(today()) >= 731, 30],
+  ['st3', '🔥', '3일 연속 수사', '3일 연속 기록', () => streak() >= 3, 3],
+  ['st7', '⚡', '일주일 개근', '7일 연속 기록', () => streak() >= 7, 6],
+  ['st30', '🏅', '한 달 개근', '30일 연속 기록', () => streak() >= 30, 15],
+  ['st60', '🥈', '두 달 개근', '60일 연속 기록', () => streak() >= 60, 20],
+  ['st100', '🥇', '백일 개근', '100일 연속 기록', () => streak() >= 100, 30],
+  ['att30', '📅', '출석 30일', '출석 도장 30일', () => attN() >= 30, 8],
+  ['att100', '🗓️', '출석 100일', '출석 도장 100일', () => attN() >= 100, 15],
+  ['att200', '📆', '출석 200일', '출석 도장 200일', () => attN() >= 200, 20],
+  ['att365', '🏆', '출석 1년', '출석 도장 365일', () => attN() >= 365, 30],
+  ['team', '🤝', '환상의 팀워크', '엄마·아빠 모두 경장 이상', () => rank('엄마').lv >= 2 && rank('아빠').lv >= 2, 8],
+  ['team2', '💞', '최강 콤비', '엄마·아빠 모두 경위 이상', () => rank('엄마').lv >= 4 && rank('아빠').lv >= 4, 15],
+  ['mis5', '📜', '지령 수행자', '오늘의 지령 5번 완수', () => st().done.length >= 5, 5],
+  ['mis30', '🎖️', '특급 요원', '오늘의 지령 30번 완수', () => st().done.length >= 30, 12],
+  ['mis60', '🎗️', '베테랑 요원', '오늘의 지령 60번 완수', () => st().done.length >= 60, 15],
+  ['mis100', '👑', '전설의 요원', '오늘의 지령 100번 완수', () => st().done.length >= 100, 20],
+  ['quiz', '🧠', '눈썰미 왕', '생후 며칠 퀴즈 8점 이상', () => st().quizBest >= 8, 5],
+  ['mem', '🃏', '기억력 왕', '짝맞추기 10번 안에 성공', () => st().memBest > 0 && st().memBest <= 10, 5]
 ];
+// 승진 도토리: 경장 5개부터 한 계급 오를 때마다 2개씩 더
+const rankReward = lv => 5 + 2 * (lv - 2);
 const medalsOn = () => MEDALS.filter(m => { try { return m[4](); } catch (e) { return false; } }).map(m => m[0]);
 
 // ---------- 축하 (계급 승진·훈장·지령 완수) ----------
@@ -153,13 +182,34 @@ function check() {
     checking = false;
     const s = st(), msgs = [];
     // 계급
-    const now = { 엄마: rank('엄마').lv, 아빠: rank('아빠').lv };
-    if (s.seenRank) for (const r of ['엄마', '아빠']) if (now[r] > (s.seenRank[r] || 1)) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}(으)로 승진!`);
-    s.seenRank = now;
-    // 훈장
-    const on = medalsOn();
-    if (s.seenMedals) on.filter(id => !s.seenMedals.includes(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id); msgs.push(`${m[1]} 훈장 획득: ${m[2]}`); });
-    s.seenMedals = on;
+    const now = { 엄마: rank('엄마').lv, 아빠: rank('아빠').lv }, on = medalsOn();
+    // 도토리 보상은 가족 저장(paid)에 적어 두 폰이 같은 보상을 두 번 받지 않게. 같이 쓰기 전(합치기 전)이거나 보기 전용이면 축하만
+    const live = !!(S.game && s.synced && canWrite());
+    if (live) {
+      const paid = Object.assign({ medals: null, rank: null, att: '' }, clone(s.paid) || {}); let back = 0, backN = 0;
+      const pr = paid.rank || {};
+      for (const r of ['엄마', '아빠']) {
+        const from = pr[r] || 1; let add = 0; for (let lv = from + 1; lv <= now[r]; lv++) add += rankReward(lv);
+        if (add) { s.acorn += add; if (paid.rank) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}(으)로 승진! 도토리 🌰 +${add}`); else { back += add; backN++; } }
+        pr[r] = Math.max(from, now[r]);
+      }
+      paid.rank = pr;
+      const pm = new Set(paid.medals || []);
+      on.filter(id => !pm.has(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id), add = m[5] || 3; s.acorn += add; pm.add(id);
+        if (paid.medals) msgs.push(`${m[1]} 훈장 획득: ${m[2]} · 도토리 🌰 +${add}`); else { back += add; backN++; } });
+      paid.medals = [...pm];
+      if (back) msgs.push(`🎁 지금까지 받은 훈장·계급 ${backN}개 보상! 도토리 🌰 +${back}`);
+      // 출석 도장: 오늘 기록이 생기면 +2, 연속 7일마다 +5
+      if (activeDays().has(today()) && paid.att !== today()) {
+        paid.att = today(); s.acorn += 2; const sk = streak();
+        if (sk > 0 && sk % 7 === 0) { s.acorn += 5; msgs.push(`📅 오늘 출석 도장 + ${sk}일 연속 보너스! 도토리 🌰 +7`); } else msgs.push('📅 오늘 출석 도장 쾅! 도토리 🌰 +2');
+      }
+      s.paid = paid;
+    } else {
+      if (s.seenRank) for (const r of ['엄마', '아빠']) if (now[r] > (s.seenRank[r] || 1)) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}(으)로 승진!`);
+      if (s.seenMedals) on.filter(id => !s.seenMedals.includes(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id); msgs.push(`${m[1]} 훈장 획득: ${m[2]}`); });
+    }
+    s.seenRank = now; s.seenMedals = on;
     // 몸무게 예측 결과 (새로 끝난 대결)
     const done = rounds().filter(r => !r.open), lr = done[done.length - 1];
     if (lr && s.seenGuess !== lr.next.id) {
@@ -219,13 +269,14 @@ function medalsView() {
     <p class="foot">도토리·가구·모자·옷·스티커는 엄마·아빠 폰에 똑같이 보여요. 게임 최고 기록과 오늘 한 놀이는 폰마다 따로예요.</p>`;
   } else {
     const card = role => { const r = rank(role), k = role === '엄마' ? 'mom' : 'dad', w = xp(role, wk);
-      return `<div class="grc"><span class="grf">${CHARS.svg(k, '', { face: true, size: 56 })}</span><span class="grt"><small>${role} 수사관 · Lv.${r.lv}</small><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점` : '최고 계급!'} · 이번 주 +${w}점</small></span></div>`; };
+      return `<div class="grc"><span class="grf">${CHARS.svg(k, '', { face: true, size: 56 })}</span><span class="grt"><small>${role} 수사관 · Lv.${r.lv}</small><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점 (승진 🌰 +${rankReward(r.lv + 1)})` : '최고 계급!'} · 이번 주 +${w}점</small></span></div>`; };
     const wm = xp('엄마', wk), wd = xp('아빠', wk);
     body = `<section><h2 class="sh"><span>수사관 계급</span><span>${wm || wd ? `이번 주 ${wm === wd ? '동점!' : (wm > wd ? '엄마' : '아빠') + ' 수사관 우세'}` : ''}</span></h2>${card('엄마')}${card('아빠')}
         <p class="foot" style="margin-top:8px">기록을 남길수록 계급이 올라가요. 경험치: 성장 기록 10 · 사진 +3 · 최초 목격 12 · 예방접종 15 · 검진 20 · 식재료 10 · 급식 5 · 체온·투약 3</p></section>
       ${window.FUN ? FUN.attend() : ''}
       <section><h2 class="sh"><span>훈장</span><span>${on.length}/${MEDALS.length}</span></h2>
-        <div class="gmed">${MEDALS.map(([id, ic, nm, how]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small></div>`).join('')}</div></section>`;
+        <div class="gmed">${MEDALS.map(([id, ic, nm, how, , rw]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small><em>🌰 ${rw || 3}</em></div>`).join('')}</div>
+        <p class="foot" style="margin-top:8px">훈장을 받으면 적힌 만큼 도토리를 받아요. 승진하면 경장 🌰 5개부터 계급이 오를수록 더 많이, 출석 도장 찍힌 날 🌰 +2 · 7일 연속마다 🌰 +5.</p></section>`;
   }
   return head + body + '<button class="secondary" data-game="close" style="width:100%;margin-top:14px">첫 화면으로</button>';
 }
@@ -482,6 +533,7 @@ button.gchip{min-height:30px}
 .gplay span{font-size:28px}.gplay b{font-family:var(--display);font-weight:400;font-size:17px}.gplay small{font-size:11.5px;color:#C7CFE0;line-height:1.4}
 .gmed{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .gmd{display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;padding:10px 4px;border-radius:16px;background:var(--card2);opacity:.6}
+.gmd em{font-style:normal;font-size:10.5px;color:#8C5530;background:#FFF3DD;border-radius:99px;padding:0 6px;margin-top:2px}.gmd.on em{background:#FCE8B4}
 .gmd span{font-size:26px;filter:grayscale(1)}.gmd b{font-size:12.5px}.gmd small{font-size:10.5px;color:var(--muted);line-height:1.3}
 .gmd.on{background:#FFFDF7;border:1.5px solid #E8C770;opacity:1;box-shadow:0 3px 0 #EBD9A6}.gmd.on span{filter:none}
 .gq{display:flex;flex-direction:column;align-items:center;gap:10px}
