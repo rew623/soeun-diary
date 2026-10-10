@@ -866,7 +866,8 @@ function renderAlbum(){
     return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
   const av=S.albumView==='board'||S.albumView==='family'?S.albumView:'album';
   const aseg=`<div class="seg aview">${[['album','앨범'],['family','가족'],['board','수사 보드']].map(([k,l])=>`<button class="${av===k?'on':''}" data-act="aview" data-v="${k}">${l}</button>`).join('')}</div>`;
-  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1><p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${aseg}${FAMILY.render()}`;
+  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1><p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${aseg}${FAMILY.render()}
+  <button class="fab" data-fa="up">+ 가족 사진</button>`;
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${CHARS.guide('album')}${aseg}${MEMO.onThisDay()}
   <button class="nextcard" data-act="report" style="margin-top:14px"><span><small>${d<100?fmtK(d100,true)+' 공개 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>${d<100?'미리 보기':'보고서 보기'}</small></span><span class="d">${d<100?'D-'+(100-d):'100일'}</span></button>
@@ -878,7 +879,8 @@ function renderAlbum(){
     <button class="solve" data-act="addmom" style="width:100%;margin-top:18px;min-height:50px">+ 최초 목격 기록</button></section>
   <section${fsec('a-miles')}><h2 class="sh" data-fold="a-miles" style="border-bottom:2px solid var(--ink);padding-bottom:6px"><span>미확인 사건, 목격하면 눌러서 기록</span></h2>
     ${MILES.filter(([t])=>!seen.has(t)).map(([t,a])=>`<button class="vrow" data-act="addmom" data-v="${t}"><span class="box" style="border-style:dashed;border-radius:50%"></span><span class="vn"><span>${t}</span></span><span class="vd">보통 ${a}</span></button>`).join('')}
-    <p class="foot" style="margin-top:8px">시기는 아기마다 차이가 커요. 비교용이 아니라 기억용이에요.</p></section>`;
+    <p class="foot" style="margin-top:8px">시기는 아기마다 차이가 커요. 비교용이 아니라 기억용이에요.</p></section>
+  <button class="fab" data-al="pick">+ 사진 올리기</button>`;
 }
 function addDays(s,n){return new Date(pd(s)+n*864e5).toISOString().slice(0,10)}
 function openMoment(id,preset){

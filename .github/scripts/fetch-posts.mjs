@@ -44,9 +44,9 @@ async function search(kind, query, sort, n, ok) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`HTTP ${res.status} ${j.errorMessage || ''}`);
       return (j.items || []).map(x => ({
-        t: clean(x.title), d: clean(x.description).slice(0, 90), u: x.link,
-        s: kind === 'blog' ? clean(x.bloggername) : clean(x.cafename), k: kind === 'blog' ? 'b' : 'c',
-        dt: x.postdate ? `${x.postdate.slice(0, 4)}-${x.postdate.slice(4, 6)}-${x.postdate.slice(6, 8)}` : ''
+        t: clean(x.title), d: clean(x.description).slice(0, 90), u: kind === 'news' ? (x.originallink || x.link) : x.link,
+        s: kind === 'blog' ? clean(x.bloggername) : kind === 'news' ? (String(x.originallink || x.link).replace(/^https?:\/\/(www\.|m\.)?/, '').split('/')[0]) : clean(x.cafename), k: kind === 'blog' ? 'b' : kind === 'news' ? 'n' : 'c',
+        dt: x.postdate ? `${x.postdate.slice(0, 4)}-${x.postdate.slice(4, 6)}-${x.postdate.slice(6, 8)}` : x.pubDate ? new Date(Date.parse(x.pubDate) + 9 * 3600e3).toISOString().slice(0, 10) : ''
       })).filter(x => x.t && x.u && !AD.test(x.t + ' ' + x.d) && !PET.test(x.t + ' ' + x.d) && (!x.dt || x.dt >= RECENT) && (!ok || ok(x))).slice(0, n);
     } catch (e) {
       if (i >= 2 || /401|403/.test(e.message)) { fails++; console.warn(`  ${kind} "${query}" 실패: ${e.message}`); return []; }
@@ -79,6 +79,21 @@ for (const r of REGIONS) {
   const base = r.name.replace(/[시군]$/, ''), ok = x => x.t.includes(base) && /아기|아이|유아|키즈|육아|가볼만|가족|어린이|놀이|체험|공원|카페/.test(x.t + ' ' + x.d) && !/아고다|호텔 예약|숙소 예약|펜션|라인업|초대가수/.test(x.t + ' ' + x.d);
   out.regions[r.code] = await mix(`${base} 아기랑 가볼만한곳`, 'sim', 10, ok);
   console.log(`지역 ${r.name}: ${out.regions[r.code].length}`);
+}
+// 동네 소식: 우리 시·군의 아이 대상 행사·체험·공연 소식 (블로그·카페·뉴스 최신순, 3주 안)
+const FRESH = new Date(Date.now() + 9 * 3600e3 - 21 * 864e5).toISOString().slice(0, 10);
+const KIDW = /아이|어린이|아기|유아|키즈|가족|초등|영유아|자녀|엄마|아빠/, EVW = /행사|축제|체험|공연|프로그램|모집|열려|열린|개최|무료|이벤트|플리마켓|마켓|페스티벌|전시|놀이|캠프|교실|강좌|인형극|버블|마술/;
+const EXTRA = { wonju: ['원주 기업도시 아이 행사', '원주 혁신도시 아이 행사', '원주 어린이 공연'], chuncheon: ['춘천 어린이 공연'], gangneung: ['강릉 어린이 공연'] };
+out.news = {};
+for (const r of REGIONS) {
+  const base = r.name.replace(/[시군]$/, ''), ok = x => (x.t + ' ' + x.d).includes(base) && KIDW.test(x.t + ' ' + x.d) && EVW.test(x.t + ' ' + x.d) && (!x.dt || x.dt >= FRESH);
+  const qs = [`${base} 아이 체험 행사`, `${base} 어린이 행사`, ...(EXTRA[r.code] || [])], got = [], seen = new Set();
+  for (const q of qs) for (const kind of ['news', 'blog', 'cafearticle']) {
+    for (const x of await search(kind, q, 'date', 10, ok)) if (!seen.has(x.t)) { seen.add(x.t); got.push(x); }
+    await sleep(120);
+  }
+  out.news[r.code] = got.sort((a, b) => (b.dt || '0') < (a.dt || '0') ? -1 : (b.dt || '0') > (a.dt || '0') ? 1 : 0).slice(0, 15);
+  console.log(`동네 소식 ${r.name}: ${out.news[r.code].length}`);
 }
 console.log(`호출 ${calls}번, 실패 ${fails}번`);
 if (fails > calls / 2) { console.error('절반 넘게 실패했어요 (키·사용 API 설정을 확인해 주세요)'); process.exit(1); }

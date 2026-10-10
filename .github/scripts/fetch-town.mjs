@@ -27,14 +27,14 @@ async function weather(regions) {
   for (const r of regions) {
     const { nx, ny } = grid(r.lat, r.lng);
     try {
-      const body = await getJson('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst', { pageNo: 1, numOfRows: 1000, dataType: 'JSON', ...bt, nx, ny });
+      const body = await getJson('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst', { pageNo: 1, numOfRows: 2000, dataType: 'JSON', ...bt, nx, ny });
       const by = {};
       for (const it of list(body)) {
         if (!['TMP', 'SKY', 'PTY', 'POP', 'WSD', 'REH', 'PCP'].includes(it.category)) continue;
         const k = it.fcstDate + it.fcstTime; (by[k] = by[k] || { t: k })[it.category] = it.fcstValue;
       }
       // [날짜시각, 기온, 하늘(1맑음 3구름많음 4흐림), 강수형태(0없음 1비 2비/눈 3눈 4소나기), 강수확률, 풍속, 습도]
-      out[r.code] = Object.values(by).sort((a, b) => a.t < b.t ? -1 : 1).slice(0, 52)
+      out[r.code] = Object.values(by).sort((a, b) => a.t < b.t ? -1 : 1).slice(0, 130)
         .map(o => [o.t, +o.TMP, +o.SKY || 0, +o.PTY || 0, +o.POP || 0, +o.WSD || 0, +o.REH || 0]);
       console.log(`날씨 ${r.name} (${nx},${ny}): ${out[r.code].length}시간`);
     } catch (e) { console.warn(`날씨 ${r.name} 실패: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) break; }
@@ -134,15 +134,45 @@ async function dustAlarm(regions) {
   return ok ? out : null;
 }
 
+// ---------- 중기예보 (3~10일 뒤: 오전·오후 날씨·강수확률, 최저·최고기온) → 산책 일주일 예보 ----------
+// "기상청_중기예보 조회서비스" 활용신청 필요. 육상예보는 강원영서/영동, 기온은 시·군별 지점 (못 받은 시·군은 가까운 곳 값)
+const MID_TA = { chuncheon: '11D10301', wonju: '11D10401', gangneung: '11D20501', donghae: '11D20601', taebaek: '11D20301', sokcho: '11D20401', samcheok: '11D20602', hongcheon: '11D10302', hoengseong: '11D10402', yeongwol: '11D10501', pyeongchang: '11D10503', jeongseon: '11D10502', cheorwon: '11D10101', hwacheon: '11D10102', yanggu: '11D10202', inje: '11D10201', goseong: '11D20402', yangyang: '11D20403' };
+function midTmFc() {
+  const k = new Date(Date.now() + 9 * 3600e3 - 40 * 60e3), h = k.getUTCHours();   // 06시·18시 발표, 40분쯤 뒤부터
+  if (h < 6) { k.setUTCDate(k.getUTCDate() - 1); return k.toISOString().slice(0, 10).replace(/-/g, '') + '1800'; }
+  return k.toISOString().slice(0, 10).replace(/-/g, '') + (h < 18 ? '0600' : '1800');
+}
+async function mid(regions) {
+  const tmFc = midTmFc(), keep = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => /^(rnSt|wf|taMin|taMax)\d+/.test(k)));
+  const land = {};
+  for (const [side, regId] of [['w', '11D10000'], ['e', '11D20000']]) {
+    try { const it = list(await getJson('https://apis.data.go.kr/1360000/MidFcstInfoService/getMidLandFcst', { pageNo: 1, numOfRows: 10, dataType: 'JSON', regId, tmFc }))[0]; if (it) land[side] = keep(it); }
+    catch (e) { console.warn(`중기 육상 ${side} 실패: ${e.message}`); if (/활용신청|NOT_REGISTERED/.test(e.message)) return null; }
+  }
+  const ta = {};
+  for (const r of regions) {
+    const regId = MID_TA[r.code]; if (!regId) continue;
+    try { const it = list(await getJson('https://apis.data.go.kr/1360000/MidFcstInfoService/getMidTa', { pageNo: 1, numOfRows: 10, dataType: 'JSON', regId, tmFc }))[0]; if (it) ta[r.code] = keep(it); }
+    catch (e) { console.warn(`중기 기온 ${r.name}(${regId}) 실패: ${e.message}`); }
+    await sleep(200);
+  }
+  for (const r of regions) if (!ta[r.code]) {   // 못 받은 곳은 가까운 시·군 값
+    const c = regions.filter(x => ta[x.code]).sort((x, y) => Math.hypot(x.lat - r.lat, x.lng - r.lng) - Math.hypot(y.lat - r.lat, y.lng - r.lng))[0];
+    if (c) ta[r.code] = ta[c.code];
+  }
+  console.log(`중기예보 ${tmFc}: 육상 ${Object.keys(land).join(',') || '없음'}, 기온 ${Object.keys(ta).length}곳${land.w ? ' · 예: ' + JSON.stringify(land.w).slice(0, 120) : ''}`);
+  return Object.keys(land).length ? { tmFc, land, ta } : null;
+}
+
 const regions = (JSON.parse(await readFile(dataFile('regions.json'), 'utf8')).regions || []).filter(r => r.lat && r.lng);
 if (!regions.length) { console.error('data/regions.json에 시·군 좌표가 없어요'); process.exit(1); }
-const w = await weather(regions), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions);
+const w = await weather(regions), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions), md = await mid(regions);
 if (!Object.keys(w.data).length && !Object.keys(a.now).length) { console.error('날씨·미세먼지를 하나도 못 받았어요 (활용신청을 확인해 주세요)'); process.exit(1); }
 
 const out = dataFile('town.json');
 let old = null; try { old = JSON.parse(await readFile(out, 'utf8')); } catch (e) {}
-const body = { weather: Object.keys(w.data).length ? w : (old && old.weather) || w, air: Object.keys(a.now).length ? a : (old && old.air) || a, warn: wn, alarm: al || [] };
-if (old && JSON.stringify({ weather: old.weather, air: old.air, warn: old.warn, alarm: old.alarm }) === JSON.stringify(body)) { console.log('바뀐 게 없어요'); process.exit(0); }
+const body = { weather: Object.keys(w.data).length ? w : (old && old.weather) || w, air: Object.keys(a.now).length ? a : (old && old.air) || a, warn: wn, alarm: al || [], mid: md || (old && old.mid) || null };
+if (old && JSON.stringify({ weather: old.weather, air: old.air, warn: old.warn, alarm: old.alarm, mid: old.mid }) === JSON.stringify(body)) { console.log('바뀐 게 없어요'); process.exit(0); }
 const updated = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
 await writeFile(out, JSON.stringify({ updated, ...body }) + '\n');
 console.log(`town.json 저장 (${updated})`);

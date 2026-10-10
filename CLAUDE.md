@@ -23,7 +23,7 @@
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기
 - room.js: 소은 탐정의 방 (ROOMS.svg 첫 화면 방 그림, ROOMS.shop 도토리 놀이터 > 꾸미기 가게). 자리 13곳(벽지·바닥·창문·천장 장식·매달기·벽 가운데·러그·바닥 왼쪽·바닥 소품·바닥 오른쪽 가구·구석·반려동물·소은 손에)마다 산 물건 하나를 골라 놓음, 58가지. 창밖은 시간대·계절로 저절로, 벽시계는 지금 시각, 키재기 기린은 최근 키, 팻말은 아기 이름. 저장 localStorage soeun-game의 room·slot
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
-- town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수), 미세먼지, 강원 행사·축제. 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
+- town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수, 일주일 예보: 단기예보 시간별 + 중기예보 오전·오후), 미세먼지, 우리 시·군 아이 행사 소식(posts.json news, 네이버 블로그·카페·뉴스 3주 안), 강원 행사·축제, 아기랑 갈 곳(카카오맵 장소 검색 키즈카페·수유실·공원 등, 내 위치나 시·군 가운데 5km; hospitals.js SDK에 libraries=services, HOSP.sdk/regionCenter). 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
 - posts.js: 육아 글 모음 (S.view='posts', 떠 있는 '📚 육아 글' 버튼): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 어느 화면에서나 떠 있는 버튼(짧게 누르면 열기, 0.6초 길게 누른 채 끌면 옮기기, 위치 localStorage soeun-posts-pos, 새 글 빨간 점), 읽은 글 표시(soeun-posts-read)
 - game.js: 게임 요소 — 수사관 계급(기록 by로 경험치 계산, 신분증에 계급), 오늘의 수사 지령(하루 3개, 성장 수사 탭 카드), 연속 수사, 훈장 24개, 도토리·소은 탐정 모자 가게(CHARS HATS, 명절·생일엔 저절로 모자), 성장 수사 방 꾸미기(첫 화면 안내 말풍선 위 소은 탐정 방, 그림·가게는 room.js, CHARS.guide('grow')가 GAME.roomSvg 사용), 몸무게 예측 대결(guess 컬렉션, 성장 수사 탭), 놀이터(생후 며칠 퀴즈, 사진 짝맞추기). 계급·훈장은 기록으로 계산(두 폰 같음), 도토리·모자·최고 기록은 이 폰에만(localStorage soeun-game). 화면 S.view='medals'(이름은 '도토리 놀이터', 안에 놀이|꾸미기|계급·훈장 세 칸, G.hub)/'play'. 들어가는 곳: 성장 수사 지령 카드의 🔥(계급·훈장)·🌰(꾸미기)·🎮 놀이터 단추, 첫 화면 방의 '방 꾸미기'
 - family.js: 사건 앨범 > 가족(S.albumView='family'): 엄마·아빠·소은이 가족 사진 (전체/엄마랑/아빠랑/셋이 다 같이), mom type:'fam' who='mom,dad'(ALBUM.queue로 올림). 친척 카드(people)는 사용자 요청으로 뺌 — 아직 둘만 씀
@@ -40,8 +40,8 @@
 - .github/workflows/notify.yml: 아침 알림 (매일 08:50 KST, notify.mjs + firebase-admin), 시크릿 FIREBASE_SERVICE_ACCOUNT(없으면 건너뜀). 예방접종 D-3·1·당일, 영유아검진 기간 시작·마감 7일 전, 이유식 3일째, 100·200일·생일·매달 그날. 보기 전용 가족에겐 기념일만
 - .github/workflows/town.yml: 동네 정보 받기 (3시간마다 fetch-town.mjs, 하루 한 번 KST 05시대 fetch-daily.mjs, 수동 실행 what=town/daily/all)
 - .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통(XML), api.mjs 공통(JSON), 시·군 목록 REGIONS, build-regions.mjs)
-  - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보·기상특보, 에어코리아 대기오염정보·측정소정보·미세먼지 경보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic, 올해 주별이 없으면 작년 같은 때로 live:false)
-  - 네이버 검색 API(블로그·카페글, NAVER API HUB 키 · 예전 개발자센터 키는 2027.6까지): fetch-posts.mjs, 시크릿 NAVER_CLIENT_ID · NAVER_CLIENT_SECRET (없으면 건너뜀)
+  - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보·중기예보(육상 강원영서/영동, 기온 시·군 지점 MID_TA)·기상특보, 에어코리아 대기오염정보·측정소정보·미세먼지 경보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic, 올해 주별이 없으면 작년 같은 때로 live:false)
+  - 네이버 검색 API(블로그·카페글·뉴스, posts.json의 news = 시·군별 아이 행사 소식, NAVER API HUB 키 · 예전 개발자센터 키는 2027.6까지): fetch-posts.mjs, 시크릿 NAVER_CLIENT_ID · NAVER_CLIENT_SECRET (없으면 건너뜀)
 - 새 JS 파일은 index.html의 <script>와 sw.js의 SHELL 목록에 추가할 것
 
 ## Firestore 구조
@@ -60,7 +60,7 @@
 
 ## 주의할 점
 - 탭 화면(#app)을 좌우로 밀면 옆 탭으로 넘어감 (index.html 하단). 지도·수사 보드(#bwrap)·입력칸·사진 고르기 중·하위 화면(S.view)은 제외, 막고 싶은 칸엔 data-noswipe
-- 사건 앨범 순서: 지난 오늘 → 100일 보고서 → 현장 사진첩 → 월별 증거 사진 → 최초 목격 → 미확인 사건. 칸과 사진첩 달 묶음은 접기 가능 (data-fold, localStorage soeun-fold). 사진첩은 가장 최근 달만 기본으로 펼침, 펼친 달·사진첩 맨 아래에도 접기 단추
+- 사건 앨범: 앨범 칸엔 떠 있는 '+ 사진 올리기'(현장 사진첩 여러 장), 가족 칸엔 '+ 가족 사진'. 순서: 지난 오늘 → 100일 보고서 → 현장 사진첩 → 월별 증거 사진 → 최초 목격 → 미확인 사건. 칸과 사진첩 달 묶음은 접기 가능 (data-fold, localStorage soeun-fold). 사진첩은 가장 최근 달만 기본으로 펼침, 펼친 달·사진첩 맨 아래에도 접기 단추
 - 파일 선택 칸(input type=file)은 #app 밖(body에 고정)이나 편집창(sheet) 안에 둘 것. 파일 창에서 돌아올 때 화면을 다시 그려 #app 안의 칸이 사라짐
 - GitHub Pages 배포(pages build and deployment)가 GitHub 쪽 오류로 가끔 실패함. 실패한 job을 재실행하면 됨
 - map-key.js를 바꾸면 sw.js VERSION도 올릴 것 (안 올리면 폰에 반영 안 됨)

@@ -143,7 +143,7 @@ function loadSdk() {
   if (sdk) return sdk;
   sdk = new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' + encodeURIComponent(window.KAKAO_JS_KEY);
+    s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey=' + encodeURIComponent(window.KAKAO_JS_KEY);   // services: 동네 탐문 '아기랑 갈 곳' 장소 검색
     s.onload = () => { try { kakao.maps.load(res); } catch (e) { rej(e); } };
     s.onerror = () => rej(new Error('load'));
     document.head.appendChild(s);
@@ -418,5 +418,5 @@ body:has(.hmapwrap.full){overflow:hidden}
 .hacts{display:flex;gap:8px;margin-top:10px}`;
 document.head.appendChild(css);
 
-window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames, closeFull: () => S.view === 'hosp' && closeFull() };
+window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames, closeFull: () => S.view === 'hosp' && closeFull(), sdk: () => hasKey() ? loadSdk() : Promise.reject(new Error('지도 키가 없어요')), regionCenter: code => { const r = regionList().find(x => x.code === code); return r ? { lat: r.lat, lng: r.lng } : null; } };
 })();

@@ -11,8 +11,8 @@ async function load(force) {
   if (T.loading || (!force && T.at && Date.now() - T.at < 30 * 60e3)) return;
   T.loading = true;
   const get = n => fetch('data/' + n, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const [a, b, c] = await Promise.all([get('town.json'), get('events.json'), get('disease.json')]);
-  T.town = a; T.events = b; T.dis = c; T.at = Date.now(); T.loading = false;
+  const [a, b, c, d] = await Promise.all([get('town.json'), get('events.json'), get('disease.json'), get('posts.json')]);
+  T.town = a; T.events = b; T.dis = c; T.news = d && d.news; T.at = Date.now(); T.loading = false;
   if (S.mode === 'ok') render();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && T.at && Date.now() - T.at > 30 * 60e3) load(true); });
@@ -132,6 +132,82 @@ function spark(w, mark = -1) {
 
 // ---------- 행사 ----------
 const md = s => s ? `${+s.slice(5, 7)}.${+s.slice(8, 10)}` : '';
+// ---------- 일주일 산책 예보 (0~3일: 단기예보 시간별, 그 뒤: 중기예보 오전·오후) ----------
+const WD = '일월화수목금토';
+function midScore(tmax, pop, wf) {
+  if (/비|눈|소나기/.test(wf || '')) return 8;
+  let s = 100;
+  if (tmax < 18) s -= (18 - tmax) * 4; if (tmax > 26) s -= (tmax - 26) * 7;
+  if (tmax <= 2 || tmax >= 33) s = Math.min(s, 10);
+  if (pop >= 60) s -= 45; else if (pop >= 30) s -= 15;
+  if (/흐림/.test(wf || '')) s -= 5;
+  return Math.max(0, Math.min(100, Math.round(s)));
+}
+const wfIco = wf => /눈/.test(wf) ? '🌨️' : /비|소나기/.test(wf) ? '🌧️' : /흐림/.test(wf) ? '☁️' : /구름/.test(wf) ? '⛅' : '☀️';
+function week(code) {
+  const W = (T.town && T.town.weather && T.town.weather.data && T.town.weather.data[code]) || [], M = T.town && T.town.mid, out = [];
+  const late = new Date(Date.now() + 9 * 3600e3).getUTCHours() >= 18, t0 = late ? addDays(today(), 1) : today();   // 저녁이면 내일부터 7일
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(t0, i), dk = d.replace(/-/g, ''), hrs = W.filter(h => h[0].slice(0, 8) === dk);
+    const day = hrs.filter(h => +h[0].slice(8, 10) >= 9 && +h[0].slice(8, 10) <= 18);
+    if (day.length >= (d === today() ? 1 : 4)) {   // 오늘은 남은 낮 시간만으로
+      const sc = day.map(h => ({ h, ...score(h, code) })), best = sc.reduce((a, b) => b.s > a.s ? b : a), tm = hrs.map(h => h[1]);
+      out.push({ d, s: best.s, ico: ico(best.h), hi: Math.max(...tm), lo: Math.min(...tm), at: +best.h[0].slice(8, 10), src: 'short' });
+      continue;
+    }
+    if (!M || !M.tmFc) { out.push({ d, s: null }); continue; }
+    const n = daysBetween(`${M.tmFc.slice(0, 4)}-${M.tmFc.slice(4, 6)}-${M.tmFc.slice(6, 8)}`, d), side = (T.town.air && T.town.air.east || []).includes(code) ? 'e' : 'w';
+    const L = (M.land || {})[side] || {}, ta = (M.ta || {})[code] || {};
+    const pop = Math.max(+(L[`rnSt${n}Pm`] ?? L[`rnSt${n}`] ?? 0), +(L[`rnSt${n}Am`] ?? 0)), wf = L[`wf${n}Pm`] || L[`wf${n}`] || L[`wf${n}Am`] || '';
+    const hi = ta[`taMax${n}`], lo = ta[`taMin${n}`];
+    if (hi == null && !wf) { out.push({ d, s: null }); continue; }
+    out.push({ d, s: hi != null ? midScore(+hi, pop, wf) : (/비|눈/.test(wf) ? 8 : null), ico: wfIco(wf), hi: hi != null ? +hi : null, lo: lo != null ? +lo : null, pop, src: 'mid' });
+  }
+  return out;
+}
+function weekHtml(code) {
+  const L = week(code); if (!L.some(x => x.s != null)) return '';
+  const best = L.filter(x => x.s != null).reduce((a, b) => b.s > a.s ? b : a);
+  const c = s => s == null ? 'na' : s >= 80 ? 'ok' : s >= 60 ? 'ok2' : s >= 40 ? 'mid' : 'no';
+  return `<div class="wweek"><div class="wwh"><b>📅 일주일 산책 예보</b><small>${best.s >= 60 ? `${+best.d.slice(5, 7)}/${+best.d.slice(8)}(${WD[new Date(best.d + 'T00:00:00Z').getUTCDay()]})이 제일 좋아요` : '이번 주는 짧게 다녀와요'}</small></div>
+    <div class="wwd">${L.map((x, i) => `<span class="wd ${c(x.s)}"><small>${x.d === today() ? '오늘' : x.d === addDays(today(), 1) ? '내일' : WD[new Date(x.d + 'T00:00:00Z').getUTCDay()]}</small><em>${x.ico || '·'}</em><b>${x.s == null ? '-' : x.s}</b><i>${x.hi != null ? `${Math.round(x.hi)}°` : ''}${x.lo != null ? `<u>${Math.round(x.lo)}°</u>` : ''}</i></span>`).join('')}</div>
+    <p class="foot" style="margin:6px 0 0">3일 뒤부터는 기상청 중기예보(오전·오후)라 대략이에요. 미세먼지는 오늘·내일만 반영돼요.</p></div>`;
+}
+
+// ---------- 동네 소식 (네이버 블로그·카페·뉴스에서 찾은 아이 행사 글) ----------
+function newsHtml(code) {
+  const L = (T.news || {})[code] || [];
+  if (!L.length) return '';
+  return `<section class="tnews"><h2 class="sh"><span>📣 ${NAMES[code]} 아이 행사 소식</span><span>최근 3주</span></h2><p class="hint" style="margin:0 0 4px">블로그·카페·뉴스에서 찾은 글이에요. 하루 한 번 새로 모아요.</p>
+    ${L.slice(0, T.newsMore || 6).map(x => `<a class="post" href="${esc(x.u)}" target="_blank" rel="noopener"><span class="pk ${x.k}">${x.k === 'n' ? '뉴스' : x.k === 'b' ? '블로그' : '카페'}</span><span class="ptx"><b>${esc(x.t)}</b>${x.d ? `<small>${esc(x.d)}</small>` : ''}<em>${esc(x.s || '')}${x.dt ? ' · ' + x.dt.slice(5).replace('-', '.') : ''}</em></span></a>`).join('')}
+    ${L.length > (T.newsMore || 6) ? `<button class="addperiod" data-town="newsmore">더 보기 (${L.length - (T.newsMore || 6)}개)</button>` : ''}</section>`;
+}
+
+// ---------- 아기랑 갈 곳 (카카오맵 장소 검색: 내 위치 또는 탐문 지역 둘레 5km) ----------
+const PLACES = [['키즈카페', '🧸'], ['수유실', '🍼'], ['공원', '🌳'], ['어린이도서관', '📚'], ['문화센터', '🎨'], ['장난감도서관', '🪀']];
+const PL = { q: '', list: null, busy: false, err: '', where: '' };
+async function searchPlaces(q) {
+  PL.q = q; PL.busy = true; PL.err = ''; PL.list = null; render();
+  try {
+    if (!window.HOSP || !HOSP.sdk) throw new Error('지도를 불러오지 못했어요');
+    await HOSP.sdk();
+    if (!kakao.maps.services) throw new Error('장소 검색을 쓸 수 없어요 (앱을 다시 열어 주세요)');
+    let lat, lng; PL.where = '';
+    try { const p = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000, maximumAge: 300000 })); lat = p.coords.latitude; lng = p.coords.longitude; PL.where = '내 위치'; }
+    catch (e) { const r = (HOSP.regionCenter && HOSP.regionCenter(reg())) || { lat: 37.3422, lng: 127.9202 }; lat = r.lat; lng = r.lng; PL.where = NAMES[reg()] + ' 가운데'; }
+    const ps = new kakao.maps.services.Places();
+    PL.list = await new Promise(res => ps.keywordSearch(q, (data, status) => res(status === kakao.maps.services.Status.OK ? data : []), { location: new kakao.maps.LatLng(lat, lng), radius: 5000, sort: kakao.maps.services.SortBy.DISTANCE }));
+  } catch (e) { PL.err = e.message || '찾지 못했어요'; PL.list = []; }
+  PL.busy = false; if (S.tab === 'town') render();
+}
+function placesHtml() {
+  const L = PL.list;
+  return `<section id="tplace"><h2 class="sh"><span>🧸 아기랑 갈 곳</span><span>${PL.where ? esc(PL.where) + ' 둘레 5km' : '카카오맵에서 찾아요'}</span></h2>
+    <div class="chips">${PLACES.map(([q, e]) => `<button class="chip${PL.q === q ? ' on' : ''}" data-town="place" data-v="${q}">${e} ${q}</button>`).join('')}</div>
+    ${PL.busy ? '<p class="vempty">찾는 중…</p>' : PL.err ? `<p class="vempty">${esc(PL.err)}</p>` : L ? (L.length ? `<div class="plc">${L.slice(0, 15).map(p => `<a class="plr" href="${esc(p.place_url)}" target="_blank" rel="noopener"><span><b>${esc(p.place_name)}</b><small>${esc(p.road_address_name || p.address_name)}${p.phone ? ' · ' + esc(p.phone) : ''}</small></span><em>${p.distance ? (p.distance >= 1000 ? (p.distance / 1000).toFixed(1) + 'km' : p.distance + 'm') : ''}</em></a>`).join('')}</div>` : '<p class="vempty">근처에서 찾지 못했어요.</p>') : '<p class="foot" style="margin:8px 0 0">위 칸을 누르면 가까운 곳부터 보여 줘요. 누르면 카카오맵에서 열려요.</p>'}
+  </section>`;
+}
+
 function evHtml() {
   const E = T.events; if (!E || !E.items) return `<section><h2 class="sh"><span>강원 행사·축제</span></h2><p class="vempty">행사 정보를 받아 오면 여기에 떠요.</p></section>`;
   const code = reg(), t = today();
@@ -166,14 +242,14 @@ function render_() {
       <div class="wtop"><span class="wbig">${P.top}</span><span class="wlab"><b>${P.ico} ${lab}</b><span>${P.top >= 40 ? `${P.from}시~${P.to}시가 제일 좋아요` : esc(P.why.join(', ') || '밖은 오늘 쉬어요')}</span></span><span class="stamp">${stamp}</span></div>
       ${P.when === '오늘' && alerts(code).length ? `<div class="walerts">${alertHtml(code)}<small>기상청·에어코리아 발표, 오늘 점수에 반영했어요</small></div>` : ''}
       <div class="hbars">${P.list.map(bar).join('')}</div>
-      <div class="wtips"><p><b>옷차림</b> ${cloth(P.tmp)} (${P.tmp}℃)</p>${note ? `<p><b>아기 수사관 메모</b> ${note}</p>` : ''}</div></section>`;
+      <div class="wtips"><p><b>옷차림</b> ${cloth(P.tmp)} (${P.tmp}℃)</p>${note ? `<p><b>아기 수사관 메모</b> ${note}</p>` : ''}</div>${weekHtml(code)}</section>`;
   }
   const dust = A ? `<section><h2 class="sh"><span>지금 미세먼지</span><span>${esc(A.t || '')}${A.near ? ` · ${esc(A.near)} 측정소 값` : ''}</span></h2>
     <div class="dust">${[['미세먼지', A.pm10, g10(A.pm10), '㎍/㎥'], ['초미세먼지', A.pm25, g25(A.pm25), '㎍/㎥']].map(([n, v, g, u]) => `<div><small>${n}</small><b style="color:${g != null ? GC[g] : 'var(--muted)'}">${g != null ? GN[g] : '—'}</b><span>${v != null ? v + u : '측정 중'}</span></div>`).join('')}</div>
     ${fcLine(code)}</section>` : '';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${CHARS.guide('town')}
     <div class="treg"><span>탐문 지역</span>${sel}</div>
-    ${walk}${dust}${evHtml()}`;
+    ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}`;
 }
 function fcLine(code) {
   const f = T.town.air.fc || {}, side = (T.town.air.east || []).includes(code) ? 'e' : 'w', d0 = today(), d1 = addDays(d0, 1);
@@ -189,6 +265,8 @@ document.addEventListener('click', e => {
     case 'evreg': T.evAll = b.dataset.v === '1'; T.evMore = 12; render(); break;
     case 'evkid': T.evKid = !T.evKid; T.evMore = 12; render(); break;
     case 'evmore': T.evMore += 12; render(); break;
+    case 'newsmore': T.newsMore = (T.newsMore || 6) + 9; render(); break;
+    case 'place': searchPlaces(b.dataset.v); break;
   }
 });
 document.addEventListener('change', e => { if (e.target.id === 'town-reg') { setReg(e.target.value); render(); } });
@@ -200,6 +278,21 @@ css.textContent = `
 .dhot{display:inline-block;background:var(--red);color:#fff;border-radius:99px;padding:0 8px;font-size:11px;margin-right:6px;letter-spacing:0}
 #app section.dsec.folded{padding:10px 14px;box-shadow:0 2px 0 #E6D2AE}
 #app section.dsec.folded>.sh{font-size:12px}
+.wweek{margin-top:12px;border-top:2px dotted var(--line);padding-top:10px}
+.wwh{display:flex;justify-content:space-between;align-items:baseline;gap:6px}.wwh b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}.wwh small{font-size:12px;color:var(--red)}
+.wwd{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:6px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border-radius:12px;background:#FFFDF7;border:1.5px solid var(--line)}
+.wd small{font-size:11px;color:var(--muted)}.wd em{font-style:normal;font-size:18px}.wd b{font-family:var(--display);font-weight:400;font-size:17px}
+.wd i{font-style:normal;font-size:10.5px;color:var(--ink)}.wd i u{text-decoration:none;color:var(--muted);margin-left:2px}
+.wd.ok{background:#EEF7EA;border-color:#B9D7A8}.wd.ok b{color:#2E7D5B}.wd.ok2 b{color:#5E9E57}.wd.mid{background:#FFF6E8}.wd.mid b{color:#C8551E}.wd.no{background:#FDEEEB}.wd.no b{color:var(--red)}.wd.na b{color:var(--muted)}
+.plc{display:flex;flex-direction:column;margin-top:8px}
+.plr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);color:inherit;text-decoration:none}
+.plr span{flex:1;display:flex;flex-direction:column;min-width:0}.plr b{font-size:14.5px;color:var(--navy)}.plr small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plr em{font-style:normal;font-size:12px;color:var(--red);white-space:nowrap}
+.tnews .post{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);color:inherit;text-decoration:none}
+.tnews .pk{flex-shrink:0;font-size:11px;border-radius:99px;padding:2px 8px;margin-top:2px;color:#fff;background:#2E7D5B}.tnews .pk.c{background:#C25A7A}.tnews .pk.n{background:var(--navy)}
+.tnews .ptx{flex:1;display:flex;flex-direction:column;min-width:0}.tnews .ptx b{font-size:14.5px;line-height:1.4;color:var(--navy);word-break:keep-all}
+.tnews .ptx small{font-size:12px;opacity:.8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.tnews .ptx em{font-style:normal;font-size:11px;color:var(--muted)}
 .treg{display:flex;align-items:center;gap:10px;margin:14px 0 0;font-size:13px;color:var(--muted)}
 .tsel{flex:1;min-height:44px;border:1.5px solid var(--line);border-radius:14px;background:#FFFDF7;padding:0 12px;font:inherit;font-size:16px;color:var(--ink)}
 .wtop{position:relative;display:flex;align-items:center;gap:12px}
