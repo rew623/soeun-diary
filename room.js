@@ -70,7 +70,7 @@ const CAT = [
   // 구석
   ['lamp', 'corner', '스탠드', 8, t('<path d="M272 172h20M282 172v-52" stroke="#1F2A44" stroke-width="3"/><path d="M268 122l14-24 14 24z" fill="#FCE8B4" stroke="#E0C590"/><ellipse cx="282" cy="124" rx="22" ry="5" fill="#FCE8B4" opacity=".5"/>')],
   ['monstera', 'corner', '몬스테라', 8, t('<path d="M280 150h24l-3 22h-18z" fill="#F6EBD6" stroke="#E0C9A2"/><path d="M292 150c0-20-4-36-16-48M292 150c2-18 8-32 18-40M292 150c-4-12-12-18-20-20" stroke="#5E9E57" stroke-width="2.5" fill="none"/><path d="M276 102c-12 4-14 18-6 24 6-8 10-14 6-24zM310 110c10 6 6 20-4 22-2-10-2-16 4-22zM272 130c-10-2-14 8-8 14 6-2 10-8 8-14z" fill="#7FB77E"/>')],
-  ['giraffe', 'corner', '키재기 기린', 14, 'GIRAFFE'], ['mailbox', 'corner', '육아 글 우편함', 12, 'MAIL'],
+  ['giraffe', 'corner', '키재기 기린', 14, 'GIRAFFE'], ['mailbox', 'corner', '육아 글 우편함', 12, 'MAIL'], ['xtree', 'corner', '크리스마스 트리', 14, 'TREE'],
   // 반려동물
   ['cat', 'pet', '낮잠 고양이', 12, t('<ellipse cx="234" cy="166" rx="18" ry="9" fill="#F4C542"/><circle cx="220" cy="160" r="8" fill="#F4C542"/><path d="M214 155l1-7 5 4zM222 152l4-5 2 6z" fill="#F4C542"/><path d="M216 160q2 2 4 0M222 160q2 2 4 0" stroke="#5A3420" stroke-width="1.2" fill="none"/><path d="M250 166q8-2 6-10" stroke="#F4C542" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M232 160q4-3 8 0M236 168q4-3 8 0" stroke="#E0B341" stroke-width="1.5" fill="none"/><text x="240" y="150" font-size="8" fill="#6B5F52" font-family="Jua">z z</text>')],
   ['dog', 'pet', '강아지', 13, t('<ellipse cx="236" cy="164" rx="14" ry="10" fill="#FFFDF7" stroke="#E0C9A2"/><circle cx="230" cy="148" r="10" fill="#FFFDF7" stroke="#E0C9A2"/><ellipse cx="221" cy="149" rx="4" ry="8" fill="#C98B5A"/><ellipse cx="239" cy="149" rx="4" ry="8" fill="#C98B5A"/><circle cx="227" cy="146" r="1.6" fill="#2B2622"/><circle cx="233" cy="146" r="1.6" fill="#2B2622"/><ellipse cx="230" cy="151" rx="2.2" ry="1.6" fill="#2B2622"/><path d="M250 160q6-6 4-12" stroke="#E0C9A2" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M226 156h8" stroke="#B3261E" stroke-width="2.5"/>')],
@@ -102,10 +102,10 @@ function addNew(s) { let ch = false; if (!('fam' in s.slot)) { s.slot.fam = 'fam
 const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.room.includes(id)); };
 
 // ---------- 특수 소품: 방에서 누르면 기능이 나와요 (값이 더 비싸요) ----------
-const R = { edit: false, night: false, radio: null, music: 0 };
+const R = { edit: false, night: false, radio: null, music: 0, tree: 0 };
 const FXDESC = { FRAME: '누르면 소은이 프로필 사진 이야기', CLOCK: '지금 시각으로 바늘이 움직여요 · 누르면 생후 며칠째인지', SIGN: '아기 이름이 들어가요 · 누르면 사건 파일 번호', GIRAFFE: '최근 키를 보여 줘요 · 누르면 키 변화', PIC: '우리 실제 사진을 넣어요 · 누르면 사진 고르기',
   CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 흘러나와요', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
-  LAMP: '누르면 방 불을 끄고 무드등을 켜요', RADIO: '누르면 잔잔한 잠 소리(백색소음)를 틀고 끄기', BOOK: '누르면 성장 앨범 책이 열려요', MAIL: '새 육아 글이 오면 깃발이 올라가요 · 누르면 육아 글 모음', WEATHER: '지금 산책 지수·기온이 걸려요 · 누르면 동네 탐문' };
+  LAMP: '누르면 방 불을 끄고 무드등을 켜요', RADIO: '누르면 잔잔한 잠 소리(백색소음)를 틀고 끄기', BOOK: '누르면 성장 앨범 책이 열려요', MAIL: '새 육아 글이 오면 깃발이 올라가요 · 누르면 육아 글 모음', WEATHER: '지금 산책 지수·기온이 걸려요 · 누르면 동네 탐문', TREE: '누르면 트리 불이 반짝이고 크리스마스까지 며칠 남았는지 알려 줘요' };
 function latest(...types) { for (const t of types) { const m = (S.moments || []).filter(x => x.type === t && x.photo && safeImg(PHOTOS[x.id])).sort((a, b) => a.date < b.date ? 1 : -1)[0]; if (m) return safeImg(PHOTOS[m.id]); } return safeImg(PHOTOS.profile) || ''; }
 // 다음 기념일: 100일마다 + 돌
 function nextDay() {
@@ -145,7 +145,9 @@ const FX = {
   RADIO: () => toggleRadio(),
   BOOK: () => go(() => { S.view = 'book'; }),
   MAIL: () => go(() => { S.view = 'posts'; }),
-  WEATHER: () => go(() => { S.tab = 'town'; S.view = ''; })
+  WEATHER: () => go(() => { S.tab = 'town'; S.view = ''; }),
+  TREE: () => { const t = today(), y = +t.slice(0, 4), x = t > `${y}-12-25` ? `${y + 1}-12-25` : `${y}-12-25`, n = daysBetween(t, x);
+    R.tree = Date.now() + 8000; render(); setTimeout(() => render(), 8100); toast(n ? `🎄 크리스마스까지 ${n}일 남았어요!` : '🎄 메리 크리스마스! 🎅'); }
 };
 
 // ---------- 그림 ----------
@@ -186,6 +188,9 @@ function special(id) {
     return `<path d="M118 30l17-12 17 12" stroke="#8C5530" stroke-width="1.5" fill="none"/><rect x="100" y="30" width="70" height="26" rx="5" fill="#C98B5A" stroke="#8C5530" stroke-width="2"/><text x="135" y="47" font-size="11" text-anchor="middle" fill="#FFF8EC" font-family="Jua"${n.length > 3 ? ' textLength="62" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(n)} 탐정 사무소</text><circle cx="106" cy="36" r="1.5" fill="#8C5530"/><circle cx="164" cy="36" r="1.5" fill="#8C5530"/>`; }
   if (id === 'GIRAFFE') { const hs = (S.records || []).filter(r => r.height != null && r.height !== '').sort((a, b) => a.date < b.date ? 1 : -1)[0], cm = hs ? fmt('height', hs.height) : '';
     return `<rect x="284" y="78" width="10" height="94" rx="4" fill="#F4C542"/>${Array.from({ length: 8 }, (_, i) => `<path d="M284 ${88 + i * 10}h${i % 2 ? 4 : 7}" stroke="#B97648" stroke-width="1.2"/>`).join('')}<circle cx="290" cy="100" r="2.5" fill="#D99A5B"/><circle cx="288" cy="128" r="2.2" fill="#D99A5B"/><circle cx="291" cy="152" r="2.4" fill="#D99A5B"/><ellipse cx="294" cy="74" rx="11" ry="8" fill="#F4C542"/><path d="M290 66l-1-6M298 66l1-6" stroke="#B97648" stroke-width="2" stroke-linecap="round"/><circle cx="297" cy="72" r="1.4" fill="#2B2622"/><ellipse cx="303" cy="77" rx="3" ry="2" fill="#E8B04A"/>${cm ? `<rect x="262" y="112" width="22" height="12" rx="3" fill="#FFFDF7" stroke="#E0C9A2"/><text x="273" y="121" font-size="7" text-anchor="middle" fill="#B3261E" font-family="Jua">${cm}</text>` : ''}`; }
+  if (id === 'TREE') { const on = R.tree > Date.now(), C = ['#F4C542', '#F49C9C', '#7FC4E8', '#FFFDF7'];
+    const balls = [[284, 112], [296, 120], [280, 132], [300, 140], [288, 146], [276, 154], [304, 156], [292, 132]];
+    return `<rect x="286" y="160" width="9" height="12" fill="#8C5530"/><path d="M290.5 92l-14 24h28zM290.5 104l-19 32h38zM290.5 120l-24 42h48z" fill="#3E8E5A"/><path d="M276 116q14 6 29 0M272 136q19 7 38 0M267 162q23 7 47 0" stroke="#F4C542" stroke-width="1.2" fill="none" opacity=".8"/>${balls.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="2.6" fill="${C[i % 4]}" class="${on ? 'rtw' : ''}" style="animation-delay:${i * .15}s"/>`).join('')}<path d="M290.5 83l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7z" fill="#F4C542" stroke="#C99A1E" stroke-width=".8" class="${on ? 'rtw' : ''}"/><rect x="270" y="163" width="13" height="10" rx="1.5" fill="#D9473D"/><path d="M276.5 163v10M270 168h13" stroke="#F4C542" stroke-width="1.6"/><rect x="298" y="165" width="11" height="8" rx="1.5" fill="#7FC4E8"/><path d="M303.5 165v8" stroke="#FFFDF7" stroke-width="1.5"/>`; }
   if (id === 'CAL') { const t = today(), m = nextDay();
     return `<rect x="112" y="34" width="46" height="54" rx="4" fill="#FFFDF7" stroke="#E0C9A2" stroke-width="1.5"/><path d="M112 47v-9a4 4 0 0 1 4-4h38a4 4 0 0 1 4 4v9z" fill="#B3261E"/><circle cx="122" cy="34" r="2" fill="#6B5F52"/><circle cx="148" cy="34" r="2" fill="#6B5F52"/><text x="135" y="44.5" font-size="8" fill="#fff" text-anchor="middle" font-family="Jua">${+t.slice(5, 7)}월</text><text x="135" y="69" font-size="21" fill="#1F2A44" text-anchor="middle" font-family="Jua">${+t.slice(8)}</text><text x="135" y="82" font-size="6.5" fill="#B3261E" text-anchor="middle" font-family="Jua">${m ? (m.d ? `${m.t} D-${m.d}` : `오늘 ${m.t}!`) : ''}</text>`; }
   if (id === 'TV') { const ph = latest('month', 'free', 'fam');
@@ -350,6 +355,7 @@ css.textContent = `
 .groom-edit{touch-action:none;outline:2.5px dashed var(--red);outline-offset:3px;border-radius:14px}.groom-edit [data-mv]{cursor:grab}.groom-edit .rdrag{filter:drop-shadow(0 0 4px rgba(179,38,30,.8));cursor:grabbing}
 .rfx{cursor:pointer}.rnotes,.rwave{opacity:0;transition:opacity .3s}.rnotes.on,.rwave.on{opacity:1;animation:rbob 1s ease-in-out infinite}
 @keyframes rbob{50%{transform:translateY(-3px)}}
+.rtw{animation:rtw .6s ease-in-out infinite alternate}@keyframes rtw{from{opacity:.35}to{opacity:1}}
 .rbar{display:flex;justify-content:flex-end;margin:8px 0 0}.rbar .ghost{font-size:12.5px;min-height:34px}
 .rgrp .agh{margin:8px 0 4px}.rgrp .rcur{margin-left:8px;font-size:11.5px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .rshop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}

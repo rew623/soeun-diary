@@ -2,7 +2,7 @@
 import { FIREBASE_CONFIG } from './config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion, runTransaction } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 
 const fb = initializeApp(FIREBASE_CONFIG);
@@ -273,8 +273,17 @@ const H = {
     else if (acornDelta) row.acorn = increment(Math.round(+acornDelta) || 0);
     if (JSON.stringify(obj || {}).length > 50000) throw new Error('놀이 저장이 너무 커요');
     // mergeFields: 보낸 칸만 통째로 바꿔요 (slot·wear 같은 묶음에서 뺀 자리도 다른 폰에 반영)
-    const data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row);
-    await commit(setDoc(dref('game', 'shared'), data, { mergeFields: Object.keys(data) }));
+    const ref = dref('game', 'shared'), data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row);
+    // 도토리를 쓸 때는 서버의 진짜 잔액을 다시 읽고 모자라면 안 사요 (다른 폰이 먼저 써서 화면 숫자가 옛날 것일 때 마이너스가 되지 않게)
+    if (obj && obj.acornSet == null && acornDelta < 0) {
+      await runTransaction(db, async tx => {
+        const cur = +(((await tx.get(ref)).data() || {}).acorn) || 0, next = cur + Math.round(+acornDelta);
+        if (next < 0) throw Object.assign(new Error(`도토리가 ${-next}개 모자라요 (다른 폰에서 먼저 썼어요)`), { code: 'acorn-short' });
+        data.acorn = next; tx.set(ref, data, { mergeFields: Object.keys(data) });
+      });
+      return { ok: true };
+    }
+    await commit(setDoc(ref, data, { mergeFields: Object.keys(data) }));
     return { ok: true };
   },
 
