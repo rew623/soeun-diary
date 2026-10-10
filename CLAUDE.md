@@ -31,7 +31,7 @@
 - .github/workflows/hospitals.yml: 병원 정보 받기 (매주 월 03:00 KST + 수동), 시크릿 DATA_GO_KR_KEY
 - .github/workflows/town.yml: 동네 정보 받기 (3시간마다 fetch-town.mjs, 하루 한 번 KST 05시대 fetch-daily.mjs, 수동 실행 what=town/daily/all)
 - .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통(XML), api.mjs 공통(JSON), 시·군 목록 REGIONS, build-regions.mjs)
-  - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보, 에어코리아 대기오염정보·측정소정보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic)
+  - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보·기상특보, 에어코리아 대기오염정보·측정소정보·미세먼지 경보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic, 올해 주별이 없으면 작년 같은 때로 live:false)
   - 네이버 검색 API(블로그·카페글): fetch-posts.mjs, 시크릿 NAVER_CLIENT_ID · NAVER_CLIENT_SECRET (없으면 건너뜀)
 - 새 JS 파일은 index.html의 <script>와 sw.js의 SHELL 목록에 추가할 것
 

@@ -47,19 +47,33 @@ async function events() {
 // 아기·어린이와 관련 큰 것만 골라요
 const WATCH = ['홍역', '백일해', '수두', '유행성이하선염', '성홍열', '장출혈성대장균감염증', 'A형간염', '일본뇌염', '세균성이질', '장티푸스', '폐렴구균 감염증', 'b형헤모필루스인플루엔자', '풍진', '디프테리아', '폴리오', '쯔쯔가무시증', '중증열성혈소판감소증후군(SFTS)', '수막구균 감염증'];
 const norm = s => String(s || '').replace(/^@/, '').trim();
+// period: "2026년 40주" → 2026-40
+const wk = s => { const m = /(\d{4})\D+(\d{1,2})\s*주/.exec(s || ''); return m ? `${m[1]}-${m[2].padStart(2, '0')}` : ''; };
+async function yearRows(y) {
+  const rows = [];
+  for (let p = 1; p <= 5; p++) {
+    const body = await getJson('https://apis.data.go.kr/1790387/EIDAPIService/PeriodBasic', { resType: 2, pageNo: p, numOfRows: 5000, searchPeriodType: 3, searchStartYear: y, searchEndYear: y });
+    const L = list(body); rows.push(...L);
+    if (!L.length || rows.length >= +body.totalCount) break;
+  }
+  return rows.filter(r => wk(r.period));
+}
+// ISO 주차 (KST 오늘)
+function isoWeek() {
+  const d = new Date(kst() + 'T00:00:00Z'), day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - y0) / 864e5 + 1) / 7);
+}
 async function disease() {
-  const y = +kst().slice(0, 4), rows = [];
+  const y = +kst().slice(0, 4);
+  let now = [], last = [];
   try {
-    for (let p = 1; p <= 5; p++) {
-      const body = await getJson('https://apis.data.go.kr/1790387/EIDAPIService/PeriodBasic', { resType: 2, pageNo: p, numOfRows: 5000, searchPeriodType: 3, searchStartYear: y - 1, searchEndYear: y });
-      const L = list(body); rows.push(...L);
-      console.log(`  감염병 ${p}쪽: ${rows.length}/${body.totalCount}`);
-      if (!L.length || rows.length >= +body.totalCount) break;
-    }
+    now = await yearRows(y); console.log(`  감염병 ${y}년: ${now.length}줄`);
+    last = await yearRows(y - 1); console.log(`  감염병 ${y - 1}년: ${last.length}줄`);
   } catch (e) { console.warn('감염병 실패: ' + e.message); failed++; return; }
+  const rows = now.concat(last);
   if (rows[0]) console.log('  예시: ' + JSON.stringify(rows[0]));
-  // period: "2026년 40주" → 2026-40
-  const wk = s => { const m = /(\d{4})\D+(\d{1,2})\s*주/.exec(s || ''); return m ? `${m[1]}-${m[2].padStart(2, '0')}` : ''; };
   const by = {};
   for (const r of rows) {
     const n = norm(r.icdNm), w = wk(r.period); if (!w || n === '계') continue;
@@ -67,11 +81,15 @@ async function disease() {
     if (!k) continue;
     (by[k] = by[k] || {})[w] = (by[k][w] || 0) + (parseInt(String(r.resultVal).replace(/,/g, ''), 10) || 0);
   }
-  // 최근 12주만 (신고가 늦게 들어와 이번 주 숫자는 작게 나올 수 있어요)
-  const weeks = [...new Set(Object.values(by).flatMap(o => Object.keys(o)))].sort().slice(-12);
+  // 올해 숫자가 있으면 최근 12주, 아직 안 나왔으면 작년 같은 때(이번 주 앞 6주 ~ 뒤 5주)
+  const live = now.length > 0, cw = isoWeek();
+  let weeks;
+  if (live) weeks = [...new Set(Object.values(by).flatMap(o => Object.keys(o)))].sort().slice(-12);
+  else weeks = Array.from({ length: 12 }, (_, i) => cw - 6 + i).filter(w => w >= 1 && w <= 52).map(w => `${y - 1}-${String(w).padStart(2, '0')}`);
   const items = Object.entries(by).map(([name, o]) => ({ name, weeks: weeks.map(w => o[w] || 0) })).filter(x => x.weeks.some(Boolean)).sort((a, b) => WATCH.indexOf(a.name) - WATCH.indexOf(b.name));
   if (!items.length) { console.warn('감염병: 고른 병의 기록이 없어요 (응답 형식을 확인해 주세요)'); failed++; return; }
-  await saveIfChanged('disease.json', { weeks, items });
+  console.log(`  ${live ? '올해 최근 12주' : `작년 같은 때 (이번 주 ${cw}주 기준)`}`);
+  await saveIfChanged('disease.json', { live, week: cw, weeks, items });
 }
 
 await events();

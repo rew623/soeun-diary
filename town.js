@@ -1,7 +1,7 @@
 // 동네 탐문 — 산책 지수(날씨+미세먼지), 강원 육아·가족 행사, 어린이 감염병 동향
 // 데이터는 Actions(town.yml)가 data/town.json · events.json · disease.json 으로 만들어 둬요 (시·군은 병원 수사와 같은 칸을 써요)
 (function () {
-const T = { town: null, events: null, dis: null, at: 0, loading: false, evAll: false, evKid: true, evMore: 12 };
+const T = { town: null, events: null, dis: null, at: 0, loading: false, evAll: false, evKid: false, evMore: 12 };
 const REGK = 'soeun-hosp-region';
 const NAMES = { chuncheon: '춘천시', wonju: '원주시', gangneung: '강릉시', donghae: '동해시', taebaek: '태백시', sokcho: '속초시', samcheok: '삼척시', hongcheon: '홍천군', hoengseong: '횡성군', yeongwol: '영월군', pyeongchang: '평창군', jeongseon: '정선군', cheorwon: '철원군', hwacheon: '화천군', yanggu: '양구군', inje: '인제군', goseong: '고성군', yangyang: '양양군' };
 const reg = () => { try { const r = localStorage.getItem(REGK); return NAMES[r] ? r : 'wonju'; } catch (e) { return 'wonju'; } };
@@ -34,11 +34,25 @@ function airAt(t, code) {
   const v = mx(gTxt(((f.PM10 || {})[d] || {})[side]), gTxt(((f.PM25 || {})[d] || {})[side]));
   return v != null ? v : n ? mx(g10(n.pm10), g25(n.pm25)) : null;
 }
+// 지금 발효 중인 기상특보·미세먼지 주의보/경보 (오늘 시간에만 반영)
+const BAD = /폭염|한파|호우|대설|태풍|강풍|황사/;
+function alerts(code) {
+  const out = [], W = T.town && T.town.warn, A = T.town && T.town.alarm;
+  ((W && W.list) || []).filter(x => (x.codes || []).includes(code) && BAD.test(x.kind)).forEach(x => out.push({ t: x.kind, k: 'w' }));
+  (A || []).filter(x => (x.codes || []).includes(code)).forEach(x => out.push({ t: `${x.item} ${x.gbn}`, k: 'd', g: /경보/.test(x.gbn) ? 3 : 2 }));
+  return out;
+}
+const alertHtml = code => alerts(code).map(a => `<span class="walert">⚠ ${esc(a.t)}</span>`).join('');
 // h = [YYYYMMDDHHMM, 기온, 하늘, 강수형태, 강수확률, 풍속, 습도]
 function score(h, code) {
-  const [t, tmp, , pty, pop, wsd] = h, ag = airAt(t, code), why = [];
-  if (pty > 0) return { s: 0, ag, why: [['비·눈 와요']] };
-  let s = 100;
+  const [t, tmp, , pty, pop, wsd] = h, why = [];
+  let ag = airAt(t, code), s = 100;
+  if (t.slice(0, 8) === nowKey().slice(0, 8)) for (const a of alerts(code)) {
+    if (a.k === 'd') { ag = mx(ag, a.g); continue; }
+    if (/경보/.test(a.t)) s = Math.min(s, 10); else s -= 30;
+    why.push(a.t + ' 발효 중');
+  }
+  if (pty > 0) return { s: 0, ag, why: ['비·눈 와요', ...why] };
   if (tmp < 18) { s -= (18 - tmp) * 4; if (tmp < 10) why.push('쌀쌀해요'); }
   if (tmp > 24) { s -= (tmp - 24) * 7; if (tmp >= 28) why.push('더워요'); }
   if (tmp <= 0 || tmp >= 32) s = Math.min(s, 10);
@@ -89,33 +103,44 @@ function card() {
   if (!P) return `<button class="walkcard wait" data-town="open">${CHARS.svg('baby', 'acorn', { size: 64 })}<span class="wtx"><small>오늘 산책 지수 · ${NAMES[code]}</small><b>동네 탐문 준비 중</b><span>날씨·미세먼지를 받아 오면 여기에 떠요. 눌러서 행사 보기</span></span></button>`;
   const [lab, stamp, cls] = LV(P.top);
   return `<button class="walkcard ${cls}" data-town="open"><span class="wico" aria-hidden="true">${P.ico}</span>
-    <span class="wtx"><small>${P.when} 산책 지수 · ${NAMES[code]}</small><b>${lab}</b><span>${P.top >= 40 ? `${P.from}~${P.to}시 추천 · ` : ''}${P.tmp}℃${P.ag != null ? ` · 미세먼지 ${GN[P.ag]}` : ''}</span></span>
+    <span class="wtx"><small>${P.when} 산책 지수 · ${NAMES[code]}</small>${P.when === '오늘' ? alertHtml(code) : ''}<b>${lab}</b><span>${P.top >= 40 ? `${P.from}~${P.to}시 추천 · ` : ''}${P.tmp}℃${P.ag != null ? ` · 미세먼지 ${GN[P.ag]}` : ''}</span></span>
     <span class="wscore"><b>${P.top}</b><i>${stamp}</i></span></button>`;
 }
 
 // ---------- 감염병 ----------
 const DNOTE = { 홍역: '12개월 전(MMR 접종 전) 아기는 사람 많은 곳을 피해요', 백일해: '어린 아기에게 위험해요. 가족도 Tdap 접종 권장', 수두: '12~15개월 접종 전엔 수두 환자와 접촉 주의', 유행성이하선염: 'MMR 접종으로 예방해요', 성홍열: '열·목 통증·딸기 혀면 소아과로', 장출혈성대장균감염증: '고기는 완전히 익히고 손 씻기', A형간염: '물·음식 위생, 12개월부터 접종', 일본뇌염: '모기 조심 (12개월부터 접종)', 쯔쯔가무시증: '풀밭에 앉지 않기, 긴 옷', '중증열성혈소판감소증후군(SFTS)': '진드기 조심, 풀밭 피하기' };
-function trend(x) {
-  const w = x.weeks, last = w[w.length - 2] ?? 0, prev = w.slice(-6, -2), avg = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : 0;   // 이번 주는 신고가 덜 들어와 지난주로 봐요
-  const up = avg ? (last - avg) / avg : last ? 1 : 0;
-  return { last, avg, up, hot: (x.name === '홍역' && last > 0) || (up >= 0.5 && last >= 10) };
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+// live: 올해 최근 주(이번 주는 신고가 덜 들어와 지난주로) / 아니면 작년 같은 주와 그 뒤 몇 주가 늘었는지
+function trend(x, D) {
+  const w = x.weeks;
+  if (D.live === false) {
+    let i = D.weeks.findIndex(k => +k.slice(5) === D.week); if (i < 0) i = Math.min(6, w.length - 1);
+    const ahead = avg(w.slice(i, i + 4)), before = avg(w.slice(Math.max(0, i - 4), i)), up = before ? (ahead - before) / before : ahead ? 1 : 0;
+    return { last: w[i] || 0, up, i, hot: (x.name === '홍역' && ahead > 0) || (up >= 0.3 && ahead >= 10) };
+  }
+  const last = w[w.length - 2] ?? 0, a = avg(w.slice(-6, -2)), up = a ? (last - a) / a : last ? 1 : 0;
+  return { last, up, i: w.length - 2, hot: (x.name === '홍역' && last > 0) || (up >= 0.5 && last >= 10) };
 }
 function disHtml(compact) {
   const D = T.dis; if (!D || !D.items || !D.items.length) return '';
-  const L = D.items.map(x => ({ ...x, ...trend(x) })).sort((a, b) => (b.hot - a.hot) || (b.up - a.up));
+  const live = D.live !== false;
+  const L = D.items.map(x => ({ ...x, ...trend(x, D) })).sort((a, b) => (b.hot - a.hot) || (b.up - a.up));
   const show = compact ? L.filter(x => x.hot).slice(0, 3) : L;
-  const wkLab = (D.weeks[D.weeks.length - 2] || '').replace(/^(\d{4})-(\d+)/, (m, y, w) => `${+w}주`);
-  const row = x => `<div class="drow ${x.hot ? 'hot' : ''}"><span class="dn"><b>${esc(x.name)}</b>${DNOTE[x.name] ? `<small>${esc(DNOTE[x.name])}</small>` : ''}</span><span class="dv"><b>${x.last}</b><small>${x.up >= 0.15 ? `▲ ${Math.round(x.up * 100)}%` : x.up <= -0.15 ? `▼ ${Math.round(-x.up * 100)}%` : '비슷'}</small></span>${spark(x.weeks.slice(0, -1))}</div>`;
+  const wkLab = live ? (D.weeks[D.weeks.length - 2] || '').replace(/^(\d{4})-(\d+)/, (m, y, w) => `${+w}주`) : `${D.week}주 전후`;
+  const arrow = x => x.up >= 0.15 ? `▲ ${Math.round(x.up * 100)}%` : x.up <= -0.15 ? `▼ ${Math.round(-x.up * 100)}%` : '비슷';
+  const row = x => `<div class="drow ${x.hot ? 'hot' : ''}"><span class="dn"><b>${esc(x.name)}</b>${DNOTE[x.name] ? `<small>${esc(DNOTE[x.name])}</small>` : ''}</span><span class="dv"><b>${x.last}</b><small>${live ? arrow(x) : x.up >= 0.15 ? '이맘때 늘어요' : x.hot ? '이맘때 발생' : x.up <= -0.15 ? '이맘때 줄어요' : '비슷'}</small></span>${spark(live ? x.weeks.slice(0, -1) : x.weeks, live ? -1 : x.i)}</div>`;
   if (compact) {
-    return `<button class="discard ${show.length ? 'hot' : ''}" data-town="open" data-v="dis">${CHARS.svg('baby', 'thermo', { size: 52, face: true })}<span><small>어린이 감염병 동향 · 전국 ${wkLab}</small><b>${show.length ? show.map(x => esc(x.name)).join(', ') + ' 늘고 있어요' : '크게 늘어난 감염병은 없어요'}</b><span>눌러서 자세히</span></span></button>`;
+    if (!live && !show.length) return '';   // 작년 자료로는 늘어나는 게 있을 때만 알려요
+    return `<button class="discard ${show.length ? 'hot' : ''}" data-town="open" data-v="dis">${CHARS.svg('baby', 'thermo', { size: 52, face: true })}<span><small>${live ? `어린이 감염병 동향 · 전국 ${wkLab}` : '작년 이맘때 늘었던 감염병 · 전국'}</small><b>${show.length ? show.map(x => esc(x.name)).join(', ') + (live ? ' 늘고 있어요' : ' 조심할 때예요') : '크게 늘어난 감염병은 없어요'}</b><span>눌러서 자세히</span></span></button>`;
   }
-  return `<section id="tdis"><h2 class="sh"><span>어린이 감염병 동향</span><span>전국 · 지난주(${wkLab}) 신고</span></h2>${L.map(row).join('')}
-    <p class="foot" style="margin-top:8px">질병관리청 전수신고 자료예요. 수족구·독감·RSV는 표본감시라 여기엔 없어요. 이번 주 숫자는 신고가 늦게 들어와 지난주 기준으로 봐요.</p></section>`;
+  return `<section id="tdis"><h2 class="sh"><span>어린이 감염병 동향</span><span>${live ? `전국 · 지난주(${wkLab}) 신고` : `작년 ${wkLab} · 전국`}</span></h2>
+    ${live ? '' : `<p class="hint" style="margin:0 0 6px">올해 주별 숫자는 아직 공개 전이라, 작년 같은 때 전국 신고 수로 "이맘때 많아지는 병"을 보여 줘요. 그래프의 점이 이번 주예요.</p>`}${L.map(row).join('')}
+    <p class="foot" style="margin-top:8px">질병관리청 전수신고 자료예요. 수족구·독감·RSV는 표본감시라 여기엔 없어요.${live ? ' 이번 주 숫자는 신고가 늦게 들어와 지난주 기준으로 봐요.' : ''}</p></section>`;
 }
-function spark(w) {
+function spark(w, mark = -1) {
   if (!w.length) return '';
-  const m = Math.max(1, ...w), W = 64, H = 22, st = W / Math.max(1, w.length - 1);
-  return `<svg class="dsp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" points="${w.map((v, i) => `${(i * st).toFixed(1)},${(H - 2 - v / m * (H - 4)).toFixed(1)}`).join(' ')}"/></svg>`;
+  const m = Math.max(1, ...w), W = 64, H = 22, st = W / Math.max(1, w.length - 1), y = v => (H - 2 - v / m * (H - 4)).toFixed(1);
+  return `<svg class="dsp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" points="${w.map((v, i) => `${(i * st).toFixed(1)},${y(v)}`).join(' ')}"/>${mark >= 0 && mark < w.length ? `<circle cx="${(mark * st).toFixed(1)}" cy="${y(w[mark])}" r="3" fill="var(--red)"/>` : ''}</svg>`;
 }
 
 // ---------- 행사 ----------
@@ -129,7 +154,7 @@ function evHtml() {
   const shown = L.slice(0, T.evMore);
   const item = e => { const on = e.start <= t, dd = on ? '진행 중' : 'D-' + daysBetween(t, e.start);
     const map = e.lat && e.lng ? `https://map.kakao.com/link/map/${encodeURIComponent(e.title)},${e.lat},${e.lng}` : `https://map.kakao.com/?q=${encodeURIComponent(e.addr)}`;
-    return `<div class="ev">${e.img ? `<img src="${esc(e.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="evph">${leaf}</span>`}
+    return `<div class="ev">${e.img ? `<img src="${esc(e.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : `<span class="evph">${leaf}</span>`}
       <span class="evt"><b>${esc(e.title)}</b><small>${md(e.start)}~${md(e.end)} · ${esc(NAMES[e.region] || '강원')}</small><small class="eva">${esc(e.addr)}</small>
       <span class="evb"><a href="${map}" target="_blank" rel="noopener">지도</a><a href="https://m.search.naver.com/search.naver?query=${encodeURIComponent(e.title)}" target="_blank" rel="noopener">검색</a>${e.tel ? `<a href="tel:${esc(e.tel.replace(/[^\d-]/g, ''))}">전화</a>` : ''}</span></span>
       <span class="evd ${on ? 'on' : ''}">${dd}</span></div>`; };
@@ -151,6 +176,7 @@ function render_() {
     const bar = x => { const h = +x.h[0].slice(8, 10), c = x.s >= 80 ? 'ok' : x.s >= 60 ? 'ok2' : x.s >= 40 ? 'mid' : 'no'; return `<span class="whb ${c}" title="${h}시 ${x.s}점"><i style="height:${Math.max(6, x.s)}%"></i><b>${x.h[1]}°</b><small>${h}</small>${x.h[3] > 0 ? '<em>☂</em>' : ''}</span>`; };
     walk = `<section class="walk ${cls}"><h2 class="sh"><span>${P.when} 산책 지수</span><span>${esc(T.town.updated || '')} 기준</span></h2>
       <div class="wtop"><span class="wbig">${P.top}</span><span class="wlab"><b>${lab}</b><span>${P.top >= 40 ? `${P.from}시~${P.to}시가 제일 좋아요` : esc(P.why.join(', ') || '밖은 오늘 쉬어요')}</span></span><span class="stamp">${stamp}</span></div>
+      ${P.when === '오늘' && alerts(code).length ? `<div class="walerts">${alertHtml(code)}<small>기상청·에어코리아 발표, 오늘 점수에 반영했어요</small></div>` : ''}
       <div class="hbars">${P.list.map(bar).join('')}</div>
       <div class="wtips"><p><b>옷차림</b> ${cloth(P.tmp)} (${P.tmp}℃)</p>${note ? `<p><b>아기 수사관 메모</b> ${note}</p>` : ''}</div></section>`;
   }
@@ -195,6 +221,8 @@ css.textContent = `
 .wscore b{font-family:var(--display);font-weight:400;font-size:34px;line-height:1;color:#2E7D5B}
 .walkcard.mid .wscore b{color:#C8551E}.walkcard.no .wscore b{color:var(--red)}
 .wscore i{font-style:normal;font-size:11px;color:var(--red);border:2px solid currentColor;border-radius:6px;padding:0 5px;transform:rotate(-6deg);margin-top:4px;white-space:nowrap}
+.walert{display:inline-block;align-self:flex-start;font-size:11.5px;font-weight:700;color:#fff;background:var(--red);border-radius:99px;padding:1px 9px;margin:2px 4px 2px 0}
+.walerts{margin-top:10px}.walerts small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .treg{display:flex;align-items:center;gap:10px;margin:14px 0 0;font-size:13px;color:var(--muted)}
 .tsel{flex:1;min-height:44px;border:1.5px solid var(--line);border-radius:14px;background:#FFFDF7;padding:0 12px;font:inherit;font-size:16px;color:var(--ink)}
 .wtop{position:relative;display:flex;align-items:center;gap:12px}
