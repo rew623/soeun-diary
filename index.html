@@ -414,6 +414,9 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="book.js"></script>
 <script src="fun.js"></script>
 <script src="room.js"></script>
+<script src="studio.js"></script>
+<script src="posecam.js"></script>
+<script src="movie.js"></script>
 <script src="push-key.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
@@ -594,10 +597,11 @@ function render(){
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
   $tab.innerHTML=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
-  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
+  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
+  if(S.view==='studio')STUDIO.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
   cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();FUN.check();FUN.afterRender();
 }
@@ -648,6 +652,9 @@ function renderGrow(){
     <div class="info"><span class="lab">수사 대상</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
   </div>
   <div class="dday" aria-label="생후 ${d}일"><span>수사</span><b>${d}</b><span>일째</span></div>
+  ${(()=>{const oc=CV.occasion();if(!oc.label)return '';const today_=!oc.soon,dd=daysBetween(today(),oc.date);
+    return `<div class="anniv"><span class="anb">${today_?'🎉':'⏳'}</span><span class="ant"><b>${today_?`오늘은 ${esc(CV.nick())} ${oc.label}!`:`${oc.label}까지 ${dd}일!`}</b><small>${today_?'기념 사진·영상을 만들어 가족에게 보내요':'미리 기념 사진·영상을 준비해 둘까요?'}</small></span>
+      <span class="anbt"><button data-st="open">📸 기념 사진</button><button data-mvset="open" data-v="${/일$/.test(oc.label)&&oc.label==='100일'?'d100':'story'}">🎬 기념 영상</button></span></div>`})()}
   ${CHARS.guide('grow')}${GAME.card()}
   ${next}${CHECKUPS.nextCard()}
   ${CHARGES.html()}
@@ -878,8 +885,9 @@ function renderAlbum(){
   ${(()=>{const rp=ALBUM.reportDoc(),ph=(rp&&safeImg(PHOTOS[rp.id]))||safeImg(PHOTOS[(firsts().slice().reverse().find(m=>m.photo&&safeImg(PHOTOS[m.id]))||{}).id])||safeImg(PHOTOS.profile);
     return `<button class="nextcard rcard100" data-act="report" style="margin-top:14px">${ph?`<span class="r100ph"><img src="${ph}" alt=""><i>${d<100?'D-'+(100-d):'100일'}</i></span>`:''}<span><small>${d<100?fmtK(d100,true)+' 기밀 해제 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>태어나서 100일까지 키·몸무게 변화, 최초 목격, 접종을 한 장에 정리해요 · ${d<100?'미리 보기':'보고서 보기'}</small></span>${ph?'':`<span class="d">${d<100?'D-'+(100-d):'100일'}</span>`}</button>`})()}
   <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost rpick" data-al="report" style="flex:1">📷 ${ALBUM.reportDoc()?'보고서 사진 바꾸기':'보고서 사진 미리 올리기'}</button><button class="ghost rpick" data-book="open" style="flex:1">📖 성장 앨범 책 (PDF)</button></div>
+  <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost rpick" data-st="open" style="flex:1">📸 기념 사진관</button><button class="ghost rpick" data-mvset="open" style="flex:1">🎬 성장 영상 만들기</button></div>
   ${ALBUM.sectionHtml()}
-  <section${fsec('a-month')}><h2 class="sh" data-fold="a-month"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div><button class="storybtn" data-story>▶ 성장 스토리 보기</button></section>
+  <section${fsec('a-month')}><h2 class="sh" data-fold="a-month"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div><div class="mbtns"><button class="storybtn" data-story>▶ 성장 스토리 보기</button><button class="storybtn pose" data-pcopen="">📷 같은 포즈로 찍기</button></div></section>
   <section${fsec('a-first')}><h2 class="sh" data-fold="a-first" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">최초 목격 기록</span><span>${F.length}건 확보</span></h2>
     ${F.length?`<div class="polas">${F.map((m,i)=>polaroid(m,i===0,rots[i%rots.length])).join('')}</div>`:'<p class="vempty">첫 미소, 첫 옹알이 같은 순간을 기록해 보세요.</p>'}
     <button class="solve" data-act="addmom" style="width:100%;margin-top:18px;min-height:50px">+ 최초 목격 기록</button></section>

@@ -35,6 +35,9 @@
 - memories.js: 사건 앨범 맨 위 '지난 오늘'(지난달·작년 같은 날 사진, 한번 뺐다가 사용자 요청으로 다시 살림), '성장 스토리'(월별 사진 인스타 스토리처럼, 뒤로가기로 닫힘 SLIDE.close)
 - dev.js: 예방접종 탭 > 발달 체크(S.vacView='dev'), 2~24개월 8단계(CDC 발달 이정표 참고), dev 컬렉션
 - book.js: 성장 앨범 책(S.view='book'): 표지 + 달마다 한 쪽, 인쇄·PDF로 저장(window.print, @media print)
+- studio.js: 기념 사진관(S.view='studio') + 같이 쓰는 그림 도구 window.CV (img·cover·kraft·tape·stamp·text·svgImg, photos()·stats()·nick()·occasion() 기념일(100일마다·돌 앞뒤 3일, 매달 그날), share(Web Share, 안 되면 저장)·save). 사진 한 장에 틀 5가지(탐정 도장·폴라로이드·사건 파일·필름·깔끔하게, 세로 1080×1350/정사각)·큰/작은 글씨·몸무게·키·말풍선·이모지 스티커(끌어 옮기기, 눌러서 작게·크게·돌리기·지우기) → JPEG로 카톡 보내기·저장·사건 앨범에 넣기(ALBUM.queue). 들어가는 곳: 성장 수사 기념일 배너, 사건 앨범 '📸 기념 사진관', 사진 크게 보기의 '🎨 꾸미기'(STUDIO.open(key))
+- posecam.js: 같은 포즈 촬영기(body에 붙는 .pcam 화면, POSECAM.open/close): 카메라 위에 지난 달 사진을 반투명하게 겹쳐(겹치기 슬라이더·좌우 뒤집기·격자·앞뒤 카메라) 같은 자세로 찍고 → 'N개월 사진으로'(mom type:'month', 이미 있으면 바꿀지 물음) 또는 현장 사진첩. 들어가는 곳: 월별 증거 사진 칸 '📷 같은 포즈로 찍기'(data-pcopen)
+- movie.js: 성장 영상 만들기(S.view='movie', 녹화는 body에 붙는 .mvo 화면): 템플릿 4가지(성장 스토리·100일의 기록·같은 포즈 타임랩스·이번 달 하이라이트), 장면 길이·세로/정사각·오르골 음악(WebAudio 반짝반짝 작은 별). canvas를 실시간으로 그리며 MediaRecorder로 녹화(mp4 되면 mp4, 아니면 webm, 720×1280) → 카톡 보내기·폰에 저장. 영상은 앱에 올리지 않음(Storage는 이미지만). 녹화 중 화면이 꺼지거나 다른 앱으로 가면 멈춤(Wake Lock으로 화면 켜 둠). 들어가는 곳: 사건 앨범 '🎬 성장 영상 만들기', 기념일 배너
 - push-key.js: 알림 VAPID 공개키(Firebase 콘솔 → 클라우드 메시징 → 웹 푸시 인증서). 비어 있으면 알림 끔. 바꾸면 VERSION 올릴 것
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
@@ -69,7 +72,8 @@
 - 파일 선택 칸(input type=file)은 #app 밖(body에 고정)이나 편집창(sheet) 안에 둘 것. 파일 창에서 돌아올 때 화면을 다시 그려 #app 안의 칸이 사라짐
 - GitHub Pages 배포(pages build and deployment)가 GitHub 쪽 오류로 가끔 실패함. 실패한 job을 재실행하면 됨
 - map-key.js를 바꾸면 sw.js VERSION도 올릴 것 (안 올리면 폰에 반영 안 됨)
-- 뒤로가기: 크롬은 화면을 만지기 전에 넣은 기록 칸을 건너뛸 수 있어, 앱을 열자마자 뒤로가기를 누르면 안내 없이 꺼질 수 있음. 놀이터 안 게임·룰렛·스티커(S.view play/fun)에서 뒤로가기는 도토리 놀이터로
+- 뒤로가기: 크롬은 화면을 만지기 전에 넣은 기록 칸을 건너뛸 수 있어, 앱을 열자마자 뒤로가기를 누르면 안내 없이 꺼질 수 있음. 놀이터 안 게임·룰렛·스티커(S.view play/fun)에서 뒤로가기는 도토리 놀이터로. 같은 포즈 촬영기·영상 녹화 화면도 뒤로가기로 닫힘(viewer.js popstate에서 POSECAM.close·MOVIE.close)
 - 탭 밀기는 옆으로 스크롤되는 줄(overflow-x auto/scroll, 예: 동네 탐문 시간별 날씨) 위에서는 안 함 (그 줄을 넘김)
 - 속도(2026.10 점검): render()는 #app 전체를 다시 그리므로 연달아 여러 번 부르지 말 것 — 사진 주소 불러오기(loadPhotos)는 다 받은 뒤 한 번만 그림(예전엔 4장마다 그려 사진 400장이면 열 때 8초 버벅임). render 안이나 직후에 scrollY·scrollHeight·getBoundingClientRect 같은 배치 값을 읽으면 화면 전체 배치를 억지로 계산해 느려짐(staySave는 0.3초 뒤). 폰 사본 저장(saveCache)은 2초 모아서, 앱 내릴 때 바로 씀. 사진 칸 img는 loading=lazy decoding=async (수사 보드·성장 앨범 책은 레이아웃·인쇄 때문에 그대로). 글씨는 11px보다 작게 하지 않기
+- canvas로 사진을 그려 저장하는 기능(사진관·영상·촬영기)은 Firebase 사진을 crossOrigin='anonymous'로 불러와야 함(Storage가 CORS * 허용, sw.js 사진 캐시도 cors로 받음). 그냥 불러오면 canvas가 막혀 저장이 안 됨. 사진 주소는 safeImg로 거른 것만
 - 앨범 칸은 원본 사진(최대 1600px·약 300KB)을 작게 보여 주는 거라 사진이 아주 많아지면 데이터·메모리가 큼 → 썸네일을 따로 저장하려면 사진 기록에 칸(thumbUrl)을 추가해야 해서 사용자 확인 후

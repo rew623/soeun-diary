@@ -10,7 +10,7 @@ lb.innerHTML = `<div class="lb-stage">
     <div class="lb-card" hidden></div>
     <button class="lb-nav prev" data-lb="prev" aria-label="이전 사진" hidden>‹</button><button class="lb-nav next" data-lb="next" aria-label="다음 사진" hidden>›</button></div>
   <div class="lb-top"><span class="lb-cap"></span><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
-  <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn edit" data-lb="edit">편집</button></div>`;
+  <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn deco" data-lb="deco">🎨 꾸미기</button><button class="lb-btn edit" data-lb="edit">편집</button></div>`;
 document.body.appendChild(lb);
 const $stage = lb.querySelector('.lb-stage'), $track = lb.querySelector('.lb-track'), $card = lb.querySelector('.lb-card');
 const slides = () => [...$track.children];                       // [이전, 현재, 다음] (넘길 때 순서를 돌려요)
@@ -82,6 +82,7 @@ function header() {
   lb.querySelector('.next').hidden = !many || idx >= seq.length - 1;
   const e = lb.querySelector('[data-lb=edit]');
   e.textContent = (cur && cur.editLabel) || '편집'; e.hidden = !(cur && cur.edit);
+  lb.querySelector('[data-lb=deco]').hidden = !(cur && cur.key && window.STUDIO);
   boardBtn();
 }
 function showBox() {
@@ -147,6 +148,7 @@ lb.addEventListener('click', async e => {
   if (b.dataset.lb === 'prev') go(-1);
   if (b.dataset.lb === 'next') go(1);
   if (b.dataset.lb === 'edit') { const f = cur && cur.edit; close(); if (f) f(); }
+  if (b.dataset.lb === 'deco') { const k = cur && cur.key; close(); if (k && window.STUDIO) STUDIO.open(k); }   // 기념 사진관으로 이 사진 꾸미기
   if (b.dataset.lb === 'board' && cur && cur.boardId) {
     const m = S.moments.find(x => x.id === cur.boardId), on = !(m && m.board);
     b.disabled = true;
@@ -232,6 +234,8 @@ window.addEventListener('popstate', () => {
   if (isOpen()) { close(); guard(); return; }                          // 1) 사진 크게 보기
   if (sheetOpen()) { closeSheet(); guard(); return; }                  // 2) 편집창 같은 아래 창
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리
+  if (window.POSECAM && POSECAM.close()) { guard(); return; }                      // 같은 포즈 촬영기
+  if (window.MOVIE && MOVIE.close()) { guard(); return; }                          // 성장 영상 만드는 창
   if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }   // 3) 크게 본 병원 지도
   if (typeof S !== 'undefined' && (S.view === 'play' || S.view === 'fun')) {   // 놀이터 안의 게임·룰렛·스티커 → 도토리 놀이터 (화면의 '놀이터로' 단추와 같게)
     S.view = 'medals'; if (window.GAME && GAME.hub) GAME.hub('play'); render(); window.scrollTo(0, 0); guard(); return;
