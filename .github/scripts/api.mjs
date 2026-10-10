@@ -10,6 +10,8 @@ export async function getJson(base, params) {
   for (let i = 0; ; i++) {
     try {
       const res = await fetch(url), txt = await res.text();
+      const em = /SERVICE_KEY_IS_NOT_REGISTERED_ERROR|NO_OPENAPI_SERVICE_ERROR|LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR/.exec(txt);
+      if (em) throw new Error({ SERVICE_KEY_IS_NOT_REGISTERED_ERROR: '공공데이터포털에서 이 API를 활용신청하지 않았거나 아직 반영 전이에요', NO_OPENAPI_SERVICE_ERROR: '없어진 API 주소예요', LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR: '하루 호출 한도를 넘었어요' }[em[0]] + ` (${em[0]})`);
       let j; try { j = JSON.parse(txt); } catch (e) { throw new Error(`JSON 아님 (HTTP ${res.status}): ${txt.replace(/\s+/g, ' ').slice(0, 300)}`); }
       const h = j.response && j.response.header;
       if (!h) throw new Error('알 수 없는 응답: ' + txt.slice(0, 300));

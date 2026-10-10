@@ -21,7 +21,7 @@ const KID = /어린이|아이|아기|유아|키즈|가족|동화|인형|놀이|�
 async function events() {
   const from = ymd(kst(-45)), today = kst(), rows = [];
   let ok = false;
-  for (const [svc, op] of [['KorService2', 'searchFestival2'], ['KorService1', 'searchFestival1']]) {
+  for (const [svc, op] of [['KorService2', 'searchFestival2']]) {
     try {
       for (let p = 1; p <= 10; p++) {
         const body = await getJson(`https://apis.data.go.kr/B551011/${svc}/${op}`, { MobileOS: 'ETC', MobileApp: 'soeun-diary', _type: 'json', numOfRows: 500, pageNo: p, eventStartDate: from, arrange: 'A' });
