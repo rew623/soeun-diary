@@ -1,5 +1,5 @@
-// 육아 자료실 — 네이버 블로그·카페에서 월령별·주제별·우리 동네 육아 글을 모아 보여 줘요 (S.view='posts')
-// 어느 화면에서나 오른쪽 위에 동그랗게 떠 있고, 길게 누르면 옮길 수 있어요 (위치는 이 폰에 기억)
+// 육아 글 모음(예전 이름 육아 자료실) — 네이버 블로그·카페에서 월령별·주제별·우리 동네 육아 글을 모아 보여 줘요 (S.view='posts')
+// 어느 화면에서나 오른쪽 위에 "📚 육아 글" 버튼이 떠 있고, 0.6초 길게 누른 채 끌면 옮길 수 있어요 (위치는 이 폰에 기억)
 // 데이터: Actions(town.yml)가 하루 한 번 만드는 data/posts.json. 글은 원래 사이트(네이버)에서 열려요
 (function () {
 const P = { data: null, at: 0, loading: false, tab: 'month', topic: '', month: null, read: {} };
@@ -18,48 +18,48 @@ async function load(force) {
 }
 
 // ---------- 떠 있는 동그라미 ----------
-const POSK = 'soeun-posts-pos', SEENK = 'soeun-posts-seen', SZ = 54;
+const POSK = 'soeun-posts-pos', SEENK = 'soeun-posts-seen', BW = 92, BH = 44;
 const bub = document.createElement('button');
-bub.type = 'button'; bub.className = 'pbub'; bub.hidden = true; bub.setAttribute('aria-label', '육아 자료실 열기 (길게 누르면 옮기기)');
-bub.innerHTML = '<span aria-hidden="true">📚</span><small>자료실</small><i hidden></i>';
+bub.type = 'button'; bub.className = 'pbub'; bub.hidden = true; bub.setAttribute('aria-label', '육아 글 모음 열기 (길게 누른 채 끌면 옮기기)');
+bub.innerHTML = '<span aria-hidden="true">📚</span><b>육아 글</b><i hidden></i>';
 document.body.appendChild(bub);
 let pos = null; try { pos = JSON.parse(localStorage.getItem(POSK) || 'null'); } catch (e) {}
-const clampY = y => Math.max(56, Math.min(innerHeight - SZ - 150, y));   // 아래 메뉴·+버튼은 피해요
+const clampY = y => Math.max(56, Math.min(innerHeight - BH - 160, y));   // 아래 메뉴·+버튼은 피해요
 function place(x, y) { bub.style.transform = `translate3d(${Math.round(x)}px,${Math.round(y)}px,0)`; }
 function home() {
   const W = innerWidth, side = pos && pos.side === 'l' ? 'l' : 'r';
-  const x = side === 'l' ? 10 : Math.min(W, 560 + (W - 560) / 2) - SZ - 10;   // 화면이 넓어도 앱 폭 안에
+  const x = side === 'l' ? 10 : Math.min(W, 560 + (W - 560) / 2) - BW - 10;   // 화면이 넓어도 앱 폭 안에
   place(Math.max(10, x), clampY(pos ? pos.y * innerHeight : 96));
 }
 addEventListener('resize', () => { if (!bub.hidden) home(); });
-let pressT = 0, start = null, dragging = false, moved = false, eat = false;
+// 짧게 누르면 열기, 0.6초 길게 누른 채 끌어야만 옮겨져요 (손가락이 조금 흔들려도 열리게)
+let pressT = 0, start = null, armed = false, dragged = false, far = false;
 bub.addEventListener('pointerdown', e => {
-  start = { x: e.clientX, y: e.clientY }; moved = false; dragging = false;
+  start = { x: e.clientX, y: e.clientY }; armed = dragged = far = false;
   try { bub.setPointerCapture(e.pointerId); } catch (x) {}
   clearTimeout(pressT);
-  pressT = setTimeout(() => { dragging = true; bub.classList.add('drag'); try { navigator.vibrate && navigator.vibrate(15); } catch (x) {} }, 350);
+  pressT = setTimeout(() => { if (far) return; armed = true; bub.classList.add('drag'); try { navigator.vibrate && navigator.vibrate(15); } catch (x) {} }, 600);
 });
 bub.addEventListener('pointermove', e => {
   if (!start) return;
-  if (dragging) { place(e.clientX - SZ / 2, e.clientY - SZ / 2); return; }
-  if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) { moved = true; clearTimeout(pressT); }
+  const d = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+  if (armed) { if (d > 6) dragged = true; if (dragged) place(e.clientX - BW / 2, e.clientY - BH / 2); return; }
+  if (d > 24) { far = true; clearTimeout(pressT); }   // 길게 누르기 전 크게 움직이면 아무것도 안 해요
 });
-const end = e => {
+function openPosts() { S.view = 'posts'; P.month = null; render(); window.scrollTo(0, 0); load(); }
+bub.addEventListener('pointerup', e => {
   clearTimeout(pressT);
-  if (dragging) {
+  if (!start) return;
+  if (dragged) {
     // 가까운 옆쪽으로 붙이고 기억해요
-    pos = { side: e.clientX < innerWidth / 2 ? 'l' : 'r', y: clampY(e.clientY - SZ / 2) / innerHeight };
+    pos = { side: e.clientX < innerWidth / 2 ? 'l' : 'r', y: clampY(e.clientY - BH / 2) / innerHeight };
     try { localStorage.setItem(POSK, JSON.stringify(pos)); } catch (x) {}
-    bub.classList.remove('drag'); home(); eat = true;
-  } else if (moved) eat = true;
-  dragging = false; start = null;
-};
-bub.addEventListener('pointerup', end);
-bub.addEventListener('pointercancel', end);
-bub.addEventListener('click', () => {
-  if (eat) { eat = false; return; }
-  S.view = 'posts'; P.month = null; render(); window.scrollTo(0, 0); load();
+    home();
+  } else if (!far) openPosts();   // 짧게 눌렀거나, 길게 눌렀어도 안 끌었으면 열어요
+  bub.classList.remove('drag'); start = null; armed = dragged = false;
 });
+bub.addEventListener('pointercancel', () => { clearTimeout(pressT); if (dragged) home(); bub.classList.remove('drag'); start = null; armed = dragged = false; });
+bub.addEventListener('click', e => { if (e.detail === 0) openPosts(); });   // 키보드(엔터)로 누를 때만
 // 화면을 그릴 때마다: 보일지, 새 글 점(오늘 새로 모은 글을 아직 안 봤으면)
 function sync() {
   const show = S.mode === 'ok' && S.profile && S.profile.birth && S.view !== 'posts';
@@ -92,7 +92,7 @@ function render_() {
   } else {
     body = `<p class="hint" style="margin:0 0 10px">${NAMES[code]} 근처 아기랑 가 볼 만한 곳 글이에요. 지역은 병원 수사·동네 탐문에서 바꿔요.</p>${list(D.regions && D.regions[code])}`;
   }
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>육아 자료실</h1><p>네이버 블로그·카페 글을 하루 한 번 모아요. 누르면 원래 글이 열려요.</p></header>
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>육아 글 모음</h1><p>네이버 블로그·카페 글을 하루 한 번 모아요. 누르면 원래 글이 열려요.</p></header>
     ${seg}<section style="margin-top:12px">${body}</section>
     <p class="foot">광고·체험단으로 보이는 글은 빼고 보여 줘요. 글 내용은 쓴 사람의 경험이니, 건강 문제는 꼭 소아과와 상의해 주세요.</p>
     <button class="secondary" data-post="close" style="width:100%;margin-top:12px">돌아가기</button>`;
@@ -112,10 +112,10 @@ document.addEventListener('click', e => {
 
 const css = document.createElement('style');
 css.textContent = `
-.pbub{position:fixed;left:0;top:0;z-index:8;width:54px;height:54px;border-radius:50%;border:2px solid #fff;background:var(--butter);box-shadow:0 4px 0 #E0C590,0 8px 18px rgba(31,42,68,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
 .pbub[hidden]{display:none}
-.pbub span{font-size:22px;line-height:1}
-.pbub small{font-size:9.5px;font-weight:700;color:var(--navy);margin-top:1px}
+.pbub{position:fixed;left:0;top:0;z-index:8;width:92px;height:44px;border-radius:99px;border:2px solid #fff;background:var(--butter);box-shadow:0 4px 0 #E0C590,0 8px 18px rgba(31,42,68,.25);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .2s;user-select:none}
+.pbub span{font-size:19px;line-height:1}
+.pbub b{font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy);white-space:nowrap}
 .pbub i{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid #fff}
 .pbub i[hidden]{display:none}
 .pbub.drag{transition:none;box-shadow:0 10px 24px rgba(31,42,68,.35);scale:1.12}

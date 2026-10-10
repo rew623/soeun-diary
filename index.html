@@ -575,7 +575,7 @@ function render(){
   if(S.mode==='loading'){$app.innerHTML=`<div class="loading">${CHARS.svg('baby','lens',{size:110})}사건 파일을 여는 중…</div>`;$tab.innerHTML='';return}
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
-  $tab.innerHTML=[['grow','성장 수사',I_LENS],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN],['album','사건 앨범',I_CAM],['town','동네 탐문',I_PIN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
+  $tab.innerHTML=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
   const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
@@ -1263,7 +1263,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 // 좌우로 밀면 옆 탭으로 (손가락을 따라 화면이 움직이고, 충분히 밀면 부드럽게 넘어가요)
 // 지도·수사 보드·입력칸·사진 고르기 중·하위 화면(병원 수사, 보고서 등)에서는 안 해요
 (function(){
-  const ORDER=['grow','vac','food','sick','album','town'];
+  const ORDER=['grow','town','album','vac','food','sick'];   // 아래 메뉴 순서와 같게
   let sw=null;
   const W=()=>$app.clientWidth||innerWidth;
   const setX=(x,ms)=>{$app.style.transition=ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1),opacity ${ms}ms`:'none';$app.style.transform=x?`translate3d(${x}px,0,0)`:'';$app.style.opacity=x?String(Math.max(.4,1-Math.abs(x)/W()*0.6)):''};
