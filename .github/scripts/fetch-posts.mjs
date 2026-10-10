@@ -1,5 +1,6 @@
 // 육아 인기글 모음: 네이버 검색 API(블로그·카페글)로 월령별·주제별·시·군별 글 목록 → data/posts.json
-// 네이버 개발자센터에서 "검색" API 애플리케이션을 만들고 시크릿 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 을 넣어야 해요
+// 키: NAVER API HUB(네이버 클라우드, 2026.8~ 새 방식)에서 앱을 만들고 받은 Client ID/Secret → 시크릿 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+// 예전 개발자센터(openapi.naver.com) 키도 2027년 6월까지는 받아 줘요 (HUB 먼저 시도, 안 되면 예전 주소)
 import { readFile, writeFile } from 'node:fs/promises';
 import { REGIONS, dataFile } from './lib.mjs';
 
@@ -13,12 +14,29 @@ const clean = s => String(s || '').replace(/<[^>]+>/g, '').replace(/&(#\d+|\w+);
 const AD = /협찬|원고료|체험단|제공받아|제공 받아|업체로부터|광고|공구|공동구매|최저가|할인코드|쿠폰|분양|대출|보험설계/;
 let calls = 0, fails = 0;
 
+// 어느 주소가 되는지 처음 한 번 알아내서 계속 써요
+const WAYS = [
+  { name: 'API HUB', url: (k, q) => `https://naverapihub.apigw.ntruss.com/search/v1/${k}?${q}`, h: { 'X-NCP-APIGW-API-KEY-ID': ID, 'X-NCP-APIGW-API-KEY': SECRET } },
+  { name: '개발자센터(예전)', url: (k, q) => `https://openapi.naver.com/v1/search/${k}.json?${q}`, h: { 'X-Naver-Client-Id': ID, 'X-Naver-Client-Secret': SECRET } }
+];
+let way = null;
+async function pickWay() {
+  for (const w of WAYS) {
+    try {
+      const res = await fetch(w.url('blog', 'query=' + encodeURIComponent('아기') + '&display=1'), { headers: w.h });
+      const t = await res.text();
+      if (res.ok && /"items"/.test(t)) { console.log(`네이버 검색: ${w.name} 주소로 받아요`); return w; }
+      console.warn(`${w.name}: HTTP ${res.status} ${t.replace(/\s+/g, ' ').slice(0, 200)}`);
+    } catch (e) { console.warn(`${w.name}: ${e.message}`); }
+  }
+  return null;
+}
 async function search(kind, query, sort, n) {
-  const url = `https://openapi.naver.com/v1/search/${kind}.json?query=${encodeURIComponent(query)}&display=${Math.min(100, n * 3)}&sort=${sort}`;
+  const url = way.url(kind, `query=${encodeURIComponent(query)}&display=${Math.min(100, n * 3)}&sort=${sort}`);
   for (let i = 0; ; i++) {
     try {
       calls++;
-      const res = await fetch(url, { headers: { 'X-Naver-Client-Id': ID, 'X-Naver-Client-Secret': SECRET } });
+      const res = await fetch(url, { headers: way.h });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`HTTP ${res.status} ${j.errorMessage || ''}`);
       return (j.items || []).map(x => ({
@@ -42,6 +60,8 @@ async function mix(query, sort, n) {
 }
 
 const TOPICS = [['수면', '아기 수면교육'], ['이유식', '아기 이유식'], ['발달', '아기 발달 놀이'], ['아플 때', '아기 열 감기 대처'], ['육아템', '육아템 추천'], ['외출', '아기랑 가볼만한곳'], ['예방접종', '아기 예방접종 후기'], ['엄마·아빠', '육아 꿀팁']];
+way = await pickWay();
+if (!way) { console.error('네이버 검색 API에 연결하지 못했어요 (API HUB 앱에 블로그·카페글 검색을 골랐는지, 키를 바르게 넣었는지 확인해 주세요)'); process.exit(1); }
 const out = { months: {}, topics: {}, regions: {} };
 for (let m = 0; m <= 24; m++) { out.months[m] = await mix(m === 0 ? '신생아 육아' : `${m}개월 아기`, 'sim', 12); console.log(`월령 ${m}개월: ${out.months[m].length}`); }
 for (const [k, q] of TOPICS) { out.topics[k] = await mix(q, 'sim', 12); console.log(`주제 ${k}: ${out.topics[k].length}`); }
