@@ -1,5 +1,5 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.10.10-24';
+const VERSION = '2026.10.10-25';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
   './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
@@ -36,8 +36,21 @@ async function trim(name, max) {
   for (let i = 0; i < ks.length - max; i++) await c.delete(ks[i]);
 }
 
+// 갤러리 앱에서 '공유 → 수사 일지'로 보낸 사진 (manifest share_target): 잠깐 share-in 캐시에 넣고 앱을 열면 앱이 꺼내 올려요 (ALBUM.shared)
+const SHARE = 'share-in';
 self.addEventListener('fetch', e => {
   const req = e.request;
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/share-in')) {
+    e.respondWith((async () => {
+      try {
+        const fd = await req.formData(), files = fd.getAll('photos').filter(f => f && f.type && f.type.startsWith('image/'));
+        const c = await caches.open(SHARE), t = Date.now();
+        await Promise.all(files.map((f, i) => c.put(new Request(`./share-in/${t}-${String(i).padStart(3, '0')}`), new Response(f, { headers: { 'content-type': f.type, 'x-name': encodeURIComponent(f.name || 'photo.jpg'), 'x-lm': String(f.lastModified || t) } }))));
+      } catch (x) {}
+      return Response.redirect(new URL('./?shared=1', self.registration.scope).href, 303);
+    })());
+    return;
+  }
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 

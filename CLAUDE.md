@@ -14,7 +14,8 @@
 - index.html: 화면 대부분 (탭 렌더링, 편집창 sheet, 그래프, 클릭 처리 switch, 상태 S, 미리보기용 MOCK/DB)
 - app.js: Firebase 연결 (로그인, 가족 공간, onSnapshot 구독, 저장 API, 사진 업로드, 새 버전 안내)
 - config.js: Firebase 설정 (수정 금지)
-- sw.js: 서비스 워커 (앱 파일 캐시 우선, 사진 캐시, data/*.json 네트워크 우선), VERSION
+- sw.js: 서비스 워커 (앱 파일 캐시 우선, 사진 캐시, data/*.json 네트워크 우선, 공유로 받은 사진 POST ./share-in → share-in 캐시 → ./?shared=1), VERSION
+- manifest.webmanifest: 설치용 정보 + share_target(갤러리 앱 '공유 → 수사 일지', 안드로이드 크롬 설치 앱만, 아이폰은 안 됨). 앱이 열리면 ALBUM.shared()가 꺼내 '현장 사진첩 / 가족 사진' 골라 올림
 - hospitals.js: 긴급 출동 > 병원 수사 (강원 18개 시·군, 현재 위치의 시·군 자동 선택, 카카오맵(크게 보기), 목록, 필터, 관심 병원·약국, 공휴일 목록)
 - map-key.js: 카카오맵 JavaScript 키 (공개용, 등록 도메인 rew623.github.io)
 - viewer.js: 사진·보드 카드 크게 보기(3칸 트랙으로 옆으로 넘기기, 핀치 줌), 안드로이드 뒤로가기, 길게 누르기 막기
@@ -26,7 +27,7 @@
 - town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수, 일주일 예보: 단기예보 시간별 + 중기예보 오전·오후), 미세먼지, 우리 시·군 아이 행사 소식(posts.json news, 네이버 블로그·카페·뉴스 3주 안), 강원 행사·축제, 아기랑 갈 곳(카카오맵 장소 검색 키즈카페·수유실·공원 등, 내 위치나 시·군 가운데 5km; hospitals.js SDK에 libraries=services, HOSP.sdk/regionCenter). 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
 - posts.js: 육아 글 모음 (S.view='posts', 떠 있는 '📚 육아 글' 버튼): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 어느 화면에서나 떠 있는 버튼(짧게 누르면 열기, 0.6초 길게 누른 채 끌면 옮기기, 위치 localStorage soeun-posts-pos, 새 글 빨간 점), 읽은 글 표시(soeun-posts-read)
 - game.js: 게임 요소 — 수사관 계급(기록 by로 경험치 계산, 신분증에 계급), 오늘의 수사 지령(하루 3개, 성장 수사 탭 카드), 연속 수사, 훈장 24개, 모자 가게(CHARS HATS 10개, 소은·엄마·아빠 따로 씀: 소은 s.hat, 엄마·아빠 s.hatOf/GAME.hatOf, 명절·생일엔 소은에게 저절로 모자), 옷 가게(CHARS OUTFITS 20벌, 한 번 사면 소은·엄마·아빠 따로 입힘, clothes·wear, GAME.wear(who)), 성장 수사 방 꾸미기(첫 화면 안내 말풍선 위 소은 탐정 방, 그림·가게는 room.js, CHARS.guide('grow')가 GAME.roomSvg 사용), 몸무게 예측 대결(guess 컬렉션, 성장 수사 탭), 놀이터(생후 며칠 퀴즈, 사진 짝맞추기). 계급·훈장은 기록으로 계산(두 폰 같음). 도토리·모자·방·옷·스티커·룰렛 과제는 두 폰이 같이 씀(Firestore game/shared ↔ S.game, GAME.store가 합쳐 줌, 도토리는 increment, 처음 한 번 이 폰 것을 합침 synced), 최고 기록·오늘 한 놀이·지령 완료는 폰마다(localStorage soeun-game). 화면 S.view='medals'(이름은 '도토리 놀이터', 안에 놀이|꾸미기|계급·훈장 세 칸, G.hub)/'play'. 들어가는 곳: 성장 수사 지령 카드의 🔥(계급·훈장)·🌰(꾸미기)·🎮 놀이터 단추, 첫 화면 방의 '방 꾸미기'
-- family.js: 사건 앨범 > 가족(S.albumView='family'): 엄마·아빠·소은이 가족 사진 (전체/엄마랑/아빠랑/셋이 다 같이), mom type:'fam' who='mom,dad'(ALBUM.queue로 올림). 친척 카드(people)는 사용자 요청으로 뺌 — 아직 둘만 씀
+- family.js: 사건 앨범 > 가족(S.albumView='family'): 엄마·아빠·소은이 가족 사진을 한곳에 (누가 나왔는지 나누지 않음 — 사용자 요청, 올리기 단추 누르면 바로 사진 고르기), mom type:'fam'(ALBUM.queue로 올림, 예전 who는 안 씀). 친척 카드(people)는 사용자 요청으로 뺌 — 아직 둘만 씀
 - fun.js: 게임 요소 2 (도토리 놀이터의 놀이 칸 '함께 놀기' FUN.playSection, 계급·훈장 칸 출석부 FUN.attend) — 오늘 누가? 룰렛(집안일 배정, 과제 목록 localStorage soeun-roulette), 오늘의 운세 포춘 쿠키(날짜로 골라 두 폰 같게), 숨은 도토리 찾기(날짜로 정한 탭에 하루 1개), 스티커 뽑기(도토리 3개)·스티커북 30종, 소은 탐정 카드(기록으로 만든 트레이딩 카드), 수사 출석부(기록한 날 도장), 주간 MVP(월요일). 화면 S.view='fun'
 - memories.js: 사건 앨범 맨 위 '지난 오늘'(지난달·작년 같은 날 사진, 한번 뺐다가 사용자 요청으로 다시 살림), '성장 스토리'(월별 사진 인스타 스토리처럼, 뒤로가기로 닫힘 SLIDE.close)
 - dev.js: 예방접종 탭 > 발달 체크(S.vacView='dev'), 2~24개월 8단계(CDC 발달 이정표 참고), dev 컬렉션

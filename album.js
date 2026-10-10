@@ -141,6 +141,24 @@ async function queue(list, more) {
   toast(`${rows.length}장을 올리기 시작해요`);
   if (mem.length) pumpMem(); else pump();
 }
+// ---------- 갤러리 앱에서 공유로 받은 사진 (sw.js가 share-in 캐시에 넣어 둠) ----------
+let SH = null;
+async function shared() {
+  if (!('caches' in window) || (S.me && S.me.viewer) || SH) return;
+  let c, ks; try { c = await caches.open('share-in'); ks = await c.keys(); } catch (e) { return; }
+  try { if (/[?&]shared=/.test(location.search)) history.replaceState(history.state, '', location.pathname); } catch (e) {}
+  if (!ks.length) return;
+  const files = [];
+  for (const k of ks) { try { const r = await c.match(k); if (!r) continue; const b = await r.blob(); files.push(new File([b], decodeURIComponent(r.headers.get('x-name') || 'photo.jpg'), { type: b.type || r.headers.get('content-type') || 'image/jpeg', lastModified: +r.headers.get('x-lm') || Date.now() })); } catch (e) {} }
+  SH = { files, c, ks };
+  if (!files.length) return shDone();
+  pending = undefined;
+  openSheet(`<h3>사진 ${files.length}장을 받았어요</h3><p class="hint" style="margin:-6px 0 12px">어디에 올릴까요? 찍은 날짜는 사진에서 알아서 읽어요.</p>
+    <div class="shpick"><button class="primary" data-al="shfree">📷 현장 사진첩</button><button class="primary" data-al="shfam">👨‍👩‍👧 가족 사진</button></div>
+    <div class="actions"><button class="secondary" data-al="shx">올리지 않기</button></div>`);
+}
+async function shDone() { const h = SH; SH = null; if (h) for (const k of h.ks) { try { await h.c.delete(k); } catch (e) {} } }
+
 // IndexedDB를 못 쓰는 폰(사생활 보호 모드 등)에선 메모리에서만 올려요
 const mem = [];
 async function pumpMem() {
@@ -269,6 +287,12 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-al]'); if (!b) return;
   switch (b.dataset.al) {
     case 'pick': selOff(); picker.click(); break;
+    case 'shfree': case 'shfam': {
+      if (!SH) return; const fam = b.dataset.al === 'shfam', files = SH.files;
+      closeSheet(); S.tab = 'album'; S.view = ''; S.albumView = fam ? 'family' : 'album'; render(); window.scrollTo(0, 0);
+      await queue(files, fam ? { type: 'fam', who: '' } : undefined); shDone(); break;
+    }
+    case 'shx': closeSheet(); shDone(); break;
     case 'extra': exFor = b.dataset.id; exPicker.click(); break;
     case 'exdel': {
       if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '빼기'; b.classList.add('sure'); return; }
@@ -310,6 +334,7 @@ document.addEventListener('click', async e => {
 
 const css = document.createElement('style');
 css.textContent = `
+.shpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}.shpick button{min-height:64px;font-size:16px}
 .agh{display:flex;align-items:center;font-size:13px;color:var(--navy);font-weight:700;letter-spacing:0;margin:16px 0 6px;padding:8px 12px;background:var(--card2);border-radius:14px}
 .agh::after{margin-left:auto!important}
 .amon.folded .agh{background:#FFFDF7;border:1.5px dashed var(--line)}
@@ -350,5 +375,5 @@ css.textContent = `
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:10px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
-window.ALBUM = { sectionHtml, openFree, isFree, photoDate, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
+window.ALBUM = { shared, sectionHtml, openFree, isFree, photoDate, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
 })();

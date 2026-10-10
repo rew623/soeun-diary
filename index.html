@@ -181,7 +181,7 @@ section{margin-top:26px}
 .r100ph img{display:block;width:84px;height:96px;object-fit:cover;object-position:center 30%}
 .r100ph i{position:absolute;right:-12px;bottom:-6px;font-style:normal;font-family:var(--display);font-size:15px;color:#fff;background:var(--red);border-radius:99px;padding:1px 9px;transform:rotate(8deg);box-shadow:0 2px 4px rgba(0,0,0,.3)}
 /* 보기 전용(할머니 등): 남기는 단추 숨기기 */
-body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,body.viewer [data-al=pick],body.viewer [data-fam=up],body.viewer [data-fam=add],body.viewer .gcard,body.viewer .gguess .ghost,body.viewer [data-act=addmom],body.viewer [data-act=addmonth],body.viewer .rpick[data-al]{display:none!important}
+body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,body.viewer [data-al=pick],body.viewer [data-fam=up],body.viewer [data-fa=up],body.viewer [data-fam=add],body.viewer .gcard,body.viewer .gguess .ghost,body.viewer [data-act=addmom],body.viewer [data-act=addmonth],body.viewer .rpick[data-al]{display:none!important}
 .vban{background:#FFFDF7;border-radius:14px}
 .rpick{min-height:40px;border-radius:99px;padding:6px 16px}
 .rtext{margin:0;font-size:14px;line-height:1.7}
@@ -504,7 +504,7 @@ const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 �
 function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
-function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>ALBUM.pump(),1500)}}
+function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;
