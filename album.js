@@ -96,7 +96,7 @@ async function pump() {
       try { photo = await readPhoto(it.file, true); } catch (x) { await qDel(it.id); toast('읽지 못한 사진 1장은 건너뛰었어요'); items = await qAll(); continue; }
       const date = clampDay(it.date || it.fb || (it.lm ? localDay(it.lm) : ''));
       // 줄 번호를 문서 id로 써서, 올린 뒤 앱이 꺼져 다시 올려도 같은 사진이 두 장 생기지 않아요
-      const res = await run('saveItem', 'mom', { id: it.id, type: it.type || 'free', of: it.of || '', title: '', date, memo: '', photo, by: it.by || myRole() });
+      const res = await run('saveItem', 'mom', { id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date, memo: '', photo, by: it.by || myRole() });
       PHOTOS[res.id] = photo; last = res; Q.done++;
       await qDel(it.id);
       items = await qAll();
@@ -146,7 +146,7 @@ async function pumpMem() {
     while (mem.length) {
       const it = mem[0]; showProg();
       const photo = await readPhoto(it.file, true);
-      const res = await run('saveItem', 'mom', { id: it.id, type: it.type || 'free', of: it.of || '', title: '', date: clampDay(it.date || it.fb || localDay(it.lm)), memo: '', photo, by: it.by });
+      const res = await run('saveItem', 'mom', { id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date: clampDay(it.date || it.fb || localDay(it.lm)), memo: '', photo, by: it.by });
       PHOTOS[res.id] = photo; mem.shift(); Q.done++; Q.left = mem.length; apply(res.data);
     }
     toast(`사진 ${Q.done}장을 보관했어요`); Q.done = Q.total = Q.left = 0;

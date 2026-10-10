@@ -18,6 +18,14 @@ const PROPS = {
   heart: '<path d="M88 100c-9-6-14-11-14-17a6 6 0 0 1 14-3 6 6 0 0 1 14 3c0 6-5 11-14 17z" fill="#F08A8A"/><path d="M80 82a3 3 0 0 1 4-2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>'
 };
 
+// 소은 탐정 모자 (도토리로 바꿔 쓰기, GAME.skin())
+const HATS = {
+  crown: '<path d="M32 37l4-17 9 9 9-13 9 13 9-9 4 17z" fill="#F4C542" stroke="#C99A1E" stroke-width="1.5" stroke-linejoin="round"/><circle cx="54" cy="18" r="2.6" fill="#B3261E"/><circle cx="40" cy="28" r="2" fill="#3C8DDB"/><circle cx="68" cy="28" r="2" fill="#3C8DDB"/>',
+  flower: [[31, 38, '#F49C9C'], [39, 31, '#FCE8B4'], [47, 28, '#F6B4AA'], [55, 27, '#FCE8B4'], [63, 28, '#F49C9C'], [71, 31, '#FCE8B4'], [79, 38, '#F6B4AA']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="5" fill="${c}" stroke="#fff" stroke-width="1"/><circle cx="${x}" cy="${y}" r="1.6" fill="#E59A5C"/>`).join('') + '<path d="M35 34l-3-4M59 27l3-4" stroke="#7FB77E" stroke-width="2" stroke-linecap="round"/>',
+  santa: '<path d="M28 38q26-36 52 0z" fill="#D9473D"/><path d="M74 30q16-8 13 12" stroke="#D9473D" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="87" cy="45" r="5" fill="#fff"/><rect x="25" y="34" width="58" height="8" rx="4" fill="#fff"/>',
+  party: '<path d="M43 35l13-30 13 30z" fill="#7FC4E8"/><path d="M47 27h18M51 18h10" stroke="#FCE8B4" stroke-width="3.2"/><circle cx="56" cy="5" r="3.8" fill="#F49C9C"/>',
+  chef: '<ellipse cx="45" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="63" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="54" cy="15" rx="11" ry="9" fill="#fff" stroke="#E0C9A2"/><rect x="38" y="24" width="32" height="13" rx="3" fill="#fff" stroke="#E0C9A2"/>'
+};
 // who: baby | mom | dad, prop: PROPS 이름, face: 얼굴만(동그란 사진 칸용)
 function svg(who = 'baby', prop = '', o = {}) {
   const f = FUR[who] || FUR.baby, d = DARK[who] || DARK.baby, size = o.size || 72;
@@ -44,7 +52,9 @@ function svg(who = 'baby', prop = '', o = {}) {
     ${who === 'baby' ? `<rect x="51.6" y="68" width="4.8" height="4" rx="1.2" fill="#fff" stroke="${INK}" stroke-width=".9"/>` : ''}`;
   // 모자·장식
   let hat = '';
-  if (who === 'baby') hat = `<path d="M27 40q27-30 54 0z" fill="#D4B27A"/><path d="M36 30l36 0M31 36h46M44 22v16M54 18v20M64 22v16" stroke="#B08A50" stroke-width="1.6" opacity=".8"/><path d="M30 39q24 8 48 0l2 4q-26 9-52 0z" fill="#A9844C"/><circle cx="54" cy="16" r="3.5" fill="#B3261E"/>`;
+  const skin = who === 'baby' ? (o.hat || (window.GAME && GAME.skin ? GAME.skin() : 'det')) : '';
+  if (skin && skin !== 'det' && HATS[skin]) hat = HATS[skin];
+  else if (who === 'baby') hat = `<path d="M27 40q27-30 54 0z" fill="#D4B27A"/><path d="M36 30l36 0M31 36h46M44 22v16M54 18v20M64 22v16" stroke="#B08A50" stroke-width="1.6" opacity=".8"/><path d="M30 39q24 8 48 0l2 4q-26 9-52 0z" fill="#A9844C"/><circle cx="54" cy="16" r="3.5" fill="#B3261E"/>`;
   if (who === 'mom') hat = `<path d="M24 30l-10-7v14zM24 30l10-7v14z" fill="#B3261E"/><circle cx="24" cy="30" r="3.2" fill="#D9473D"/>`;
   if (who === 'dad') hat = `<ellipse cx="54" cy="36" rx="32" ry="6.5" fill="#1F2A44"/><path d="M37 36q0-21 17-21t17 21z" fill="#1F2A44"/><path d="M37.5 30h33v5h-33z" fill="#B3261E"/><path d="M48 18q6 4 12 0" stroke="#2E3B5C" stroke-width="2" fill="none"/>`;
   const glasses = who === 'dad' ? `<circle cx="42" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><circle cx="66" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><path d="M50.5 55h7" stroke="#1F2A44" stroke-width="2.4"/>` : '';

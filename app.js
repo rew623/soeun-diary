@@ -17,13 +17,14 @@ const TBL = {
   ep: ['title', 'start', 'end', 'memo'],
   log: ['ep', 'kind', 'at', 'value', 'dose', 'site', 'memo', 'by'],
   visit: ['date', 'hospital', 'diag', 'rx', 'next', 'ask', 'by'],
-  mom: ['type', 'title', 'date', 'memo', 'photo', 'by', 'of'],   // of: 최초 목격 추가 사진(type:'extra')이 붙은 기록 id
+  mom: ['type', 'title', 'date', 'memo', 'photo', 'by', 'of', 'who'],   // of: 최초 목격 추가 사진(type:'extra')이 붙은 기록 id, who: 가족 사진(type:'fam')에 나온 사람
   food: ['name', 'start', 'result', 'reaction', 'memo', 'by'],
   meal: ['date', 'slot', 'menu', 'amount', 'eat', 'memo', 'photo', 'by'],
   cube: ['name', 'count', 'made', 'memo'],
-  menu: ['month', 'title', 'photo']
+  menu: ['month', 'title', 'photo'],
+  people: ['name', 'rel', 'photo', 'by']   // 가족 앨범의 가족 (할머니·이모…)
 };
-const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus' };
+const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people' };
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
 const SCHEDULE = [
   ['출생', 0, [['B형간염 1차', '']]],
@@ -129,7 +130,7 @@ function photoUrlOf(id) {
   const f = M.family || {};
   if (id === 'profile') return f.photoUrl || '';
   if (id === 'mom' || id === 'dad') return f[id + 'PhotoUrl'] || '';
-  for (const c of ['records', 'mom', 'meal', 'menu']) { const o = M.col[c].get(String(id)); if (o && o.photoUrl) return o.photoUrl; }
+  for (const c of ['records', 'mom', 'meal', 'menu', 'people']) { const o = M.col[c].get(String(id)); if (o && o.photoUrl) return o.photoUrl; }
   return '';
 }
 

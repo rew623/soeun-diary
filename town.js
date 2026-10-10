@@ -155,6 +155,7 @@ function evHtml() {
 // ---------- 동네 탐문 화면 ----------
 function render_() {
   if (!T.at) load();
+  if (window.GAME) GAME.mark('town');   // 오늘의 지령: 동네 탐문 보기
   const code = reg(), P = plan(code), A = T.town && T.town.air && T.town.air.now && T.town.air.now[code];
   const sel = `<select id="town-reg" class="tsel" aria-label="시·군">${Object.entries(NAMES).map(([k, n]) => `<option value="${k}" ${k === code ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   let walk = `<section><h2 class="sh"><span>산책 지수</span></h2><p class="vempty">${T.loading ? '불러오는 중…' : '날씨·미세먼지 정보를 아직 못 받았어요. 처음 설정 뒤 몇 시간 안에 생겨요.'}</p></section>`;

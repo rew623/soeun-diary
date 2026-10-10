@@ -44,6 +44,7 @@ function info(key) {
   const m = S.moments.find(x => x.id === key);
   if (m) {
     if (m.type === 'extra') { const pm = S.moments.find(x => x.id === m.of); return { cap: `${pm ? pm.title : '최초 목격'} 사진, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => pm ? openMoment(pm.id) : null, boardId: key }; }
+    if (m.type === 'fam') { const w = FAMILY.whoOf(m).map(FAMILY.nameOf).filter(Boolean).join(', '); return { cap: `${m.title ? m.title + ' · ' : ''}${w ? w + '와(과) ' : ''}생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => FAMILY.openPhoto(key), boardId: key }; }
     if (m.type === 'report') return { cap: `100일 보고서 사진`, edit: () => ALBUM.openReport(), boardId: key };
     if (m.type === 'free') return { cap: `${m.title || '현장 사진'}, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => ALBUM.openFree(key), boardId: key };
     return { cap: `${m.title}, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => openMoment(key), boardId: key };
@@ -149,7 +150,7 @@ lb.addEventListener('click', async e => {
   if (b.dataset.lb === 'board' && cur && cur.boardId) {
     const m = S.moments.find(x => x.id === cur.boardId), on = !(m && m.board);
     b.disabled = true;
-    if (await write('setBoard', cur.boardId, on)) toast(on ? '수사 보드에 붙였어요' : '수사 보드에서 뗐어요');
+    if (await write('setBoard', cur.boardId, on)) { if (on && window.GAME) GAME.mark('board'); toast(on ? '수사 보드에 붙였어요' : '수사 보드에서 뗐어요'); }
     b.disabled = false; boardBtn();
   }
 });

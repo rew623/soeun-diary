@@ -24,6 +24,8 @@
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
 - town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수), 미세먼지, 강원 행사·축제. 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
 - posts.js: 육아 글 모음 (S.view='posts', 떠 있는 '📚 육아 글' 버튼): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 어느 화면에서나 떠 있는 버튼(짧게 누르면 열기, 0.6초 길게 누른 채 끌면 옮기기, 위치 localStorage soeun-posts-pos, 새 글 빨간 점), 읽은 글 표시(soeun-posts-read)
+- game.js: 게임 요소 — 수사관 계급(기록 by로 경험치 계산, 신분증에 계급), 오늘의 수사 지령(하루 3개, 성장 수사 탭 카드), 연속 수사, 훈장 24개, 도토리·소은 탐정 모자 가게(CHARS HATS), 놀이터(생후 며칠 퀴즈, 사진 짝맞추기). 계급·훈장은 기록으로 계산(두 폰 같음), 도토리·모자·최고 기록은 이 폰에만(localStorage soeun-game). 화면 S.view='medals'/'play'
+- family.js: 사건 앨범 > 가족(S.albumView='family'): 가족 수사팀 명단(엄마·아빠 + people 컬렉션), 사람별로 모아 보기, 가족 사진은 mom type:'fam' who=사람 id들(ALBUM.queue로 올림)
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
@@ -41,11 +43,11 @@
 - families/{fid}: 아기 프로필 (name, birth, sex, mom, dad, 사진 URL)
 - families/{fid} 하위 컬렉션:
   - members/{uid}: { role(엄마/아빠), name, email }
-  - records, periods, vaccines, ep, log, visit, mom(앨범), food, meal, cube, menu(식단표 사진)
+  - records, periods, vaccines, ep, log, visit, mom(앨범), food, meal, cube, menu(식단표 사진), people(가족 앨범의 가족: name, rel, photo, by)
   - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
   - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
   - recipes/{YYYY-MM}: title, file, stages[{ stage, items[{ d, meal, raw, ing[{ n, g }], how, src }] }], by, updatedAt
-- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id), board: true/false = 수사 보드에 붙인 사진
+- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id) / fam(가족 사진, who=나온 사람 id 쉼표로: mom·dad·people id), board: true/false = 수사 보드에 붙인 사진
 - 보안 규칙: families/{fid} 아래는 members에 있는 사람만 읽기·쓰기 (members 제외 하위 컬렉션 전체 허용이라 새 컬렉션도 규칙 수정 불필요)
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
 
