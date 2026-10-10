@@ -178,9 +178,11 @@ function weekHtml(code) {
 function newsHtml(code) {
   const L = (T.news || {})[code] || [];
   if (!L.length) return '';
-  return `<section class="tnews"><h2 class="sh"><span>📣 ${NAMES[code]} 아이 행사 소식</span><span>최근 3주</span></h2><p class="hint" style="margin:0 0 4px">블로그·카페·뉴스에서 찾은 글이에요. 하루 한 번 새로 모아요.</p>
-    ${L.slice(0, T.newsMore || 6).map(x => `<a class="post" href="${esc(x.u)}" target="_blank" rel="noopener"><span class="pk ${x.k}">${x.k === 'n' ? '뉴스' : x.k === 'b' ? '블로그' : '카페'}</span><span class="ptx"><b>${esc(x.t)}</b>${x.d ? `<small>${esc(x.d)}</small>` : ''}<em>${esc(x.s || '')}${x.dt ? ' · ' + x.dt.slice(5).replace('-', '.') : ''}</em></span></a>`).join('')}
-    ${L.length > (T.newsMore || 6) ? `<button class="addperiod" data-town="newsmore">더 보기 (${L.length - (T.newsMore || 6)}개)</button>` : ''}</section>`;
+  // 기본은 3개만, 펼치면 다 (위·아래에 접기)
+  const N = 3, open = T.newsOpen && L.length > N, shown = open ? L : L.slice(0, N);
+  return `<section class="tnews" id="tnews"><h2 class="sh"><span>📣 ${NAMES[code]} 아이 행사 소식</span>${open ? '<button class="tnfold" data-town="newsfold">접기 ▴</button>' : `<span>최근 3주 · ${L.length}개</span>`}</h2><p class="hint" style="margin:0 0 4px">블로그·카페·뉴스에서 찾은 글이에요. 하루 한 번 새로 모아요.</p>
+    ${shown.map(x => `<a class="post" href="${esc(x.u)}" target="_blank" rel="noopener"><span class="pk ${x.k}">${x.k === 'n' ? '뉴스' : x.k === 'b' ? '블로그' : '카페'}</span><span class="ptx"><b>${esc(x.t)}</b>${x.d ? `<small>${esc(x.d)}</small>` : ''}<em>${esc(x.s || '')}${x.dt ? ' · ' + x.dt.slice(5).replace('-', '.') : ''}</em></span></a>`).join('')}
+    ${L.length > N ? `<button class="addperiod" data-town="${open ? 'newsfold' : 'newsmore'}">${open ? '접기 ▴' : `더 보기 (${L.length - N}개) ▾`}</button>` : ''}</section>`;
 }
 
 // ---------- 아기랑 갈 곳 (카카오맵 장소 검색: 내 위치 또는 탐문 지역 둘레 5km) ----------
@@ -265,7 +267,8 @@ document.addEventListener('click', e => {
     case 'evreg': T.evAll = b.dataset.v === '1'; T.evMore = 12; render(); break;
     case 'evkid': T.evKid = !T.evKid; T.evMore = 12; render(); break;
     case 'evmore': T.evMore += 12; render(); break;
-    case 'newsmore': T.newsMore = (T.newsMore || 6) + 9; render(); break;
+    case 'newsmore': T.newsOpen = true; render(); break;
+    case 'newsfold': { T.newsOpen = false; render(); const el = document.getElementById('tnews'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); break; }
     case 'place': searchPlaces(b.dataset.v); break;
   }
 });
@@ -289,6 +292,7 @@ css.textContent = `
 .plr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);color:inherit;text-decoration:none}
 .plr span{flex:1;display:flex;flex-direction:column;min-width:0}.plr b{font-size:14.5px;color:var(--navy)}.plr small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plr em{font-style:normal;font-size:12px;color:var(--red);white-space:nowrap}
+.tnfold{border:1.5px solid var(--line);background:#FFFDF7;border-radius:99px;font-size:12.5px;padding:3px 12px;min-height:30px;color:var(--navy)}
 .tnews .post{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);color:inherit;text-decoration:none}
 .tnews .pk{flex-shrink:0;font-size:11px;border-radius:99px;padding:2px 8px;margin-top:2px;color:#fff;background:#2E7D5B}.tnews .pk.c{background:#C25A7A}.tnews .pk.n{background:var(--navy)}
 .tnews .ptx{flex:1;display:flex;flex-direction:column;min-width:0}.tnews .ptx b{font-size:14.5px;line-height:1.4;color:var(--navy);word-break:keep-all}
