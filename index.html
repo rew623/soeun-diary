@@ -1244,18 +1244,20 @@ document.addEventListener('click',async e=>{
 
 window.__app={apply,toast,isBusy:()=>busy,sheetOpen:()=>$sheet.classList.contains('open'),closeSheet,openSheet,refresh,CK};
 // ---------- 새로고침해도 보던 탭 그대로 (이 창에서만 기억, 앱을 새로 열면 첫 화면) ----------
-const STAY='soeun-stay';let stayY=null,stayT;
+const STAY='soeun-stay';let stayY=null,stayT,stayT0=0;
 function staySave(){if(S.mode!=='ok')return;try{sessionStorage.setItem(STAY,JSON.stringify({tab:S.tab,view:S.view,vacView:S.vacView,albumView:S.albumView,menuMonth:S.menuMonth,recAll:!!S.recAll,y:Math.round(window.scrollY)}))}catch(e){}}
 function stayAfterRender(){
   if(S.mode!=='ok')return;
-  if(stayY!=null){const y=stayY;if(document.documentElement.scrollHeight>=y+innerHeight*.5){stayY=null;requestAnimationFrame(()=>window.scrollTo(0,y))}}
+  // 내용이 늦게 채워지는 탭(동네 탐문 등)은 그 위치까지 실제로 내려갈 수 있을 때까지 다시 시도해요 (최대 5초)
+  if(stayY!=null){const y=stayY;stayT0=stayT0||Date.now();if(Date.now()-stayT0>5000)stayY=null;else{stayY=null;requestAnimationFrame(()=>{window.scrollTo(0,y);if(Math.abs(window.scrollY-y)>8&&Date.now()-stayT0<5000)stayY=y})}}
   staySave();
 }
 try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
-  if(st&&['grow','vac','food','sick','album'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report'].includes(st.view)?st.view:'';S.vacView=st.vacView==='check'?'check':'vac';S.albumView=st.albumView==='board'?'board':'album';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
+  if(st&&['grow','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report','posts'].includes(st.view)?st.view:'';S.vacView=st.vacView==='check'?'check':'vac';S.albumView=st.albumView==='board'?'board':'album';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
 }catch(e){}
 window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
 window.addEventListener('pagehide',staySave);
+window.addEventListener('touchstart',()=>{stayY=null},{passive:true,once:true});   // 손으로 움직이기 시작하면 위치 되돌리기는 그만
 loadCache();
 refresh();
 setInterval(()=>{if(S.tab==='sick'&&S.mode==='ok'&&!$sheet.classList.contains('open'))render()},60000);
