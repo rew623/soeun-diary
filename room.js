@@ -76,8 +76,8 @@ const CAT = [
   ['p-lens', 'prop', '돋보기', 0], ['p-acorn', 'prop', '도토리', 2], ['p-camera', 'prop', '카메라', 3], ['p-heart', 'prop', '하트', 2], ['p-note', 'prop', '수첩', 2], ['p-spoon', 'prop', '숟가락', 2],
   // 함께 있는 수사관 (엄마·아빠 다람쥐)
   ['fam-both', 'fam', '엄마·아빠 같이', 0], ['fam-mom', 'fam', '엄마랑', 0], ['fam-dad', 'fam', '아빠랑', 0],
-  // 사진 액자: 사서 걸면 우리 실제 사진이 들어가는 특수 소품 (s.pic = 고른 사진 id, 안 고르면 최근 가족 사진)
-  ['pic-wood', 'pic', '나무 액자', 4, 'PIC'], ['pic-white', 'pic', '하얀 액자', 3, 'PIC'], ['pic-heart', 'pic', '하트 액자', 5, 'PIC'], ['pic-gold', 'pic', '금색 액자', 8, 'PIC']
+  // 사진 액자: 우리 실제 사진이 들어가는 특수 소품 (나무 액자는 기본 무료, 나머지는 사서 걸기) (s.pic = 고른 사진 id, 안 고르면 최근 가족 사진)
+  ['pic-wood', 'pic', '나무 액자', 0, 'PIC'], ['pic-white', 'pic', '하얀 액자', 3, 'PIC'], ['pic-heart', 'pic', '하트 액자', 5, 'PIC'], ['pic-gold', 'pic', '금색 액자', 8, 'PIC']
 ];
 const DEFAULT = { wall: 'cream', floor: 'wood', prop: 'p-lens' };
 const item = id => CAT.find(c => c[0] === id);
@@ -95,8 +95,8 @@ function state() {
   if (addNew(s) && !S.game) save(s);
   return s;
 }
-// 함께 있는 수사관은 기본으로 둘 다. 액자는 사야 걸림 (예전에 공짜로 걸렸던 나무 액자는 사지 않았으면 내림)
-function addNew(s) { let ch = false; if (!('fam' in s.slot)) { s.slot.fam = 'fam-both'; ch = true; } if (s.slot.pic && !owns(s, s.slot.pic)) { s.slot.pic = ''; ch = true; } return ch; }
+// 함께 있는 수사관은 기본으로 둘 다, 기본 나무 액자는 무료로 걸어 둠 (다른 액자는 사야 함)
+function addNew(s) { let ch = false; if (!('fam' in s.slot)) { s.slot.fam = 'fam-both'; ch = true; } if (!('pic' in s.slot)) { s.slot.pic = 'pic-wood'; ch = true; } if (s.slot.pic && !owns(s, s.slot.pic)) { s.slot.pic = 'pic-wood'; ch = true; } return ch; }
 const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.room.includes(id)); };
 
 // ---------- 그림 ----------
