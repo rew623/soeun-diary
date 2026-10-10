@@ -1,5 +1,5 @@
 // 게임 요소 2 (도토리 놀이터의 놀이·계급 칸에 붙어요) — 오늘 누가? 룰렛(집안일 배정), 오늘의 소은 운세(포춘 쿠키), 숨은 도토리 찾기, 스티커 뽑기·스티커북, 소은 탐정 카드, 수사 출석부, 주간 MVP
-// 도토리·스티커는 game.js와 같은 저장소(localStorage soeun-game, 이 폰에만). 화면은 S.view='fun' + FUN 모드
+// 도토리·스티커·룰렛 과제는 game.js와 같은 저장소(GAME.store, 두 폰이 같이 씀). 화면은 S.view='fun' + FUN 모드
 (function () {
 const st = () => GAME.store.get(), save = s => GAME.store.set(s);
 const hash = t => { let h = 7; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
@@ -8,7 +8,7 @@ const F = { mode: '', spin: null, task: '', cal: '' };
 
 // ---------- 오늘 누가? (집안일 룰렛) ----------
 const DEF_TASKS = ['목욕시키기', '설거지', '젖병 소독', '새벽 당번', '빨래 개기', '분리수거', '산책 담당', '저녁 메뉴 고르기'];
-const tasks = () => { try { const t = JSON.parse(localStorage.getItem('soeun-roulette') || 'null'); return Array.isArray(t) && t.length ? t : DEF_TASKS; } catch (e) { return DEF_TASKS; } };
+const tasks = () => { const g = st().roulette; if (Array.isArray(g) && g.length) return g; try { const t = JSON.parse(localStorage.getItem('soeun-roulette') || 'null'); return Array.isArray(t) && t.length ? t : DEF_TASKS; } catch (e) { return DEF_TASKS; } };
 const SEG = [['엄마', '#F8D8D1'], ['아빠', '#DCE7F1'], ['엄마', '#F8D8D1'], ['아빠', '#DCE7F1'], ['둘이 같이', '#FCE8B4'], ['엄마', '#F8D8D1'], ['아빠', '#DCE7F1'], ['가위바위보!', '#DDEEDB']];
 function wheel(rot) {
   const n = SEG.length, R = 130, c = 140, a = 2 * Math.PI / n;
@@ -42,7 +42,7 @@ function spin() {
   setTimeout(() => { F.spin.busy = false; GAME.mark('roulette'); if (S.view === 'fun' && F.mode === 'roulette') { document.getElementById('rres').innerHTML = resultHtml(F.spin); if (btn) btn.disabled = false; GAME.confetti(); } }, 3300);
 }
 function editTasks() {
-  openSheet(`<h3>룰렛 과제 목록</h3><p class="hint">한 줄에 하나씩 적어 주세요. (이 폰에만 저장)</p>
+  openSheet(`<h3>룰렛 과제 목록</h3><p class="hint">한 줄에 하나씩 적어 주세요. (엄마·아빠 폰에 같이 보여요)</p>
     <label class="field"><span>과제</span><textarea id="rt-list" rows="8">${esc(tasks().join('\n'))}</textarea></label>
     <div class="actions"><button class="secondary" data-fun="treset">처음 목록으로</button><button class="primary" data-fun="tsave">저장</button></div>`);
 }
@@ -182,8 +182,8 @@ document.addEventListener('click', e => {
     case 'task': F.task = F.task === v ? '' : v; render(); break;
     case 'spin': spin(); break;
     case 'tedit': editTasks(); break;
-    case 'tsave': { const L = document.getElementById('rt-list').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 20); try { localStorage.setItem('soeun-roulette', JSON.stringify(L)); } catch (x) {} F.task = ''; closeSheet(); render(); break; }
-    case 'treset': try { localStorage.removeItem('soeun-roulette'); } catch (x) {} F.task = ''; closeSheet(); render(); break;
+    case 'tsave': { const L = document.getElementById('rt-list').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 20); try { localStorage.setItem('soeun-roulette', JSON.stringify(L)); } catch (x) {} { const s = st(); s.roulette = L; save(s); } F.task = ''; closeSheet(); render(); break; }
+    case 'treset': try { localStorage.removeItem('soeun-roulette'); } catch (x) {} { const s = st(); s.roulette = []; save(s); } F.task = ''; closeSheet(); render(); break;
     case 'cookie': openCookie(); break;
     case 'crack': {
       const c = document.getElementById('cookie'); if (!c || c.classList.contains('open')) return;

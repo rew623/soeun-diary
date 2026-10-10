@@ -2,7 +2,7 @@
 import { FIREBASE_CONFIG } from './config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 
 const fb = initializeApp(FIREBASE_CONFIG);
@@ -43,7 +43,7 @@ const SCHEDULE = [
 ];
 
 // ---------- 폰 안의 사본 (화면은 여기서 바로 그림) ----------
-const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map(), checkups: new Map() };
+const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map(), checkups: new Map(), game: null, gameSrv: false };
 COLS.forEach(c => { M.col[c] = new Map(); });
 let unsubs = [], lastJSON = '', pendingRemote = false, ready = false;
 
@@ -58,6 +58,7 @@ const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const fref = () => doc(db, 'families', M.fid);
+const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette'];
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
 const list = c => [...M.col[c].values()].sort((a, b) => ((a._o ?? 0) - (b._o ?? 0)) || String(a.id).localeCompare(String(b.id)));
 const app = () => window.__app;
@@ -89,6 +90,8 @@ function build() {
   Object.keys(TBL).forEach(k => { d[OUT[k]] = item(k); });
   d.recipes = [...M.recipes.values()].map(r => ({ month: r.id, title: r.title || '', file: r.file || '', stages: r.stages || [], by: r.by || '' }));
   d.checkups = [...M.checkups.values()].map(c => ({ id: c.id, done: c.done || '', hospital: c.hospital || '', memo: c.memo || '', by: c.by || '' }));
+  // 두 폰이 같이 쓰는 놀이 저장 (도토리·방·옷·모자·스티커·룰렛), srv: 서버에서 한 번이라도 받았는지 (처음 합치기는 그다음에)
+  d.game = M.game ? Object.assign({}, GAME_KEYS.reduce((o, k) => { if (M.game[k] !== undefined) o[k] = M.game[k]; return o; }, {}), { srv: M.gameSrv }) : null;
   d.hospitals = [...M.hosp.values()].map(h => ({ hpid: h.id, star: !!h.star, memo: h.memo || '', lunch: h.lunch || '', reserve: h.reserve || '', moonlight: !!h.moonlight, updatedBy: h.updatedBy || '' }));
   return d;
 }
@@ -261,6 +264,18 @@ const H = {
     return { data: data() };
   },
 
+  // 놀이 저장 (families/{fid}/game/shared): 도토리는 늘고 준 만큼만(increment) 보내 두 폰이 동시에 모아도 안 사라져요
+  async saveGame(obj, acornDelta, union) {
+    const row = {};
+    Object.keys(union || {}).forEach(k => { if (['hats', 'room', 'clothes', 'stickers'].includes(k) && Array.isArray(union[k]) && union[k].length) row[k] = arrayUnion(...union[k].map(String)); });
+    GAME_KEYS.forEach(k => { if (k !== 'acorn' && obj && obj[k] !== undefined) row[k] = obj[k]; });
+    if (obj && obj.acornSet != null) row.acorn = Math.max(0, Math.round(+obj.acornSet) || 0);
+    else if (acornDelta) row.acorn = increment(Math.round(+acornDelta) || 0);
+    if (JSON.stringify(obj || {}).length > 50000) throw new Error('놀이 저장이 너무 커요');
+    await commit(setDoc(dref('game', 'shared'), Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row), { merge: true }));
+    return { ok: true };
+  },
+
   // 영유아검진 받은 기록 (families/{fid}/checkups/{g1…g8, o1…o3}), 일정은 checkups.js가 태어난 날로 계산
   async saveCheckup(c) {
     const id = String((c && c.id) || '');
@@ -354,7 +369,7 @@ const API = {
 function stopAll() { unsubs.forEach(u => u()); unsubs = []; ready = false; }
 function start(fid) {
   stopAll();
-  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map(); M.checkups = new Map();
+  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map(); M.checkups = new Map(); M.game = null; M.gameSrv = false;
   const need = new Set(['family', 'member', ...COLS]);
   const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); } };
   const fail = e => {
@@ -380,6 +395,10 @@ function start(fid) {
     M.recipes = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
     onRemote();
   }, e => console.warn('레시피를 불러오지 못했어요', e)));
+  unsubs.push(onSnapshot(doc(db, 'families', fid, 'game', 'shared'), { includeMetadataChanges: true }, s => {
+    M.game = s.exists() ? s.data() : {}; if (!s.metadata.fromCache) M.gameSrv = true;
+    onRemote();
+  }, e => console.warn('놀이 저장을 불러오지 못했어요', e)));
   unsubs.push(onSnapshot(collection(db, 'families', fid, 'checkups'), s => {
     M.checkups = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
     onRemote();

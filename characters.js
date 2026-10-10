@@ -25,6 +25,11 @@ const HATS = {
   santa: '<path d="M28 38q26-36 52 0z" fill="#D9473D"/><path d="M74 30q16-8 13 12" stroke="#D9473D" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="87" cy="45" r="5" fill="#fff"/><rect x="25" y="34" width="58" height="8" rx="4" fill="#fff"/>',
   party: '<path d="M43 35l13-30 13 30z" fill="#7FC4E8"/><path d="M47 27h18M51 18h10" stroke="#FCE8B4" stroke-width="3.2"/><circle cx="56" cy="5" r="3.8" fill="#F49C9C"/>',
   bok: '<path d="M29 39q25-28 50 0z" fill="#2B2B3A"/><path d="M31 37q23 8 46 0" stroke="#E0B341" stroke-width="2.6" fill="none"/><circle cx="54" cy="17" r="3.2" fill="#D9473D"/><path d="M54 20v9M50 21l-6 10M58 21l6 10" stroke="#D9473D" stroke-width="1.8" stroke-linecap="round"/><circle cx="36" cy="38" r="2.6" fill="#E0B341"/><circle cx="72" cy="38" r="2.6" fill="#E0B341"/>',
+  det: '<path d="M27 40q27-30 54 0z" fill="#D4B27A"/><path d="M36 30l36 0M31 36h46M44 22v16M54 18v20M64 22v16" stroke="#B08A50" stroke-width="1.6" opacity=".8"/><path d="M30 39q24 8 48 0l2 4q-26 9-52 0z" fill="#A9844C"/><circle cx="54" cy="16" r="3.5" fill="#B3261E"/>',
+  beanie: '<path d="M28 40q26-36 52 0z" fill="#7FC4E8"/><path d="M40 22v14M48 18v18M56 17v19M64 19v17" stroke="#6AB3DA" stroke-width="2"/><rect x="25" y="34" width="58" height="9" rx="4.5" fill="#5BA8D1"/><circle cx="54" cy="10" r="6" fill="#FFFDF7"/>',
+  cap: '<path d="M30 39q24-32 48 0z" fill="#B3261E"/><path d="M62 37q18-3 27 4q-13 3-27-1z" fill="#8E1E17"/><circle cx="54" cy="14" r="2.6" fill="#8E1E17"/><path d="M54 15v22" stroke="#8E1E17" stroke-width="1.2" opacity=".6"/><text x="46" y="33" font-size="10" font-weight="700" font-family="sans-serif" fill="#fff">S</text>',
+  straw: '<ellipse cx="54" cy="37" rx="37" ry="7" fill="#E8C77A"/><path d="M38 37q0-22 16-22t16 22z" fill="#F0D48E"/><rect x="38" y="29" width="32" height="5" fill="#F49C9C"/><path d="M24 37q30 6 60 0" stroke="#D4B062" stroke-width="1.2" fill="none"/>',
+  bunny: '<g transform="rotate(-14 42 24)"><ellipse cx="42" cy="13" rx="6.5" ry="16" fill="#FFFDF7" stroke="#F0D0D8"/><ellipse cx="42" cy="14" rx="3" ry="11" fill="#F6B4AA"/></g><g transform="rotate(14 66 24)"><ellipse cx="66" cy="13" rx="6.5" ry="16" fill="#FFFDF7" stroke="#F0D0D8"/><ellipse cx="66" cy="14" rx="3" ry="11" fill="#F6B4AA"/></g><path d="M27 38q27-24 54 0" stroke="#F49CB8" stroke-width="4.5" fill="none" stroke-linecap="round"/>',
   chef: '<ellipse cx="45" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="63" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="54" cy="15" rx="11" ry="9" fill="#fff" stroke="#E0C9A2"/><rect x="38" y="24" width="32" height="13" rx="3" fill="#fff" stroke="#E0C9A2"/>'
 };
 // 옷 (도토리로 사서 소은·엄마·아빠 따로 입히기, GAME.wear(who)) — 몸통 타원 안에 맞춰 그림(clip), 밖으로 나오는 건 out
@@ -79,11 +84,12 @@ function svg(who = 'baby', prop = '', o = {}) {
     ${who === 'baby' ? `<rect x="51.6" y="68" width="4.8" height="4" rx="1.2" fill="#fff" stroke="${INK}" stroke-width=".9"/>` : ''}`;
   // 모자·장식
   let hat = '';
-  const skin = who === 'baby' ? (o.hat || (window.GAME && GAME.skin ? GAME.skin() : 'det')) : '';
-  if (skin && skin !== 'det' && HATS[skin]) hat = HATS[skin];
-  else if (who === 'baby') hat = `<path d="M27 40q27-30 54 0z" fill="#D4B27A"/><path d="M36 30l36 0M31 36h46M44 22v16M54 18v20M64 22v16" stroke="#B08A50" stroke-width="1.6" opacity=".8"/><path d="M30 39q24 8 48 0l2 4q-26 9-52 0z" fill="#A9844C"/><circle cx="54" cy="16" r="3.5" fill="#B3261E"/>`;
-  if (who === 'mom') hat = `<path d="M24 30l-10-7v14zM24 30l10-7v14z" fill="#B3261E"/><circle cx="24" cy="30" r="3.2" fill="#D9473D"/>`;
-  if (who === 'dad') hat = `<ellipse cx="54" cy="36" rx="32" ry="6.5" fill="#1F2A44"/><path d="M37 36q0-21 17-21t17 21z" fill="#1F2A44"/><path d="M37.5 30h33v5h-33z" fill="#B3261E"/><path d="M48 18q6 4 12 0" stroke="#2E3B5C" stroke-width="2" fill="none"/>`;
+  // 소은: 산 모자(명절·생일엔 저절로) / 엄마·아빠: GAME.hatOf(who)로 고른 모자, 없으면 원래 리본·중절모
+  const skin = who === 'baby' ? (o.hat || (window.GAME && GAME.skin ? GAME.skin() : 'det')) : (o.hat != null ? o.hat : (window.GAME && GAME.hatOf ? GAME.hatOf(who) : ''));
+  if (skin && HATS[skin]) hat = HATS[skin];
+  else if (who === 'baby') hat = HATS.det;
+  else if (who === 'mom') hat = `<path d="M24 30l-10-7v14zM24 30l10-7v14z" fill="#B3261E"/><circle cx="24" cy="30" r="3.2" fill="#D9473D"/>`;
+  else if (who === 'dad') hat = `<ellipse cx="54" cy="36" rx="32" ry="6.5" fill="#1F2A44"/><path d="M37 36q0-21 17-21t17 21z" fill="#1F2A44"/><path d="M37.5 30h33v5h-33z" fill="#B3261E"/><path d="M48 18q6 4 12 0" stroke="#2E3B5C" stroke-width="2" fill="none"/>`;
   const glasses = who === 'dad' ? `<circle cx="42" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><circle cx="66" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><path d="M50.5 55h7" stroke="#1F2A44" stroke-width="2.4"/>` : '';
   const bandage = prop === 'thermo' || prop === 'shield' ? `<g transform="rotate(-22 70 38)"><rect x="61" y="35" width="18" height="7" rx="3.5" fill="#F6C9A8"/><rect x="67" y="35" width="6" height="7" fill="#EDB48D"/></g>` : '';
   return `<svg class="chr" width="${size}" height="${size}" viewBox="${vb}" aria-hidden="true">${tail}${body}${ears}${head}${face}${glasses}${hat}${bandage}</svg>`;

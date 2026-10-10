@@ -1,13 +1,45 @@
 // 게임 요소 — 도토리 놀이터(놀이 | 꾸미기 | 계급·훈장), 수사관 계급(경험치), 훈장, 연속 수사, 오늘의 수사 지령, 도토리·모자 가게, 놀이터(생후 며칠 퀴즈, 사진 짝맞추기)
 // 계급·훈장·연속 수사는 이미 남긴 기록(by·날짜)으로 계산해서 두 폰에 같게 보여요 (저장 안 함)
-// 도토리·모자·게임 최고 기록은 이 폰에만 저장 (localStorage soeun-game)
+// 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-function st() {
-  let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-  return Object.assign({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' }, s || {});
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette'];
+const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
+const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function local() { let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {} return Object.assign(DEF(), s || {}); }
+function canWrite() { return typeof run === 'function' && !(S.me && S.me.viewer); }
+// 처음 한 번: 이 폰에 모아 둔 걸 가족 저장에 합쳐요 (도토리는 더하고, 산 물건은 합치고, 고른 건 가족 쪽에 없을 때만)
+let merging = false;
+function merge(L) {
+  const g = S.game; if (merging || !canWrite()) return; merging = true;
+  const union = {}, set = {};
+  ['hats', 'room', 'clothes', 'stickers'].forEach(k => { if ((L[k] || []).length) union[k] = L[k]; });
+  ['slot', 'wear', 'hatOf'].forEach(k => { if (L[k] && Object.keys(L[k]).length) set[k] = Object.assign({}, L[k], g[k] || {}); });
+  if (!g.hat && L.hat) set.hat = L.hat;
+  let rt = null; try { rt = JSON.parse(localStorage.getItem('soeun-roulette') || 'null'); } catch (e) {}
+  if (!g.roulette && Array.isArray(rt) && rt.length) set.roulette = rt;
+  const add = Math.max(0, +L.acorn || 0);
+  // 화면엔 바로 합친 모습
+  Object.keys(union).forEach(k => { g[k] = [...new Set([...(g[k] || []), ...union[k]])]; });
+  Object.assign(g, clone(set)); g.acorn = (+g.acorn || 0) + add;
+  L.synced = true; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (e) {}
+  run('saveGame', set, add, union).catch(e => { console.warn('놀이 저장 합치기 실패', e); L.synced = false; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (x) {} }).finally(() => { merging = false; });
 }
-function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+function st() {
+  const s = local(), g = S.game;
+  if (g && !s.synced && g.srv) merge(s);
+  if (g && (s.synced || merging)) SHARED.forEach(k => { if (g[k] !== undefined && g[k] !== null) s[k] = clone(g[k]); });
+  return s;
+}
+function save(s) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+  const g = S.game; if (!g || !s.synced || !canWrite()) return;
+  const o = {};
+  SHARED.forEach(k => { if (k === 'acorn' || s[k] === undefined || same(s[k], g[k])) return; o[k] = clone(s[k]); g[k] = clone(s[k]); });
+  const d = (+s.acorn || 0) - (+g.acorn || 0); if (d) g.acorn = +s.acorn || 0;
+  if (Object.keys(o).length || d) run('saveGame', o, d).catch(e => toast('놀이 저장 실패: ' + ((e && e.message) || '')));
+}
 const played = k => st().played[k] === today();
 function mark(k) { const s = st(); if (s.played[k] === today()) return; s.played[k] = today(); save(s); }
 const hash = t => { let h = 7; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
@@ -155,7 +187,9 @@ function card() {
 }
 
 // ---------- 도토리 놀이터 화면 (S.view='medals') : 놀이 | 꾸미기 | 계급·훈장 ----------
-const HATS = [['det', '탐정 모자', 0], ['flower', '꽃 화관', 5], ['party', '생일 고깔', 8], ['chef', '요리사 모자', 10], ['santa', '산타 모자', 12], ['crown', '왕관', 15]];
+const HATS = [['det', '탐정 모자', 0], ['flower', '꽃 화관', 5], ['bunny', '토끼 머리띠', 6], ['beanie', '털모자', 7], ['party', '생일 고깔', 8], ['cap', '야구 모자', 8], ['straw', '밀짚모자', 9], ['chef', '요리사 모자', 10], ['santa', '산타 모자', 12], ['crown', '왕관', 15]];
+// 엄마·아빠 모자 (s.hatOf {mom, dad}, ''면 원래 리본·중절모)
+function hatOf(who) { const h = (st().hatOf || {})[who]; return h || ''; }
 // 옷: 한 번 사면 셋 다 입을 수 있고, 입는 옷은 사람마다 따로 (s.clothes 산 옷, s.wear {baby, mom, dad})
 const CLOTHES = [['', '기본', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
   ['hoodie', '곰 후드티', 8], ['sailor', '세일러복', 8], ['bee', '꿀벌 옷', 9], ['tiger', '호랑이 옷', 9], ['soccer', '축구 유니폼', 9], ['dress', '꽃무늬 원피스', 10], ['trench', '탐정 코트', 10],
@@ -180,12 +214,9 @@ function medalsView() {
     body = `<section id="ghomeshop"><h2 class="sh"><span>🏠 첫 화면 방 꾸미기</span><span>모은 물건 ${rc.own}/${rc.all}</span></h2>
       <p class="hint" style="margin:0 0 8px">자리마다 하나씩 골라 놓아요. 산 물건은 성장 수사(첫 화면) 방에 보여요. 창밖은 시간(낮·저녁·밤)과 계절에 따라 저절로 바뀌어요.</p>${roomSvg()}
       ${window.ROOMS ? ROOMS.shop() : ''}</section>
-    <section><h2 class="sh"><span>🎩 소은 탐정 모자</span><span>앱 곳곳의 다람쥐가 써요</span></h2>
-      ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:0 0 8px">오늘은 ${e[1]}! 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.</p>` : ''; })()}
-      <div class="ghats">${HATS.map(([id, nm, c]) => { const own = s.hats.includes(id), cur = s.hat === id;
-        return `<button class="ghat${cur ? ' cur' : ''}" data-game="hat" data-id="${id}">${CHARS.svg('baby', '', { face: true, size: 58, hat: id })}<b>${nm}</b><small>${cur ? '쓰는 중' : own ? '쓰기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
+    ${hatsHtml(s)}
     ${clothesHtml(s)}
-    <p class="foot">도토리·가구·모자·옷은 이 폰에만 저장돼요.</p>`;
+    <p class="foot">도토리·가구·모자·옷·스티커는 엄마·아빠 폰에 똑같이 보여요. 게임 최고 기록과 오늘 한 놀이는 폰마다 따로예요.</p>`;
   } else {
     const card = role => { const r = rank(role), k = role === '엄마' ? 'mom' : 'dad', w = xp(role, wk);
       return `<div class="grc"><span class="grf">${CHARS.svg(k, '', { face: true, size: 56 })}</span><span class="grt"><small>${role} 수사관 · Lv.${r.lv}</small><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점` : '최고 계급!'} · 이번 주 +${w}점</small></span></div>`; };
@@ -199,11 +230,23 @@ function medalsView() {
   return head + body + '<button class="secondary" data-game="close" style="width:100%;margin-top:14px">첫 화면으로</button>';
 }
 
+function whoSeg() { const who = G.wearWho || 'baby'; return `<div class="seg gwho">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${l}</button>`).join('')}</div>`; }
+function hatsHtml(s) {
+  const who = G.wearWho || 'baby', own = s.hats || ['det'];
+  const cur = who === 'baby' ? s.hat : ((s.hatOf || {})[who] || '');
+  const L = who === 'baby' ? HATS : [['', who === 'mom' ? '빨간 리본' : '중절모', 0], ...HATS];
+  const e = who === 'baby' ? eventHat() : null;
+  return `<section id="ghats"><h2 class="sh"><span>🎩 모자 가게</span><span>모은 모자 ${own.filter(h => h !== 'det').length}/${HATS.length - 1}</span></h2>
+    <p class="hint" style="margin:0 0 8px">한 번 사면 소은·엄마·아빠 모두 쓸 수 있어요.${e && s.hat === 'det' ? ` 오늘은 ${e[1]}! 소은이가 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.` : ''}</p>
+    ${whoSeg()}
+    <div class="ghats">${L.map(([id, nm, c]) => { const has = !id || id === 'det' || own.includes(id), on = cur === id;
+      return `<button class="ghat${on ? ' cur' : ''}" data-game="hat" data-id="${id}">${CHARS.svg(who, '', { face: true, size: 58, hat: id })}<b>${nm}</b><small>${on ? '쓰는 중' : has ? '쓰기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>`;
+}
 function clothesHtml(s) {
   const who = G.wearWho || 'baby', cur = (s.wear || {})[who] || '', own = s.clothes || [];
   return `<section id="gclothes"><h2 class="sh"><span>👕 옷 가게</span><span>모은 옷 ${own.length}/${CLOTHES.length - 1}</span></h2>
     <p class="hint" style="margin:0 0 8px">한 번 사면 소은·엄마·아빠 모두 입을 수 있어요. 누구에게 입힐지 먼저 골라요.</p>
-    <div class="seg gwho">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${l}</button>`).join('')}</div>
+    ${whoSeg()}
     <div class="gwear">${WHO.map(([k, l]) => `<span class="${who === k ? 'on' : ''}">${CHARS.svg(k, '', { size: 78 })}<b>${l}</b><small>${(CLOTHES.find(c => c[0] === ((s.wear || {})[k] || '')) || CLOTHES[0])[1]}</small></span>`).join('')}</div>
     <div class="ghats gcl">${CLOTHES.map(([id, nm, c]) => { const has = !id || own.includes(id), on = cur === id;
       return `<button class="ghat${on ? ' cur' : ''}" data-game="wear" data-id="${id}">${CHARS.svg(who, '', { size: 64, outfit: id })}<b>${nm}</b><small>${on ? '입는 중' : has ? '입히기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>`;
@@ -363,9 +406,11 @@ document.addEventListener('click', async e => {
       s.wear[who] = c[0]; save(s); render(); break;
     }
     case 'hat': {
-      const s = st(), h = HATS.find(x => x[0] === b.dataset.id); if (!h) return;
-      if (!s.hats.includes(h[0])) { if (s.acorn < h[2]) { toast(`도토리가 ${h[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= h[2]; s.hats.push(h[0]); toast(`${h[1]}을(를) 샀어요!`); confetti(); }
-      s.hat = h[0]; save(s); render(); break;
+      const s = st(), who = G.wearWho || 'baby', id = b.dataset.id, h = HATS.find(x => x[0] === id);
+      if (id && !h) return;
+      if (h && !(s.hats || []).includes(h[0]) && h[2] > 0) { if (s.acorn < h[2]) { toast(`도토리가 ${h[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= h[2]; s.hats = (s.hats || []).concat(h[0]); toast(`${h[1]}을(를) 샀어요!`); confetti(); }
+      if (who === 'baby') s.hat = id || 'det'; else { s.hatOf = Object.assign({}, s.hatOf || {}, { [who]: id }); }
+      save(s); render(); break;
     }
     case 'quiz': if (quizStart()) { G.game = 'quiz'; S.view = 'play'; render(); window.scrollTo(0, 0); } break;
     case 'qa': { const q = G.q, r = q.rounds[q.i]; if (q.picked != null) return; q.picked = +v; if (q.picked === r.ans) q.score++; render(); break; }
@@ -459,5 +504,5 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear };
+window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf };
 })();

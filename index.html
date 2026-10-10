@@ -477,7 +477,7 @@ const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',pho
 const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses'};
 let dseq=100;const nid=p=>p+(dseq++);
 const MOCK={
-  getData:()=>JSON.parse(JSON.stringify(DB)),getPhoto:()=>'',getPhotos:()=>({}),
+  getData:()=>{const d=JSON.parse(JSON.stringify(DB));d.game=Object.assign({},d.game||{},{srv:true});return d},getPhoto:()=>'',getPhotos:()=>({}),
   saveProfile:p=>{DB.profile={name:p.name,birth:p.birth,photo:'photo' in p?!!p.photo:DB.profile.photo,mom:p.mom??DB.profile.mom,dad:p.dad??DB.profile.dad,momPhoto:'momPhoto' in p?!!p.momPhoto:DB.profile.momPhoto,dadPhoto:'dadPhoto' in p?!!p.dadPhoto:DB.profile.dadPhoto};if(p.role)DB.me.role=p.role;return{data:MOCK.getData()}},
   setMyRole:r=>{DB.me.role=r;return{data:MOCK.getData()}},
   saveRecord:r=>{const id=r.id||nid('d');const o={id,date:r.date,weight:r.weight??null,height:r.height??null,head:r.head??null,memo:r.memo||'',photo:!!r.photo,by:r.by||''};const i=DB.records.findIndex(x=>x.id===id);if(i>=0)DB.records[i]=o;else DB.records.push(o);return{id,data:MOCK.getData()}},
@@ -490,6 +490,7 @@ const MOCK={
   deleteVaccine:id=>{DB.vaccines=DB.vaccines.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
+  saveGame:(o,dl,un)=>{const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveRecipe:r=>{DB.recipes=DB.recipes.filter(x=>x.month!==r.month).concat([Object.assign({},r,{by:DB.me.role})]);return{data:MOCK.getData()}},
@@ -500,7 +501,7 @@ const MOCK={
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
-function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.mode='ok'}
+function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
 function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>ALBUM.pump(),1500)}}

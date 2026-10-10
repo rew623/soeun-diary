@@ -1,6 +1,6 @@
 // 소은 탐정의 방 — 성장 수사(첫 화면) 안내 자리의 방 그림과, 도토리 놀이터 > 꾸미기의 가게
 // 자리(슬롯)마다 산 물건 중 하나를 골라 놓아요. 창밖은 지금 시간(낮·저녁·밤)과 계절(봄 벚꽃·여름 초록·가을 낙엽·겨울 눈)로 저절로 바뀌어요
-// 저장: localStorage soeun-game 의 room(산 물건 id들), slot({자리: 물건 id}) — 이 폰에만
+// 저장: GAME.store 의 room(산 물건 id들), slot({자리: 물건 id}) — 두 폰이 같이 씀 (Firestore game/shared)
 (function () {
 const st = () => GAME.store.get(), save = s => GAME.store.set(s);
 const VW = 320, VH = 180;
