@@ -102,7 +102,7 @@ function addNew(s) { let ch = false; if (!('fam' in s.slot)) { s.slot.fam = 'fam
 const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.room.includes(id)); };
 
 // ---------- 특수 소품: 방에서 누르면 기능이 나와요 (값이 더 비싸요) ----------
-const R = { edit: false, night: false, radio: null, music: 0, tree: 0 };
+const R = { sel: null, edit: false, night: false, radio: null, music: 0, tree: 0 };
 const FXDESC = { FRAME: '누르면 소은이 프로필 사진 이야기', CLOCK: '지금 시각으로 바늘이 움직여요 · 누르면 생후 며칠째인지', SIGN: '아기 이름이 들어가요 · 누르면 사건 파일 번호', GIRAFFE: '최근 키를 보여 줘요 · 누르면 키 변화', PIC: '우리 실제 사진을 넣어요 · 누르면 사진 고르기',
   CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 흘러나와요', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
   LAMP: '누르면 방 불을 끄고 무드등을 켜요', RADIO: '누르면 잔잔한 잠 소리(백색소음)를 틀고 끄기', BOOK: '누르면 성장 앨범 책이 열려요', MAIL: '새 육아 글이 오면 깃발이 올라가요 · 누르면 육아 글 모음', WEATHER: '지금 산책 지수·기온이 걸려요 · 누르면 동네 탐문', TREE: '누르면 트리 불이 반짝이고 크리스마스까지 며칠 남았는지 알려 줘요' };
@@ -110,10 +110,13 @@ function latest(...types) { for (const t of types) { const m = (S.moments || [])
 // 다음 기념일: 100일마다 + 돌
 function nextDay() {
   if (!S.profile || !S.profile.birth) return null;
-  const n = dayNo(today()), L = [];
+  const n = dayNo(today()), L = [[1, '태어난 날']];
   for (let k = 100; k <= 1500; k += 100) L.push([k, k + '일']);
   for (let y = 1; y <= 4; y++) L.push([dayNo(addMonths(S.profile.birth, 12 * y)), y === 1 ? '첫 돌' : y + '돌']);
-  const m = L.filter(x => x[0] >= n).sort((a, b) => a[0] - b[0])[0]; return m ? { t: m[1], d: m[0] - n } : null;
+  L.sort((a, b) => a[0] - b[0]);
+  const i = L.findIndex(x => x[0] >= n); if (i < 0) return null;
+  const m = L[i], pv = L[Math.max(0, i - 1)];
+  return { t: m[1], d: m[0] - n, f: m[0] === pv[0] ? 1 : Math.max(0, Math.min(1, (n - pv[0]) / (m[0] - pv[0]))) };
 }
 let AC = null; const ac = () => { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; };
 function playTune() {
@@ -191,8 +194,19 @@ function special(id) {
   if (id === 'TREE') { const on = R.tree > Date.now(), C = ['#F4C542', '#F49C9C', '#7FC4E8', '#FFFDF7'];
     const balls = [[284, 112], [296, 120], [280, 132], [300, 140], [288, 146], [276, 154], [304, 156], [292, 132]];
     return `<rect x="286" y="160" width="9" height="12" fill="#8C5530"/><path d="M290.5 92l-14 24h28zM290.5 104l-19 32h38zM290.5 120l-24 42h48z" fill="#3E8E5A"/><path d="M276 116q14 6 29 0M272 136q19 7 38 0M267 162q23 7 47 0" stroke="#F4C542" stroke-width="1.2" fill="none" opacity=".8"/>${balls.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="2.6" fill="${C[i % 4]}" class="${on ? 'rtw' : ''}" style="animation-delay:${i * .15}s"/>`).join('')}<path d="M290.5 83l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7z" fill="#F4C542" stroke="#C99A1E" stroke-width=".8" class="${on ? 'rtw' : ''}"/><rect x="270" y="163" width="13" height="10" rx="1.5" fill="#D9473D"/><path d="M276.5 163v10M270 168h13" stroke="#F4C542" stroke-width="1.6"/><rect x="298" y="165" width="11" height="8" rx="1.5" fill="#7FC4E8"/><path d="M303.5 165v8" stroke="#FFFDF7" stroke-width="1.5"/>`; }
-  if (id === 'CAL') { const t = today(), m = nextDay();
-    return `<rect x="112" y="34" width="46" height="54" rx="4" fill="#FFFDF7" stroke="#E0C9A2" stroke-width="1.5"/><path d="M112 47v-9a4 4 0 0 1 4-4h38a4 4 0 0 1 4 4v9z" fill="#B3261E"/><circle cx="122" cy="34" r="2" fill="#6B5F52"/><circle cx="148" cy="34" r="2" fill="#6B5F52"/><text x="135" y="44.5" font-size="8" fill="#fff" text-anchor="middle" font-family="Jua">${+t.slice(5, 7)}월</text><text x="135" y="69" font-size="21" fill="#1F2A44" text-anchor="middle" font-family="Jua">${+t.slice(8)}</text><text x="135" y="82" font-size="6.5" fill="#B3261E" text-anchor="middle" font-family="Jua">${m ? (m.d ? `${m.t} D-${m.d}` : `오늘 ${m.t}!`) : ''}</text>`; }
+  if (id === 'CAL') { const t = today(), m = nextDay(), wd = '일월화수목금토'[new Date(t + 'T00:00:00Z').getUTCDay()], big = m ? (m.d ? `D-${m.d}` : 'D-DAY') : '';
+    const sp = (x, y, r, c) => `<path d="M${x} ${y - r}q${r * .25} ${r * .75} ${r} ${r}q${-r * .75} ${r * .25} ${-r} ${r}q${-r * .25} ${-r * .75} ${-r} ${-r}q${r * .75} ${-r * .25} ${r} ${-r}z" fill="${c}"/>`;
+    return `<path d="M135 21L121 35M135 21L149 35" stroke="#C9B48E" stroke-width="1"/><circle cx="135" cy="21" r="2.4" fill="#F49CB8" stroke="#E07A9A" stroke-width=".8"/>
+      <rect x="110" y="36" width="50" height="61" rx="10" fill="rgba(150,110,60,.15)" transform="translate(1.5 2)"/>
+      <rect x="110" y="34" width="50" height="61" rx="10" fill="#FFF8F2" stroke="#F49CB8" stroke-width="2"/>
+      <path d="M110 47v-3a10 10 0 0 1 10-10h30a10 10 0 0 1 10 10v3z" fill="#F49CB8"/>
+      <circle cx="121" cy="34" r="2.6" fill="#FFF8F2" stroke="#C77D93" stroke-width="1.2"/><circle cx="149" cy="34" r="2.6" fill="#FFF8F2" stroke="#C77D93" stroke-width="1.2"/>
+      <text x="135" y="44.3" font-size="6.8" fill="#fff" text-anchor="middle" font-family="Jua" letter-spacing=".6">♥ D-DAY ♥</text>
+      <text x="135" y="${m && !m.d ? 63 : 65}" font-size="${big.length > 4 ? 14 : 17}" fill="#B3261E" text-anchor="middle" font-family="Jua">${big}</text>
+      ${m ? `<rect x="117" y="69" width="36" height="10" rx="5" fill="#FCE8B4"/><text x="135" y="76.6" font-size="6.5" fill="#8C5530" text-anchor="middle" font-family="Jua">${m.d ? `${m.t}까지` : `오늘 ${m.t}!`}</text>
+      <rect x="117" y="82" width="36" height="3.2" rx="1.6" fill="#F6E3D8"/><rect x="117" y="82" width="${(36 * m.f).toFixed(1)}" height="3.2" rx="1.6" fill="#F49CB8"/>` : ''}
+      <text x="135" y="92" font-size="5.4" fill="#B9A889" text-anchor="middle" font-family="Jua">${+t.slice(5, 7)}.${+t.slice(8)} ${wd}요일 · ${dayNo(t)}일째</text>
+      ${sp(114, 54, 2.6, '#F4C542')}${sp(156, 60, 2, '#7FC4E8')}<path d="M155 50c-1.6-1.6-3.6 0-1.8 1.6l1.8 1.6 1.8-1.6c1.8-1.6-.2-3.2-1.8-1.6z" fill="#F49C9C"/>`; }
   if (id === 'TV') { const ph = latest('month', 'free', 'fam');
     return `<rect x="104" y="36" width="62" height="44" rx="5" fill="#2B2B3A"/><rect x="108" y="40" width="54" height="34" rx="2" fill="#4A5A7A"/>${ph ? `<image href="${ph}" x="108" y="40" width="54" height="34" preserveAspectRatio="xMidYMid slice"/>` : ''}<circle cx="135" cy="57" r="7" fill="rgba(0,0,0,.35)"/><path d="M132.5 53.5v7l6-3.5z" fill="#fff"/><path d="M126 80l-4 7M144 80l4 7" stroke="#2B2B3A" stroke-width="2"/><circle cx="160" cy="77.5" r="1.2" fill="#7FB77E"/>`; }
   if (id === 'MUSIC') return `<rect x="178" y="0" width="54" height="48" fill="transparent"/><path d="M204 0v12" stroke="#B9A889" stroke-width="1.5"/><path d="M190 16h28l-3 6h-22z" fill="#F49CB8"/><ellipse cx="204" cy="16" rx="15" ry="3" fill="#F7B3C8"/><path d="M193 22v12M204 22v18M215 22v12" stroke="#B9A889" stroke-width="1"/>${'<path d="M0 -5l1.5 3.4 3.7.3-2.8 2.4.9 3.6L0 2.8-3.3 4.7l.9-3.6-2.8-2.4 3.7-.3z" fill="#F4C542"/>'.replace('<path', '<path transform="translate(193 38)"')}<path d="M208 40a6 6 0 1 1-6-6 4.6 4.6 0 0 0 6 6z" fill="#FCE8B4"/>${'<path d="M0 -5l1.5 3.4 3.7.3-2.8 2.4.9 3.6L0 2.8-3.3 4.7l.9-3.6-2.8-2.4 3.7-.3z" fill="#7FC4E8"/>'.replace('<path', '<path transform="translate(215 38)"')}<g class="rnotes${R.music > Date.now() ? ' on' : ''}"><text x="222" y="22" font-size="9" fill="#B3261E">♪</text><text x="182" y="28" font-size="8" fill="#1F2A44">♫</text></g>`;
@@ -227,13 +241,16 @@ function draw(id) { const c = item(id); if (!c || !c[4]) return ''; if (c[4] ===
   return /^[A-Z]+$/.test(c[4]) ? (FX[c[4]] ? `<g data-rfx="${c[4]}" class="rfx">${special(c[4])}</g>` : special(c[4])) : c[4]; }
 const chr = (who, prop, x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})">${CHARS.svg(who, prop, { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`;
 // 자리마다 옮긴 만큼(s.pos[자리] = [dx, dy]) 움직여 그려요. 식구: 아빠 > 엄마 > 소은 크기
+const ORIGIN = { ceil: '50% 0', hang: '50% 0', wallC: '50% 50%', pic: '50% 50%', win: '50% 50%' };
 const BASE = { mom: [50, 80, .7], dad: [182, 64, .8], baby: [118, 92, .66], solo: [118, 72, .82] };
 function roomSvg(edit) {
   const s = state(), sl = s.slot, P = s.pos || {};
-  const off = k => { const p = P[k]; return p ? [+p[0] || 0, +p[1] || 0] : [0, 0]; };
-  const mv = (k, inner) => { if (!inner) return ''; const [dx, dy] = off(k); return `<g data-mv="${k}"${dx || dy ? ` transform="translate(${dx} ${dy})"` : ''}>${inner}</g>`; };
+  const off = k => { const p = P[k]; return p ? [+p[0] || 0, +p[1] || 0, +p[2] || 1] : [0, 0, 1]; };
+  // 옮긴 만큼 translate, 크기는 안쪽 g에서 바닥 가운데(매단 건 위, 벽에 건 건 가운데)를 기준으로 키우기
+  const mv = (k, inner) => { if (!inner) return ''; const [dx, dy, sc] = off(k), o = ORIGIN[k] || '50% 100%';
+    return `<g data-mv="${k}"${edit && R.sel === k ? ' class="rsel"' : ''}${dx || dy ? ` transform="translate(${dx} ${dy})"` : ''}>${sc !== 1 ? `<g class="rsz" style="transform-origin:${o};transform:scale(${sc})">${inner}</g>` : inner}</g>`; };
   const fam = sl.fam || '', mom = fam === 'fam-both' || fam === 'fam-mom', dad = fam === 'fam-both' || fam === 'fam-dad';
-  const person = (who, b) => { const [dx, dy] = off(who); return `<g data-mv="${who}">${chr(who, window.GAME && GAME.propOf ? GAME.propOf(who) : '', b[0] + dx, b[1] + dy, b[2])}</g>`; };
+  const person = (who, b) => mv(who, chr(who, window.GAME && GAME.propOf ? GAME.propOf(who) : '', b[0], b[1], b[2]));
   const order = ['ceil', 'hang', 'wallC', 'rug', 'floorR', 'corner', 'floorL', 'floorM'];
   return `<svg class="groom${edit ? ' groom-edit' : ''}" viewBox="0 0 ${VW} ${VH}" aria-label="소은 탐정의 방"><defs><radialGradient id="rglow"><stop offset="0" stop-color="#FFE9A8" stop-opacity=".9"/><stop offset="1" stop-color="#FFE9A8" stop-opacity="0"/></radialGradient></defs>
     ${wallSvg(sl.wall)}<path d="M0 120h${VW}" stroke="rgba(0,0,0,.05)" stroke-width="10"/>${floorSvg(sl.floor)}<path d="M0 130h${VW}" stroke="rgba(150,110,60,.35)" stroke-width="2"/>
@@ -246,9 +263,12 @@ function roomSvg(edit) {
     ${R.night ? `<rect width="${VW}" height="${VH}" fill="#0B1430" opacity=".5" pointer-events="none"/>${sl.floorM === 'nightlamp' ? (() => { const [dx, dy] = off('floorM'); return `<circle cx="${98 + dx}" cy="${146 + dy}" r="40" fill="url(#rglow)" pointer-events="none"/>`; })() : ''}` : ''}</svg>`;
 }
 // 꾸미기 화면 위쪽: 방 그림 + 위치 옮기기
+const keyName = k => ({ baby: '소은', mom: '엄마', dad: '아빠' })[k] || (() => { const sl = state().slot[k], c = sl && item(sl); return c ? c[2] : ((SLOTS.find(x => x[0] === k) || [])[1] || k); })();
 function editorHtml() {
-  return `<div class="redit"><button class="${R.edit ? 'primary' : 'ghost'}" data-roomedit="1">${R.edit ? '✓ 다 옮겼어요' : '✋ 위치 옮기기'}</button>${R.edit ? '<button class="ghost" data-roomreset="1">처음 자리로</button>' : ''}</div>
-    ${R.edit ? '<p class="hint" style="margin:4px 0 6px;color:var(--red)">방 그림에서 소품이나 엄마·아빠·소은이를 손가락으로 끌어 옮겨요.</p>' : '<p class="hint" style="margin:4px 0 6px">방에서 소은·엄마·아빠를 누르면 그 식구 꾸미기로 가요.</p>'}${roomSvg(R.edit)}`;
+  const p = R.sel && (state().pos || {})[R.sel], sc = p ? +p[2] || 1 : 1;
+  return `<div class="redit"><button class="${R.edit ? 'primary' : 'ghost'}" data-roomedit="1">${R.edit ? '✓ 다 꾸몄어요' : '✋ 위치·크기 바꾸기'}</button>${R.edit ? '<button class="ghost" data-roomreset="1">처음대로</button>' : ''}</div>
+    ${R.edit ? `<p class="hint" style="margin:4px 0 6px;color:var(--red)">끌어서 옮기고, 눌러서 고른 다음 아래 −/+로 크기를 바꿔요.</p>` : '<p class="hint" style="margin:4px 0 6px">방에서 소은·엄마·아빠를 누르면 그 식구 꾸미기로 가요.</p>'}${roomSvg(R.edit)}
+    ${R.edit ? (R.sel ? `<div class="rsize"><b>${esc(keyName(R.sel))}</b><button data-rsize="-" ${sc <= .45 ? 'disabled' : ''}>−</button><span>${Math.round(sc * 100)}%</span><button data-rsize="+" ${sc >= 2.15 ? 'disabled' : ''}>+</button><button class="rsz0" data-rsize="0">원래 크기</button></div>` : '<div class="rsize none">크기를 바꿀 소품이나 식구를 눌러 골라요</div>') : ''}`;
 }
 
 // ---------- 가게 (도토리 놀이터 > 꾸미기) ----------
@@ -278,12 +298,16 @@ function count() { const s = state(); return { own: CAT.filter(c => c[3] > 0 && 
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-roomfold]');
   if (f) { const v = f.dataset.roomfold === 'close'; SLOTS.forEach(([slot]) => setFold('r-' + slot, v)); render(); if (v) { const el = document.getElementById('ghomeshop'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); } return; }
-  if (e.target.closest('[data-roomedit]')) { R.edit = !R.edit; render(); return; }
-  if (e.target.closest('[data-roomreset]')) { const s = state(); s.pos = {}; save(s); render(); toast('처음 자리로 돌렸어요'); return; }
+  if (e.target.closest('[data-roomedit]')) { R.edit = !R.edit; R.sel = null; render(); return; }
+  const rz = e.target.closest('[data-rsize]');
+  if (rz) { if (!R.sel) return; const s = state(), p = ((s.pos || {})[R.sel] || [0, 0, 1]).slice(), cur = +p[2] || 1, v = rz.dataset.rsize;
+    const nx = v === '0' ? 1 : Math.round(Math.max(.4, Math.min(2.2, cur + (v === '+' ? .1 : -.1))) * 100) / 100;
+    s.pos = Object.assign({}, s.pos || {}, { [R.sel]: nx !== 1 ? [+p[0] || 0, +p[1] || 0, nx] : [+p[0] || 0, +p[1] || 0] }); save(s); render(); return; }
+  if (e.target.closest('[data-roomreset]')) { const s = state(); s.pos = {}; save(s); R.sel = null; render(); toast('처음 자리·크기로 돌렸어요'); return; }
   if (drag.justMoved) { drag.justMoved = false; return; }
   // 꾸미기 화면 방에서 식구를 누르면 그 식구 꾸미기로
   const pg = e.target.closest('#ghomeshop [data-mv=baby], #ghomeshop [data-mv=mom], #ghomeshop [data-mv=dad]');
-  if (pg && window.GAME && GAME.kitFor) { GAME.kitFor(pg.dataset.mv); return; }
+  if (pg && !R.edit && window.GAME && GAME.kitFor) { GAME.kitFor(pg.dataset.mv); return; }
   const fx = e.target.closest('[data-rfx]');
   if (fx && !e.target.closest('.groom-edit')) { const f = FX[fx.dataset.rfx]; if (f) f(); return; }
   const pk = e.target.closest('[data-roompick]'); if (pk) { const s = state(); s.pic = pk.dataset.roompick; save(s); closeSheet(); render(); toast('액자 사진을 바꿨어요'); return; }
@@ -317,13 +341,12 @@ const drag = { d: null, justMoved: false };
 document.addEventListener('pointerdown', e => {
   const svg = e.target.closest('svg.groom-edit'), g = svg && e.target.closest('[data-mv]'); if (!g) return;
   e.preventDefault();
-  const r = svg.getBoundingClientRect(), k = VW / r.width, p = (state().pos || {})[g.dataset.mv] || [0, 0];
+  const r = svg.getBoundingClientRect(), k = VW / r.width, p = (state().pos || {})[g.dataset.mv] || [0, 0, 1];
   let bb = { x: 0, y: 0, width: 0, height: 0 }; try { bb = g.getBBox(); } catch (x) {}
-  const p0 = [+p[0] || 0, +p[1] || 0], isP = !!BASE[g.dataset.mv];
-  // 사람은 transform이 안쪽에 있어서 getBBox가 이미 옮긴 자리 기준
-  const bx = isP ? bb.x - p0[0] : bb.x, by = isP ? bb.y - p0[1] : bb.y;
-  drag.d = { g, svg, key: g.dataset.mv, x0: e.clientX, y0: e.clientY, k, p0, p: p0.slice(), bx, by, bw: bb.width, bh: bb.height, moved: false };
-  svg.appendChild(g); g.classList.add('rdrag');
+  const p0 = [+p[0] || 0, +p[1] || 0];
+  drag.d = { g, svg, key: g.dataset.mv, x0: e.clientX, y0: e.clientY, k, p0, p: p0.slice(), sc: +p[2] || 1, bx: bb.x, by: bb.y, bw: bb.width, bh: bb.height, moved: false };
+  svg.querySelectorAll('.rsel').forEach(x => x.classList.remove('rsel'));
+  svg.appendChild(g); g.classList.add('rdrag', 'rsel');
   try { svg.setPointerCapture(e.pointerId); } catch (x) {}
 });
 document.addEventListener('pointermove', e => {
@@ -333,15 +356,14 @@ document.addEventListener('pointermove', e => {
   dx = Math.max(-d.bx - d.bw / 2, Math.min(VW - d.bx - d.bw / 2, dx)); dy = Math.max(-d.by - d.bh / 2, Math.min(VH - d.by - d.bh / 2, dy));
   if (Math.abs(e.clientX - d.x0) + Math.abs(e.clientY - d.y0) > 4) d.moved = true;
   d.p = [Math.round(dx), Math.round(dy)];
-  if (BASE[d.key]) { const inner = d.g.firstElementChild, m = /scale\(([^)]+)\)/.exec(inner.getAttribute('transform')), b = d.key === 'baby' ? (d.svg.querySelector('[data-mv=mom],[data-mv=dad]') ? BASE.baby : BASE.solo) : BASE[d.key];
-    inner.setAttribute('transform', `translate(${b[0] + d.p[0]} ${b[1] + d.p[1]}) scale(${m ? m[1] : b[2]})`); }
-  else d.g.setAttribute('transform', `translate(${d.p[0]} ${d.p[1]})`);
+  d.g.setAttribute('transform', `translate(${d.p[0]} ${d.p[1]})`);
 });
 const endDrag = () => {
   const d = drag.d; if (!d) return; drag.d = null; d.g.classList.remove('rdrag');
-  if (!d.moved) return;
+  R.sel = d.key;   // 누른 걸 골라서 아래 크기 단추가 그걸 바꿔요
+  if (!d.moved) { render(); return; }
   drag.justMoved = true; setTimeout(() => { drag.justMoved = false; }, 400);
-  const s = state(); s.pos = Object.assign({}, s.pos || {}, { [d.key]: d.p }); save(s); render();
+  const s = state(); s.pos = Object.assign({}, s.pos || {}, { [d.key]: d.sc !== 1 ? [d.p[0], d.p[1], d.sc] : d.p }); save(s); render();
 };
 document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
 
@@ -353,6 +375,13 @@ css.textContent = `
 .rsp{position:relative}.rsx{position:absolute;right:3px;top:2px;font-style:normal;font-size:12px}
 .redit{display:flex;gap:6px;justify-content:flex-end;margin:0 0 6px}.redit button{min-height:36px;font-size:13px;padding:6px 12px}
 .groom-edit{touch-action:none;outline:2.5px dashed var(--red);outline-offset:3px;border-radius:14px}.groom-edit [data-mv]{cursor:grab}.groom-edit .rdrag{filter:drop-shadow(0 0 4px rgba(179,38,30,.8));cursor:grabbing}
+.rsz{transform-box:fill-box}
+.groom-edit .rsel{filter:drop-shadow(0 0 2.5px #B3261E) drop-shadow(0 0 1px #B3261E)}
+.rsize{display:flex;align-items:center;gap:8px;justify-content:center;margin:8px 0 2px;padding:8px 10px;background:#FFFDF7;border:1.5px dashed var(--red);border-radius:14px}
+.rsize b{flex:1;font-size:13.5px;color:var(--navy);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rsize button{min-width:42px;min-height:38px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-size:20px;font-family:var(--display);color:var(--navy)}.rsize button:disabled{opacity:.35}
+.rsize .rsz0{font-size:12.5px;font-family:var(--body);min-width:0;padding:0 10px}.rsize span{min-width:44px;text-align:center;font-family:var(--display);font-size:16px;color:var(--red)}
+.rsize.none{color:var(--muted);font-size:13px;border-style:dashed;border-color:var(--line)}
 .rfx{cursor:pointer}.rnotes,.rwave{opacity:0;transition:opacity .3s}.rnotes.on,.rwave.on{opacity:1;animation:rbob 1s ease-in-out infinite}
 @keyframes rbob{50%{transform:translateY(-3px)}}
 .rtw{animation:rtw .6s ease-in-out infinite alternate}@keyframes rtw{from{opacity:.35}to{opacity:1}}
