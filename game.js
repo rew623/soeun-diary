@@ -10,7 +10,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function local() { let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {} return Object.assign(DEF(), s || {}); }
 function canWrite() { return typeof run === 'function' && !(S.me && S.me.viewer); }
 // 처음 한 번: 이 폰에 모아 둔 걸 가족 저장에 합쳐요 (도토리는 더하고, 산 물건은 합치고, 고른 건 가족 쪽에 없을 때만)
-let merging = false, fixing = false;
+let merging = false, fixing = false, regranting = false;
 function merge(L) {
   const g = S.game; if (merging || !canWrite()) return; merging = true;
   const union = {}, set = {};
@@ -189,6 +189,12 @@ const MEDALS = [
   ['quiz', '🧠', '눈썰미 왕', '생후 며칠 퀴즈 8점 이상', () => st().quizBest >= 8, 5],
   ['mem', '🃏', '기억력 왕', '짝맞추기 10번 안에 성공', () => st().memBest > 0 && st().memBest <= 10, 5]
 ];
+// 받은 보상 장부 (계급·훈장 칸 아래): 두 폰이 같은 장부를 봐요
+function ledger() {
+  const p = st().paid || {}, ms = (p.medals || []).map(id => MEDALS.find(x => x[0] === id)).filter(Boolean), mt = ms.reduce((a, m) => a + (m[5] || 3), 0);
+  const rk = p.rank || {}, rt = ['엄마', '아빠'].reduce((a, r) => { let t = 0; for (let lv = 2; lv <= (rk[r] || 1); lv++) t += rankReward(lv); return a + t; }, 0);
+  return `<span style="display:block;margin-bottom:4px">📒 받은 보상: 훈장 ${ms.length}개 🌰 ${mt} · 계급(엄마 ${RANKS[(rk['엄마'] || 1) - 1][1]}·아빠 ${RANKS[(rk['아빠'] || 1) - 1][1]}) 🌰 ${rt}${p.att ? ` · 마지막 출석 도장 ${fmtK(p.att, true)}` : ''}</span>`;
+}
 // 승진 도토리: 경장 5개부터 한 계급 오를 때마다 2개씩 더
 const rankReward = lv => 5 + 2 * (lv - 2);
 const medalsOn = () => MEDALS.filter(m => { try { return m[4](); } catch (e) { return false; } }).map(m => m[0]);
@@ -232,6 +238,17 @@ function check() {
         if (sk > 0 && sk % 7 === 0) { s.acorn += 5; msgs.push(`📅 오늘 출석 도장 + ${sk}일 연속 보너스! 도토리 🌰 +7`); } else msgs.push('📅 오늘 출석 도장 쾅! 도토리 🌰 +2');
       }
       s.paid = paid;
+      // 2026.10: 두 폰이 동시에 써서 마이너스가 됐다가 0으로 고쳐질 때 훈장·계급 보상이 사라졌어요 → 지금까지 받은 훈장·계급 보상을 한 번 다시 넣어 줘요 (game/shared의 regrant 칸으로 한 번만, 장부 paid와 따로라 덮어써지지 않게)
+      if (!S.game.regrant && S.game.srv && !regranting && (s.paid.medals || []).length) {
+        let tot = 0; on.forEach(id => { const m = MEDALS.find(x => x[0] === id); tot += (m && m[5]) || 3; });
+        for (const r of ['엄마', '아빠']) for (let lv = 2; lv <= now[r]; lv++) tot += rankReward(lv);
+        if (tot) {
+          regranting = true;
+          run('saveGame', { regrant: today() }, tot, undefined, 'regrant')
+            .then(() => { confetti(); toast(`🎁 그동안 받은 훈장 ${on.length}개·계급 보상을 다시 넣었어요! 도토리 🌰 +${tot}`); if (window.__app && __app.refresh) __app.refresh(); })
+            .catch(() => {}).finally(() => { regranting = false; });
+        }
+      }
     } else {
       if (s.seenRank) for (const r of ['엄마', '아빠']) if (now[r] > (s.seenRank[r] || 1)) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}(으)로 승진!`);
       if (s.seenMedals) on.filter(id => !s.seenMedals.includes(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id); msgs.push(`${m[1]} 훈장 획득: ${m[2]}`); });
@@ -333,7 +350,7 @@ function medalsView() {
       ${window.FUN ? FUN.attend() : ''}
       <section><h2 class="sh"><span>훈장</span><span>${on.length}/${MEDALS.length}</span></h2>
         <div class="gmed">${MEDALS.map(([id, ic, nm, how, , rw]) => `<div class="gmd${on.includes(id) ? ' on' : ''}"><span>${on.includes(id) ? ic : '🔒'}</span><b>${nm}</b><small>${how}</small><em>🌰 ${rw || 3}</em></div>`).join('')}</div>
-        <p class="foot" style="margin-top:8px">훈장을 받으면 적힌 만큼 도토리를 받아요. 승진하면 경장 🌰 5개부터 계급이 오를수록 더 많이, 출석 도장 찍힌 날 🌰 +2 · 7일 연속마다 🌰 +5.</p></section>`;
+        <p class="foot" style="margin-top:8px">${ledger()}훈장을 받으면 적힌 만큼 도토리를 받아요. 승진하면 경장 🌰 5개부터 계급이 오를수록 더 많이, 출석 도장 찍힌 날 🌰 +2 · 7일 연속마다 🌰 +5.</p></section>`;
   }
   return head + body + '<button class="secondary" data-game="close" style="width:100%;margin-top:14px">첫 화면으로</button>';
 }

@@ -58,7 +58,7 @@ const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const fref = () => doc(db, 'families', M.fid);
-const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos'];
+const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'regrant'];
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
 const list = c => [...M.col[c].values()].sort((a, b) => ((a._o ?? 0) - (b._o ?? 0)) || String(a.id).localeCompare(String(b.id)));
 const app = () => window.__app;
@@ -265,7 +265,7 @@ const H = {
   },
 
   // 놀이 저장 (families/{fid}/game/shared): 도토리는 늘고 준 만큼만(increment) 보내 두 폰이 동시에 모아도 안 사라져요
-  async saveGame(obj, acornDelta, union) {
+  async saveGame(obj, acornDelta, union, once) {
     const row = {};
     Object.keys(union || {}).forEach(k => { if (['hats', 'room', 'clothes', 'stickers', 'props'].includes(k) && Array.isArray(union[k]) && union[k].length) row[k] = arrayUnion(...union[k].map(String)); });
     GAME_KEYS.forEach(k => { if (k !== 'acorn' && obj && obj[k] !== undefined) row[k] = obj[k]; });
@@ -275,6 +275,16 @@ const H = {
     // mergeFields: 보낸 칸만 통째로 바꿔요 (slot·wear 같은 묶음에서 뺀 자리도 다른 폰에 반영)
     const ref = dref('game', 'shared'), data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row);
     // 도토리를 쓸 때는 서버의 진짜 잔액을 다시 읽고 모자라면 안 사요 (다른 폰이 먼저 써서 화면 숫자가 옛날 것일 때 마이너스가 되지 않게)
+    // 한 번만 주는 보상(once): 서버의 그 칸(예: regrant)을 다시 읽고 이미 받았으면 안 줘요 (두 폰이 동시에 받지 않게)
+    if (once) {
+      await runTransaction(db, async tx => {
+        const cur = (await tx.get(ref)).data() || {};
+        if (cur[once]) throw Object.assign(new Error('이미 받은 보상이에요'), { code: 'already' });
+        data[once] = (obj && obj[once]) || true; data.acorn = (+cur.acorn || 0) + Math.round(+acornDelta || 0);
+        tx.set(ref, data, { mergeFields: Object.keys(data) });
+      });
+      return { ok: true };
+    }
     if (obj && obj.acornSet == null && acornDelta < 0) {
       await runTransaction(db, async tx => {
         const cur = +(((await tx.get(ref)).data() || {}).acorn) || 0, next = cur + Math.round(+acornDelta);

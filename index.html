@@ -490,7 +490,7 @@ const MOCK={
   deleteVaccine:id=>{DB.vaccines=DB.vaccines.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
-  saveGame:(o,dl,un)=>{const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
+  saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={});if(g0[once])throw new Error('이미 받은 보상이에요');g0[once]=(o||{})[once]||true;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveRecipe:r=>{DB.recipes=DB.recipes.filter(x=>x.month!==r.month).concat([Object.assign({},r,{by:DB.me.role})]);return{data:MOCK.getData()}},
