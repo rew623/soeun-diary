@@ -84,7 +84,7 @@ function plan(code) {
   while (be + 1 < list.length && be - bi < 2 && list[be + 1].s >= top - 5) be++;
   while (bi > 0 && be - bi < 2 && list[bi - 1].s >= top - 5) bi--;
   const best = list[bi], hr = x => +x.h[0].slice(8, 10);
-  return { when, list, top, from: hr(best), to: hr(list[be]) + 1, tmp: best.h[1], ag: best.ag, why: best.why, all: hrs, ico: ico(best.h) };
+  return { d: dOf(best.h[0]), when, list, top, from: hr(best), to: hr(list[be]) + 1, tmp: best.h[1], ag: best.ag, why: best.why, all: hrs, ico: ico(best.h) };
 }
 const ico = h => h[3] === 3 ? '🌨️' : h[3] > 0 ? '🌧️' : h[2] >= 4 ? '☁️' : h[2] === 3 ? '⛅' : '☀️';
 function babyNote(t) {
@@ -144,6 +144,69 @@ function midScore(tmax, pop, wf) {
   return Math.max(0, Math.min(100, Math.round(s)));
 }
 const wfIco = wf => /눈/.test(wf) ? '🌨️' : /비|소나기/.test(wf) ? '🌧️' : /흐림/.test(wf) ? '☁️' : /구름/.test(wf) ? '⛅' : '☀️';
+// ---------- 날마다 날씨 자세히 (일주일 칸을 누르면 그날로) ----------
+const PT = { 1: '비', 2: '비나 눈', 3: '눈', 4: '소나기' }, SKYN = { 1: '맑음', 3: '구름 많음', 4: '흐림' };
+const dkey = d => d.replace(/-/g, ''), dOf = k => `${k.slice(0, 4)}-${k.slice(4, 6)}-${k.slice(6, 8)}`;
+const dLabel = d => d === today() ? '오늘' : d === addDays(today(), 1) ? '내일' : `${+d.slice(5, 7)}/${+d.slice(8)}(${WD[new Date(d + 'T00:00:00Z').getUTCDay()]})`;
+const hrsOf = (code, d) => ((T.town && T.town.weather && T.town.weather.data && T.town.weather.data[code]) || []).filter(h => h[0].slice(0, 8) === dkey(d));
+// 그날 낮(07~19시) 점수와 제일 좋은 시간 (오늘은 지금부터)
+function dayPlan(code, d) {
+  const k = nowKey().slice(0, 10), all = hrsOf(code, d).filter(h => d !== today() || h[0].slice(0, 10) >= k);
+  const list = all.filter(h => +h[0].slice(8, 10) >= 7 && +h[0].slice(8, 10) <= 19).map(h => ({ h, ...score(h, code) }));
+  if (!list.length) return null;
+  const top = Math.max(...list.map(x => x.s)); let bi = list.findIndex(x => x.s === top), be = bi;
+  while (be + 1 < list.length && be - bi < 2 && list[be + 1].s >= top - 5) be++;
+  while (bi > 0 && be - bi < 2 && list[bi - 1].s >= top - 5) bi--;
+  const best = list[bi], hr = x => +x.h[0].slice(8, 10);
+  return { d, when: dLabel(d), list, top, from: hr(best), to: hr(list[be]) + 1, tmp: best.h[1], ag: best.ag, why: best.why, ico: ico(best.h), src: 'short' };
+}
+// 시간별 예보로 쓰는 날씨 설명 (아침·낮·저녁 하늘, 비 오는 시간·양, 바람, 습도, 일교차)
+function detailShort(code, d) {
+  const H = hrsOf(code, d); if (!H.length) return null;
+  const hr = h => +h[0].slice(8, 10), mode = a => { const c = {}; a.forEach(v => c[v] = (c[v] || 0) + 1); return +Object.keys(c).sort((x, y) => c[y] - c[x])[0]; };
+  const part = (nm, a, b) => { const L = H.filter(h => hr(h) >= a && hr(h) <= b); if (!L.length) return '';
+    const sky = mode(L.map(h => h[2] || 1)), wet = L.filter(h => h[3] > 0), pty = wet.length ? mode(wet.map(h => h[3])) : 0;
+    const ic = pty === 3 ? '🌨️' : pty ? '🌧️' : sky >= 4 ? '☁️' : sky === 3 ? '⛅' : '☀️';
+    const tx = pty ? `${{ 1: '맑다가', 3: '구름 많고', 4: '흐리고' }[sky] || '흐리고'} ${PT[pty]}` : SKYN[sky] || '맑음';
+    return `<span class="wdp"><small>${nm}</small><em>${ic}</em><b>${tx}</b></span>`; };
+  const parts = [part('아침', 6, 11), part('낮', 12, 17), part('저녁', 18, 23)].filter(Boolean).join('');
+  const lines = [], tm = H.map(h => h[1]), hi = Math.max(...tm), lo = Math.min(...tm), mp = Math.max(...H.map(h => h[4]));
+  const wet = H.filter(h => h[3] > 0);
+  if (wet.length) {
+    // 이어지는 비 시간끼리 묶기 (예: 15~17시, 21~23시)
+    const runs = []; wet.forEach(h => { const x = hr(h), r = runs[runs.length - 1]; if (r && x - r[1] <= 1) r[1] = x; else runs.push([x, x]); });
+    const when = runs.map(([a, b]) => `${a}~${Math.min(24, b + 1)}시`).join(', ');
+    const kinds = [...new Set(wet.map(h => PT[h[3]]))].join('·'), mm = Math.max(...wet.map(h => +h[7] || 0)), cm = wet.reduce((s, h) => s + (+h[8] || 0), 0);
+    lines.push(`☔ <b>${when} ${kinds}</b> 예보 (강수확률 최대 ${mp}%${mm ? `, 시간당 많게는 ${mm >= 50 ? '50mm 넘게' : mm < 1 ? '1mm 미만' : mm + 'mm'}` : ''}${cm ? `, 눈 ${Math.round(cm * 10) / 10}cm 쌓임` : ''}) — 우산·유모차 레인커버 챙겨요`);
+  } else lines.push(mp >= 30 ? `🌂 비 예보는 없지만 강수확률이 최대 ${mp}%예요` : `🌤️ 비 소식 없어요 (강수확률 최대 ${mp}%)`);
+  const ws = Math.max(...H.map(h => h[5]));
+  lines.push(`🍃 바람 ${ws >= 9 ? '아주 강해요' : ws >= 7 ? '강해요 — 유모차 바람막이 필요' : ws >= 4 ? '조금 불어요' : '약해요'} (최대 ${ws}m/s)`);
+  const rh = Math.round(H.reduce((s, h) => s + h[6], 0) / H.length);
+  lines.push(`💧 습도 평균 ${rh}% ${rh >= 80 ? '— 눅눅해요' : rh <= 35 ? '— 건조해요, 보습 챙기기' : '— 쾌적해요'}`);
+  lines.push(`🌡️ 최저 ${lo}° · 최고 ${hi}°${hi - lo >= 10 ? ` — 일교차 ${hi - lo}°라 겉옷 챙겨요` : ''}`);
+  const step = H.filter(h => hr(h) % 3 === 0 && hr(h) >= 6);
+  const strip = step.map(h => `<span><small>${hr(h)}시</small><em>${ico(h)}</em><b>${h[1]}°</b><i>${h[4] >= 30 ? h[4] + '%' : ''}</i></span>`).join('');
+  return `<div class="wdet"><b class="wdt">🔎 ${dLabel(d)} 날씨 자세히</b><div class="wdps">${parts}</div><div class="wstrip">${strip}</div>${lines.map(l => `<p>${l}</p>`).join('')}</div>`;
+}
+// 중기예보(3일 뒤~)로 쓰는 날씨 설명: 오전·오후 하늘과 강수확률, 최저·최고
+function midInfo(code, d) {
+  const M = T.town && T.town.mid; if (!M || !M.tmFc) return null;
+  const n = daysBetween(dOf(M.tmFc), d), side = (T.town.air && T.town.air.east || []).includes(code) ? 'e' : 'w';
+  const L = (M.land || {})[side] || {}, ta = (M.ta || {})[code] || {};
+  const am = L[`wf${n}Am`] != null ? { wf: L[`wf${n}Am`], pop: +(L[`rnSt${n}Am`] ?? 0) } : null, pm = L[`wf${n}Pm`] != null ? { wf: L[`wf${n}Pm`], pop: +(L[`rnSt${n}Pm`] ?? 0) } : null;
+  const all = L[`wf${n}`] != null ? { wf: L[`wf${n}`], pop: +(L[`rnSt${n}`] ?? 0) } : null;
+  const hi = ta[`taMax${n}`], lo = ta[`taMin${n}`];
+  if (!am && !pm && !all && hi == null) return null;
+  return { am, pm, all, hi: hi != null ? +hi : null, lo: lo != null ? +lo : null };
+}
+function detailMid(code, d) {
+  const m = midInfo(code, d); if (!m) return '';
+  const p = (nm, x) => x ? `<span class="wdp"><small>${nm}</small><em>${wfIco(x.wf)}</em><b>${esc(x.wf)}</b><i>☂ ${x.pop}%</i></span>` : '';
+  const mp = Math.max(...[m.am, m.pm, m.all].filter(Boolean).map(x => x.pop)), wf = [m.am, m.pm, m.all].filter(Boolean).map(x => x.wf).join(' ');
+  const lines = [/비|소나기/.test(wf) ? `☔ <b>비 소식</b>이 있어요 (강수확률 최대 ${mp}%) — 시간은 2~3일 전에 자세히 나와요` : /눈/.test(wf) ? `🌨️ <b>눈 소식</b>이 있어요 (강수확률 최대 ${mp}%)` : `🌤️ 비 소식 없어요 (강수확률 최대 ${mp}%)`];
+  if (m.hi != null) lines.push(`🌡️ 최저 ${m.lo}° · 최고 ${m.hi}°${m.hi - m.lo >= 10 ? ` — 일교차 ${m.hi - m.lo}°라 겉옷 챙겨요` : ''}`);
+  return `<div class="wdet"><b class="wdt">🔎 ${dLabel(d)} 날씨 자세히</b><div class="wdps">${p('오전', m.am)}${p('오후', m.pm)}${p('하루', m.all)}</div>${lines.map(l => `<p>${l}</p>`).join('')}<p class="foot" style="margin:4px 0 0">기상청 중기예보라 오전·오후로만 나와요. 바람·습도·시간별은 가까워지면 보여요.</p></div>`;
+}
 function week(code) {
   const W = (T.town && T.town.weather && T.town.weather.data && T.town.weather.data[code]) || [], M = T.town && T.town.mid, out = [];
   const late = new Date(Date.now() + 9 * 3600e3).getUTCHours() >= 18, t0 = late ? addDays(today(), 1) : today();   // 저녁이면 내일부터 7일
@@ -152,7 +215,8 @@ function week(code) {
     const day = hrs.filter(h => +h[0].slice(8, 10) >= 9 && +h[0].slice(8, 10) <= 18);
     if (day.length >= (d === today() ? 1 : 4)) {   // 오늘은 남은 낮 시간만으로
       const sc = day.map(h => ({ h, ...score(h, code) })), best = sc.reduce((a, b) => b.s > a.s ? b : a), tm = hrs.map(h => h[1]);
-      out.push({ d, s: best.s, ico: ico(best.h), hi: Math.max(...tm), lo: Math.min(...tm), at: +best.h[0].slice(8, 10), src: 'short' });
+      const wet = day.filter(h => h[3] > 0), ic = wet.length ? (wet.some(h => h[3] === 3) ? '🌨️' : wet.length >= day.length / 2 ? '🌧️' : '🌦️') : ico(best.h);   // 낮에 비 오면 해만 그리지 않게
+      out.push({ d, s: best.s, ico: ic, hi: Math.max(...tm), lo: Math.min(...tm), at: +best.h[0].slice(8, 10), src: 'short' });
       continue;
     }
     if (!M || !M.tmFc) { out.push({ d, s: null }); continue; }
@@ -165,13 +229,13 @@ function week(code) {
   }
   return out;
 }
-function weekHtml(code) {
+function weekHtml(code, sel) {
   const L = week(code); if (!L.some(x => x.s != null)) return '';
   const best = L.filter(x => x.s != null).reduce((a, b) => b.s > a.s ? b : a);
   const c = s => s == null ? 'na' : s >= 80 ? 'ok' : s >= 60 ? 'ok2' : s >= 40 ? 'mid' : 'no';
   return `<div class="wweek"><div class="wwh"><b>📅 일주일 산책 예보</b><small>${best.s >= 60 ? `${+best.d.slice(5, 7)}/${+best.d.slice(8)}(${WD[new Date(best.d + 'T00:00:00Z').getUTCDay()]})이 제일 좋아요` : '이번 주는 짧게 다녀와요'}</small></div>
-    <div class="wwd">${L.map((x, i) => `<span class="wd ${c(x.s)}"><small>${x.d === today() ? '오늘' : x.d === addDays(today(), 1) ? '내일' : WD[new Date(x.d + 'T00:00:00Z').getUTCDay()]}</small><em>${x.ico || '·'}</em><b>${x.s == null ? '-' : x.s}</b><i>${x.hi != null ? `${Math.round(x.hi)}°` : ''}${x.lo != null ? `<u>${Math.round(x.lo)}°</u>` : ''}</i></span>`).join('')}</div>
-    <p class="foot" style="margin:6px 0 0">3일 뒤부터는 기상청 중기예보(오전·오후)라 대략이에요. 미세먼지는 오늘·내일만 반영돼요.</p></div>`;
+    <div class="wwd">${L.map((x, i) => `<button class="wd ${c(x.s)}${x.d === sel ? ' sel' : ''}" data-town="day" data-v="${x.d}"><small>${x.d === today() ? '오늘' : x.d === addDays(today(), 1) ? '내일' : WD[new Date(x.d + 'T00:00:00Z').getUTCDay()]}</small><em>${x.ico || '·'}</em><b>${x.s == null ? '-' : x.s}</b><i>${x.hi != null ? `${Math.round(x.hi)}°` : ''}${x.lo != null ? `<u>${Math.round(x.lo)}°</u>` : ''}</i></button>`).join('')}</div>
+    <p class="foot" style="margin:6px 0 0">날짜를 누르면 그날 날씨로 바꿔 보여 줘요. 3일 뒤부터는 기상청 중기예보(오전·오후)라 대략이에요. 미세먼지는 오늘·내일만 반영돼요.</p></div>`;
 }
 
 // ---------- 동네 소식 (네이버 블로그·카페·뉴스에서 찾은 아이 행사 글) ----------
@@ -238,13 +302,26 @@ function render_() {
   const sel = `<select id="town-reg" class="tsel" aria-label="시·군">${Object.entries(NAMES).map(([k, n]) => `<option value="${k}" ${k === code ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   let walk = `<section><h2 class="sh"><span>산책 지수</span></h2><p class="vempty">${T.loading ? '불러오는 중…' : '날씨·미세먼지 정보를 아직 못 받았어요. 처음 설정 뒤 몇 시간 안에 생겨요.'}</p></section>`;
   if (P) {
-    const [lab, stamp, cls] = LV(P.top), note = babyNote(P.tmp);
+    // 고른 날(T.day)이 있으면 그날로: 시간별 예보가 있으면 시간별, 없으면 중기예보
+    const sd = T.day && T.day !== P.d ? T.day : P.d, DP = sd === P.d ? P : dayPlan(code, sd), wk = week(code).find(x => x.d === sd);
     const bar = x => { const h = +x.h[0].slice(8, 10), c = x.s >= 80 ? 'ok' : x.s >= 60 ? 'ok2' : x.s >= 40 ? 'mid' : 'no'; return `<span class="whb ${c}" title="${h}시 ${x.s}점"><i style="height:${Math.max(6, x.s)}%"></i><b>${x.h[1]}°</b><small>${h}</small>${x.h[3] > 0 ? '<em>☂</em>' : ''}</span>`; };
-    walk = `<section class="walk ${cls}"><h2 class="sh"><span>${P.when} 산책 지수</span><span>${esc(T.town.updated || '')} 기준</span></h2>
-      <div class="wtop"><span class="wbig">${P.top}</span><span class="wlab"><b>${P.ico} ${lab}</b><span>${P.top >= 40 ? `${P.from}시~${P.to}시가 제일 좋아요` : esc(P.why.join(', ') || '밖은 오늘 쉬어요')}</span></span><span class="stamp">${stamp}</span></div>
-      ${P.when === '오늘' && alerts(code).length ? `<div class="walerts">${alertHtml(code)}<small>기상청·에어코리아 발표, 오늘 점수에 반영했어요</small></div>` : ''}
-      <div class="hbars">${P.list.map(bar).join('')}</div>
-      <div class="wtips"><p><b>옷차림</b> ${cloth(P.tmp)} (${P.tmp}℃)</p>${note ? `<p><b>아기 수사관 메모</b> ${note}</p>` : ''}</div>${weekHtml(code)}</section>`;
+    const back = sd !== P.d ? `<button class="tnfold" data-town="day" data-v="">${P.when}로 ↩</button>` : `<span>${esc(T.town.updated || '')} 기준</span>`;
+    if (DP) {
+      const [lab, stamp, cls] = LV(DP.top), note = babyNote(DP.tmp);
+      walk = `<section class="walk ${cls}" id="twalk"><h2 class="sh"><span>${DP.when} 산책 지수</span>${back}</h2>
+        <div class="wtop"><span class="wbig">${DP.top}</span><span class="wlab"><b>${DP.ico} ${lab}</b><span>${DP.top >= 40 ? `${DP.from}시~${DP.to}시가 제일 좋아요` : esc(DP.why.join(', ') || '밖은 쉬어요')}</span></span><span class="stamp">${stamp}</span></div>
+        ${sd === today() && alerts(code).length ? `<div class="walerts">${alertHtml(code)}<small>기상청·에어코리아 발표, 오늘 점수에 반영했어요</small></div>` : ''}
+        <div class="hbars">${DP.list.map(bar).join('')}</div>
+        ${detailShort(code, sd) || ''}
+        <div class="wtips"><p><b>옷차림</b> ${cloth(DP.tmp)} (${DP.tmp}℃)</p>${note ? `<p><b>아기 수사관 메모</b> ${note}</p>` : ''}</div>${weekHtml(code, sd)}</section>`;
+    } else {
+      const m = midInfo(code, sd), sc = wk && wk.s != null ? wk.s : null, t = m && m.hi != null ? Math.round((m.hi + (m.lo ?? m.hi)) / 2 + 2) : null;
+      const [lab, stamp, cls] = LV(sc ?? 0);
+      walk = `<section class="walk ${sc == null ? '' : cls}" id="twalk"><h2 class="sh"><span>${dLabel(sd)} 산책 지수</span>${back}</h2>
+        <div class="wtop"><span class="wbig">${sc ?? '-'}</span><span class="wlab"><b>${(wk && wk.ico) || ''} ${sc == null ? '예보가 아직 없어요' : lab}</b><span>${sc == null ? '' : '중기예보로 본 대략 점수예요'}</span></span>${sc == null ? '' : `<span class="stamp">${stamp}</span>`}</div>
+        ${detailMid(code, sd)}
+        ${t != null ? `<div class="wtips"><p><b>옷차림</b> 낮 기준 ${cloth(t)} (낮 ${m.hi}℃)</p></div>` : ''}${weekHtml(code, sd)}</section>`;
+    }
   }
   const dust = A ? `<section><h2 class="sh"><span>지금 미세먼지</span><span>${esc(A.t || '')}${A.near ? ` · ${esc(A.near)} 측정소 값` : ''}</span></h2>
     <div class="dust">${[['미세먼지', A.pm10, g10(A.pm10), '㎍/㎥'], ['초미세먼지', A.pm25, g25(A.pm25), '㎍/㎥']].map(([n, v, g, u]) => `<div><small>${n}</small><b style="color:${g != null ? GC[g] : 'var(--muted)'}">${g != null ? GN[g] : '—'}</b><span>${v != null ? v + u : '측정 중'}</span></div>`).join('')}</div>
@@ -267,6 +344,7 @@ document.addEventListener('click', e => {
     case 'evreg': T.evAll = b.dataset.v === '1'; T.evMore = 12; render(); break;
     case 'evkid': T.evKid = !T.evKid; T.evMore = 12; render(); break;
     case 'evmore': T.evMore += 12; render(); break;
+    case 'day': { T.day = b.dataset.v || null; render(); const el = document.getElementById('twalk'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); break; }
     case 'newsmore': T.newsOpen = true; render(); break;
     case 'newsfold': { T.newsOpen = false; render(); const el = document.getElementById('tnews'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); break; }
     case 'place': searchPlaces(b.dataset.v); break;
@@ -284,7 +362,16 @@ css.textContent = `
 .wweek{margin-top:12px;border-top:2px dotted var(--line);padding-top:10px}
 .wwh{display:flex;justify-content:space-between;align-items:baseline;gap:6px}.wwh b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}.wwh small{font-size:12px;color:var(--red)}
 .wwd{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:6px}
-.wd{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border-radius:12px;background:#FFFDF7;border:1.5px solid var(--line)}
+.wd{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border-radius:12px;background:#FFFDF7;border:1.5px solid var(--line);font:inherit;color:inherit;min-width:0;cursor:pointer}
+.wd.sel{border:2.5px solid var(--red);background:#FFF3EF;box-shadow:0 2px 0 rgba(179,38,30,.25)}
+.wdet{margin:10px 0 4px;padding:10px 12px;background:#FFFDF7;border:1.5px dashed var(--line);border-radius:14px}
+.wdt{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);margin-bottom:6px}
+.wdet p{margin:5px 0 0;font-size:13.5px;line-height:1.5}.wdet p b{color:var(--navy)}
+.wdps{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px}
+.wdp{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;border-radius:12px;background:var(--card2);text-align:center}
+.wdp small{font-size:11px;color:var(--muted)}.wdp em{font-style:normal;font-size:20px}.wdp b{font-size:12.5px;color:var(--navy);word-break:keep-all}.wdp i{font-style:normal;font-size:11px;color:#3C6E9E}
+.wstrip{display:flex;gap:4px;overflow-x:auto;margin:8px 0 2px;padding-bottom:2px}
+.wstrip span{flex:0 0 auto;min-width:40px;display:flex;flex-direction:column;align-items:center;font-size:11px}.wstrip small{color:var(--muted)}.wstrip em{font-style:normal;font-size:16px}.wstrip i{font-style:normal;color:#3C6E9E;font-size:10px;min-height:12px}
 .wd small{font-size:11px;color:var(--muted)}.wd em{font-style:normal;font-size:18px}.wd b{font-family:var(--display);font-weight:400;font-size:17px}
 .wd i{font-style:normal;font-size:10.5px;color:var(--ink)}.wd i u{text-decoration:none;color:var(--muted);margin-left:2px}
 .wd.ok{background:#EEF7EA;border-color:#B9D7A8}.wd.ok b{color:#2E7D5B}.wd.ok2 b{color:#5E9E57}.wd.mid{background:#FFF6E8}.wd.mid b{color:#C8551E}.wd.no{background:#FDEEEB}.wd.no b{color:var(--red)}.wd.na b{color:var(--muted)}

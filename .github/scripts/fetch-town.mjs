@@ -22,6 +22,12 @@ function baseTime() {
   return { base_date: d, base_time: String(b == null ? 23 : b).padStart(2, '0') + '00' };
 }
 
+// 강수량·적설 글자 → 숫자 ("강수없음"·"적설없음" 0, "1mm 미만" 0.5, "30.0~50.0mm" 50, "50.0mm 이상" 50)
+function amount(v) {
+  v = String(v || ''); if (!v || /없음/.test(v)) return 0;
+  if (/미만/.test(v)) return 0.5;
+  const n = v.match(/[\d.]+/g); return n ? +n[n.length - 1] : 0;
+}
 async function weather(regions) {
   const bt = baseTime(), out = {};
   for (const r of regions) {
@@ -30,12 +36,12 @@ async function weather(regions) {
       const body = await getJson('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst', { pageNo: 1, numOfRows: 2000, dataType: 'JSON', ...bt, nx, ny });
       const by = {};
       for (const it of list(body)) {
-        if (!['TMP', 'SKY', 'PTY', 'POP', 'WSD', 'REH', 'PCP'].includes(it.category)) continue;
+        if (!['TMP', 'SKY', 'PTY', 'POP', 'WSD', 'REH', 'PCP', 'SNO'].includes(it.category)) continue;
         const k = it.fcstDate + it.fcstTime; (by[k] = by[k] || { t: k })[it.category] = it.fcstValue;
       }
-      // [날짜시각, 기온, 하늘(1맑음 3구름많음 4흐림), 강수형태(0없음 1비 2비/눈 3눈 4소나기), 강수확률, 풍속, 습도]
+      // [날짜시각, 기온, 하늘(1맑음 3구름많음 4흐림), 강수형태(0없음 1비 2비/눈 3눈 4소나기), 강수확률, 풍속, 습도, 1시간 강수량(mm), 1시간 신적설(cm)]
       out[r.code] = Object.values(by).sort((a, b) => a.t < b.t ? -1 : 1).slice(0, 130)
-        .map(o => [o.t, +o.TMP, +o.SKY || 0, +o.PTY || 0, +o.POP || 0, +o.WSD || 0, +o.REH || 0]);
+        .map(o => [o.t, +o.TMP, +o.SKY || 0, +o.PTY || 0, +o.POP || 0, +o.WSD || 0, +o.REH || 0, amount(o.PCP), amount(o.SNO)]);
       console.log(`날씨 ${r.name} (${nx},${ny}): ${out[r.code].length}시간`);
     } catch (e) { console.warn(`날씨 ${r.name} 실패: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) break; }
     await sleep(300);
