@@ -11,7 +11,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 const clean = s => String(s || '').replace(/<[^>]+>/g, '').replace(/&(#\d+|\w+);/g, (m, e) => e[0] === '#' ? String.fromCharCode(+e.slice(1)) : (ENT[e] ?? m)).replace(/\s+/g, ' ').trim();
 // 광고·체험단 글은 빼요
-const AD = /협찬|원고료|체험단|제공받아|제공 받아|업체로부터|광고|공구|공동구매|최저가|할인코드|쿠폰|분양|대출|보험설계/;
+const AD = /아고다|트립닷컴|야놀자|여기어때|협찬|원고료|체험단|제공받아|제공 받아|업체로부터|광고|공구|공동구매|최저가|할인코드|쿠폰|분양|대출|보험설계/;
 // 반려동물·관계없는 글 빼기, 육아 글인지 확인
 const PET = /고양이|냥이|냥냥|강아지|댕댕|반려|애견|애묘|펫|햄스터|토끼|앵무|도마뱀|분양|수족관 물고기|매머드|사료|입질|급여량|개월령/;
 const BABY = /아기|아가|신생아|육아|이유식|유아|돌아기|아이|엄마|아빠|맘|개월|수유|분유|기저귀|어린이집|발달|낮잠|통잠/;
@@ -76,7 +76,7 @@ for (let m = 0; m <= 24; m++) {
 }
 for (const [k, q] of TOPICS) { out.topics[k] = await mix(q, 'sim', 12, babyOk); console.log(`주제 ${k}: ${out.topics[k].length}`); }
 for (const r of REGIONS) {
-  const base = r.name.replace(/[시군]$/, ''), ok = x => (x.t + ' ' + x.d).includes(base) && /아기|아이|유아|키즈|육아|가볼만|가족/.test(x.t + ' ' + x.d);
+  const base = r.name.replace(/[시군]$/, ''), ok = x => x.t.includes(base) && /아기|아이|유아|키즈|육아|가볼만|가족|어린이|놀이|체험|공원|카페/.test(x.t + ' ' + x.d) && !/아고다|호텔 예약|숙소 예약|펜션|라인업|초대가수/.test(x.t + ' ' + x.d);
   out.regions[r.code] = await mix(`${base} 아기랑 가볼만한곳`, 'date', 10, ok);
   console.log(`지역 ${r.name}: ${out.regions[r.code].length}`);
 }
