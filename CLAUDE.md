@@ -23,14 +23,16 @@
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
 - town.js: 동네 탐문 (S.view='town'): 산책 지수(날씨+미세먼지 점수, 성장 수사 탭 카드), 강원 행사·축제, 어린이 감염병 동향(긴급 출동 탭 카드). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
+- posts.js: 육아 자료실 (S.view='posts'): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 성장 수사 탭에 한 줄 카드, 읽은 글 표시(localStorage soeun-posts-read)
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
-- data/town.json(날씨·미세먼지, 3시간마다) · events.json(강원 행사) · disease.json(감염병 주간): .github/workflows/town.yml이 만듦 (직접 고치지 않음)
+- data/town.json(날씨·미세먼지, 3시간마다) · events.json(강원 행사) · disease.json(감염병 주간) · posts.json(육아 인기글, 하루 한 번): .github/workflows/town.yml이 만듦 (직접 고치지 않음)
 - .github/workflows/hospitals.yml: 병원 정보 받기 (매주 월 03:00 KST + 수동), 시크릿 DATA_GO_KR_KEY
 - .github/workflows/town.yml: 동네 정보 받기 (3시간마다 fetch-town.mjs, 하루 한 번 KST 05시대 fetch-daily.mjs, 수동 실행 what=town/daily/all)
 - .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통(XML), api.mjs 공통(JSON), 시·군 목록 REGIONS, build-regions.mjs)
   - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보, 에어코리아 대기오염정보·측정소정보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic)
+  - 네이버 검색 API(블로그·카페글): fetch-posts.mjs, 시크릿 NAVER_CLIENT_ID · NAVER_CLIENT_SECRET (없으면 건너뜀)
 - 새 JS 파일은 index.html의 <script>와 sw.js의 SHELL 목록에 추가할 것
 
 ## Firestore 구조

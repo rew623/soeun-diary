@@ -1,4 +1,4 @@
-# 동네 탐문: 산책 지수용 날씨·미세먼지(3시간마다), 강원 행사·감염병(하루 한 번)을 받아 data/ 폴더에 올려요
+# 동네 탐문: 산책 지수용 날씨·미세먼지(3시간마다), 강원 행사·감염병·육아 인기글(하루 한 번)을 받아 data/ 폴더에 올려요
 name: 동네 정보 받기
 
 on:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       what:
-        description: 'town(날씨·미세먼지) / daily(행사·감염병) / all'
+        description: 'town(날씨·미세먼지) / daily(행사·감염병·인기글) / all'
         default: all
 
 permissions:
@@ -51,6 +51,13 @@ jobs:
         run: node .github/scripts/fetch-daily.mjs
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+
+      - name: 육아 인기글 받기 (네이버 검색)
+        if: ${{ !cancelled() && steps.when.outputs.daily == '1' }}
+        run: node .github/scripts/fetch-posts.mjs
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
 
       - name: 바뀐 게 있으면 main에 올리기
         if: ${{ !cancelled() }}
