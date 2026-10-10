@@ -26,7 +26,7 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 /* 글자를 눌러도 선택·검색 창이 뜨지 않게 (입력칸은 그대로) */
-html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior-y:none}   /* 안드로이드 늘어나는 스크롤 효과 끔 (아래 메뉴가 같이 밀리지 않게) */
 input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 img{-webkit-user-drag:none}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -427,6 +427,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="room.js"></script>
 <script src="studio.js"></script>
 <script src="posecam.js"></script>
+<script src="music.js"></script>
 <script src="movie.js"></script>
 <script src="wanted.js"></script>
 <script src="look.js"></script>
@@ -486,6 +487,20 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 // ---------- storage (Google Sheets via Apps Script) ----------
 const S={me:{role:''},looks:[],capsules:[],eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
 const PHOTOS={};let busy=false;
+// ---------- 화면 이동 기록 ----------
+// 안쪽 화면(S.view)을 열면 그 전 화면(탭·안쪽 화면·스크롤 위치)을 기억하고, 돌아가기·뒤로가기(goBack)는 그 화면 그 위치로 돌아가요
+// 새 화면을 만들 때: 열기는 S.view='이름' 그대로, 닫기·돌아가기 단추는 goBack(). S.view=''(탭 이동 등)이면 기록을 비워요
+const NAV=[];let NAVcur=null,_view='';
+Object.defineProperty(S,'view',{enumerable:true,configurable:true,get:()=>_view,set:v=>{v=v||'';if(v===_view)return;
+  if(!v){NAV.length=0;_view='';return}
+  const i=NAV.findIndex(e=>e.view===v&&e.tab===S.tab);   // '놀이터로'처럼 앞 화면으로 가는 단추는 돌아가기처럼
+  if(i>=0){const e=NAV[i];NAV.length=i;_view=v;requestAnimationFrame(()=>window.scrollTo(0,e.y));return}
+  if(NAVcur){NAV.push(Object.assign({},NAVcur,{y:Math.round(window.scrollY)}));if(NAV.length>30)NAV.shift()}
+  _view=v}});
+function goBack(){
+  const e=NAV.pop();
+  if(!e){if(_view==='play'||_view==='fun'){_view='medals';if(window.GAME&&GAME.hub)GAME.hub('play')}else{if(_view==='hosp')S.tab='sick';else if(_view==='recipe')S.tab='food';_view=''}render();window.scrollTo(0,0);return}
+  S.tab=e.tab;S.albumView=e.albumView;S.vacView=e.vacView;_view=e.view;render();window.scrollTo(0,e.y);requestAnimationFrame(()=>window.scrollTo(0,e.y))}
 const DEMO=false;
 const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',photo:false,mom:'',dad:'',momPhoto:false,dadPhoto:false},
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
@@ -624,6 +639,7 @@ function render(){
   if(S.view==='explore')EXPLORE.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
   cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();
+  NAVcur={tab:S.tab,view:_view,albumView:S.albumView,vacView:S.vacView};
 }
 
 const REC_SHOW=5;   // 수사 기록은 최근 몇 건만 펼쳐 두고 나머지는 접어요
@@ -1179,7 +1195,7 @@ document.addEventListener('click',async e=>{
   case 'recall':S.recAll=!S.recAll;render();if(!S.recAll){const h=document.getElementById('rec-head');if(h)h.scrollIntoView({block:'start'})}break;
   case 'aview':S.albumView=a.dataset.v;render();window.scrollTo(0,0);break;
   case 'report':S.view='report';render();window.scrollTo(0,0);break;
-  case 'closereport':S.view='';render();window.scrollTo(0,0);break;
+  case 'closereport':case 'back':goBack();break;   // data-act="back": 어느 화면에서나 쓰는 돌아가기 (열기 전 화면·위치로)
   case 'log':openLog(a.dataset.v,null);break;
   case 'editlog':openLog(null,a.dataset.id);break;
   case 'tstep':{const el=document.getElementById('l-val');const v=Math.round(((parseFloat(el.value)||37)+ +a.dataset.v)*10)/10;el.value=v.toFixed(1);break}
@@ -1335,7 +1351,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
   const ORDER=['grow','town','album','vac','food','sick'];   // 아래 메뉴 순서와 같게
   let sw=null;
   const W=()=>$app.clientWidth||innerWidth;
-  const setX=(x,ms)=>{$app.style.transition=ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1),opacity ${ms}ms`:'none';$app.style.transform=x?`translate3d(${x}px,0,0)`:'';$app.style.opacity=x?String(Math.max(.4,1-Math.abs(x)/W()*0.6)):''};
+  const setX=(x,ms)=>{$app.style.transition=ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1),opacity ${ms}ms`:'none';$app.style.transform=x?`translate3d(${x}px,0,0)`:'';$app.style.opacity=x?String(Math.max(.75,1-Math.abs(x)/W()*0.35)):''};
   $app.addEventListener('touchstart',e=>{
     sw=null;
     if(e.touches.length!==1||S.mode!=='ok'||S.view||!S.profile||$sheet.classList.contains('open'))return;
@@ -1357,8 +1373,9 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
     if(!sw||sw.lock!==1){sw=null;return}
     const dx=sw.dx,v=Math.abs(dx)/Math.max(1,Date.now()-sw.t),i=ORDER.indexOf(S.tab),j=i+(dx<0?1:-1);sw=null;
     if(j<0||j>=ORDER.length||!(Math.abs(dx)>W()*0.22||(v>0.45&&Math.abs(dx)>40))){setX(0,220);return}
-    const dir=dx<0?-1:1;setX(dir*W(),180);
-    setTimeout(()=>{S.tab=ORDER[j];S.view='';render();window.scrollTo(0,0);setX(-dir*W()*0.35,0);requestAnimationFrame(()=>requestAnimationFrame(()=>setX(0,240)))},170);
+    // 새 탭을 바로 그려서 미는 쪽 반대편에서 미끄러져 들어오게 (예전엔 끝까지 밀어낸 뒤 그려서 잠깐 빈 화면이 보였어요)
+    const dir=dx<0?-1:1;S.tab=ORDER[j];S.view='';render();window.scrollTo(0,0);
+    setX(-dir*W()*0.28,0);requestAnimationFrame(()=>requestAnimationFrame(()=>setX(0,260)));
   };
   $app.addEventListener('touchend',end);$app.addEventListener('touchcancel',end);
 })();

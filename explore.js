@@ -77,6 +77,21 @@ function resolve() {
     if (--left === 0) { saveRG(); if (S.view === 'explore') render(); }
   }));
 }
+// 영상(총정리)처럼 지도 화면을 안 열었을 때도 동네 이름을 찾아 둬요 (지도 SDK가 늦으면 기다리지 않고 그냥 넘어가요)
+async function prepare(ms = 4000) {
+  ensureRegions();
+  const P = places().filter(pl => !RG[rkey(pl.c)]);
+  if (!P.length || !window.HOSP || !HOSP.sdk) return;
+  const wait = t => new Promise(r => setTimeout(r, t));
+  try { await Promise.race([HOSP.sdk(), wait(ms)]); } catch (e) { return; }
+  if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
+  if (!geocoder) geocoder = new kakao.maps.services.Geocoder();
+  await Promise.race([Promise.all(P.slice(0, 25).map(pl => new Promise(res => geocoder.coord2RegionCode(pl.c.lng, pl.c.lat, (r, st) => {
+    if (st === kakao.maps.services.Status.OK && r && r.length) { const x = r.find(y => y.region_type === 'H') || r[0]; RG[rkey(pl.c)] = { s: x.region_1depth_name || '', g: x.region_2depth_name || '', d: x.region_3depth_name || '' }; }
+    res();
+  })))), wait(ms)]);
+  saveRG();
+}
 function stamps(P) {
   const on = {}, away = new Map();
   P.slice().sort((a, b) => a.first < b.first ? -1 : 1).forEach(pl => {
@@ -236,7 +251,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-xp]'); if (!b || b.disabled) return;
   const a = b.dataset.xp;
   if (a === 'open') { S.view = 'explore'; render(); window.scrollTo(0, 0); return; }
-  if (a === 'close') { S.view = ''; render(); window.scrollTo(0, 0); return; }
+  if (a === 'close') { goBack(); return; }
   if (a === 'place') { openPlace(+b.dataset.v); return; }
   if (a === 'focus') { focus(+b.dataset.v); return; }
   if (a === 'more') { X.more += 30; render(); return; }
@@ -316,5 +331,5 @@ css.textContent = `
 .exnum.s{background:var(--red);color:#fff}.exnum.e{background:var(--navy);border-color:var(--navy);color:#fff}
 .expickmap{width:100%;height:280px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--card2)}`;
 document.head.appendChild(css);
-window.EXPLORE = { render: render_, mount, townCard, places, label, regionOf };
+window.EXPLORE = { render: render_, mount, townCard, places, label, regionOf, prepare };
 })();

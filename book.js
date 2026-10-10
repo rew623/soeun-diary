@@ -43,7 +43,7 @@ function render_() {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-book]'); if (!b) return;
   if (b.dataset.book === 'open') { S.view = 'book'; render(); window.scrollTo(0, 0); }
-  if (b.dataset.book === 'close') { S.view = ''; render(); window.scrollTo(0, 0); }
+  if (b.dataset.book === 'close') goBack();
   if (b.dataset.book === 'print') window.print();
 });
 const css = document.createElement('style');

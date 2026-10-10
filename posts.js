@@ -122,7 +122,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-post]'); if (!b) return;
   const v = b.dataset.v;
   switch (b.dataset.post) {
-    case 'close': S.view = ''; render(); window.scrollTo(0, 0); break;
+    case 'close': goBack(); break;
     case 'tab': P.tab = v; P.more = false; render(); break;
     case 'mon': P.month = Math.max(0, Math.min(24, (P.month == null ? myMonth() : P.month) + +v)); render(); break;
     case 'topic': P.topic = v; render(); break;

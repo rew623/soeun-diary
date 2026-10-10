@@ -259,7 +259,7 @@ document.addEventListener('click', async e => {
   const v = b.dataset.v;
   switch (b.dataset.st) {
     case 'open': open(b.dataset.id || ''); break;
-    case 'close': S.view = ''; render(); window.scrollTo(0, 0); break;
+    case 'close': goBack(); break;
     case 'file': picker.click(); break;
     case 'photo': ST.key = b.dataset.id; ST.src = safeImg(PHOTOS[b.dataset.id]); ST.img = null; document.querySelectorAll('.stph .on').forEach(x => x.classList.remove('on')); b.classList.add('on'); later(); break;
     case 'tpl': ST.tpl = v; document.querySelectorAll('[data-st=tpl]').forEach(x => x.classList.toggle('on', x === b)); later(); break;

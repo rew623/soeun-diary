@@ -201,7 +201,7 @@ document.addEventListener('click', e => {
     case 'open': W.ws = ''; S.view = 'wanted'; render(); window.scrollTo(0, 0); break;
     case 'week': W.ws = b.dataset.v; render(); window.scrollTo(0, 0); break;
     case 'more': W.more = !W.more; render(); break;
-    case 'close': S.view = ''; render(); window.scrollTo(0, 0); break;
+    case 'close': goBack(); break;
   }
 });
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.wcard[data-wt]')) { e.preventDefault(); e.target.click(); } });

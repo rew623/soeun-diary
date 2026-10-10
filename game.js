@@ -527,7 +527,7 @@ document.addEventListener('click', async e => {
   switch (b.dataset.game) {
     case 'medals': S.view = 'medals'; G.game = ''; if (v) G.hub = v; render(); window.scrollTo(0, 0); break;
     case 'hub': G.hub = v; render(); break;
-    case 'close': S.view = ''; G.game = ''; render(); window.scrollTo(0, 0); break;
+    case 'close': G.game = ''; goBack(); break;
     case 'go': {
       const m = POOL.find(x => x.id === b.dataset.id); if (!m) return;
       if (m.act === 'addrec') { const f = document.querySelector('.fab'); if (f) f.click(); }
@@ -660,7 +660,7 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
+window.GAME = { roomSvg, rankHtml, rank, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
   // 방에서 식구를 누르면: 그 식구 꾸미기 칸으로 (접힌 칸은 펼쳐서)
   kitFor: who => { G.wearWho = who; G.hub = 'deco'; KINDS.forEach(([k]) => setFold(`k-${k}`, false)); render(); const el = document.getElementById('gkit'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
 })();

@@ -216,7 +216,7 @@ document.addEventListener('click', async e => {
   const a = b.dataset.pp;
   if (a === 'open') { P.ym = ''; S.view = 'paper'; render(); window.scrollTo(0, 0); return; }
   if (a === 'openprev') { P.ym = prevYm(today().slice(0, 7)); try { localStorage.setItem(SEEN, P.ym); } catch (x) {} S.view = 'paper'; render(); window.scrollTo(0, 0); return; }
-  if (a === 'close') { S.view = ''; render(); window.scrollTo(0, 0); return; }
+  if (a === 'close') { goBack(); return; }
   if (a === 'ym') { P.ym = b.dataset.v; render(); return; }
   if (a === 'print') { window.print(); return; }
   if (a === 'share' || a === 'save') {

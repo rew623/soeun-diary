@@ -238,12 +238,8 @@ window.addEventListener('popstate', () => {
   if (window.POSECAM && POSECAM.close()) { guard(); return; }                      // 같은 포즈 촬영기
   if (window.MOVIE && MOVIE.close()) { guard(); return; }                          // 성장 영상 만드는 창
   if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }   // 3) 크게 본 병원 지도
-  if (typeof S !== 'undefined' && (S.view === 'play' || S.view === 'fun')) {   // 놀이터 안의 게임·룰렛·스티커 → 도토리 놀이터 (화면의 '놀이터로' 단추와 같게)
-    S.view = 'medals'; if (window.GAME && GAME.hub) GAME.hub('play'); render(); window.scrollTo(0, 0); guard(); return;
-  }
-  if (typeof S !== 'undefined' && S.view) {                            // 3) 병원 수사·100일 보고서 → 원래 탭
-    if (S.view === 'hosp') S.tab = 'sick';
-    S.view = ''; render(); window.scrollTo(0, 0); guard(); return;
+  if (typeof S !== 'undefined' && S.view) {                            // 3) 안쪽 화면 → 열기 전 화면, 그 스크롤 위치로 (goBack, index.html)
+    goBack(); guard(); return;
   }
   if (typeof S !== 'undefined' && S.mode === 'ok' && S.tab !== 'grow') { // 4) 다른 탭 → 성장 수사
     S.tab = 'grow'; render(); window.scrollTo(0, 0); guard(); return;

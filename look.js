@@ -133,7 +133,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-lk]'); if (!b || b.disabled) return;
   const a = b.dataset.lk;
   if (a === 'open') { L.ym = ''; S.view = 'look'; render(); window.scrollTo(0, 0); return; }
-  if (a === 'close') { S.view = ''; render(); window.scrollTo(0, 0); return; }
+  if (a === 'close') { goBack(); return; }
   if (a === 'ym') { L.ym = b.dataset.v; render(); return; }
   if (!canVote()) { toast('보기 전용이라 판정은 엄마·아빠 수사관만 할 수 있어요'); return; }
   if (a === 'pick') { b.disabled = true; await save(b.dataset.v); b.disabled = false; return; }

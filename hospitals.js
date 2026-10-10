@@ -291,7 +291,7 @@ function renderHosp() {
   }
   const src = ph ? '약국 정보: 국립중앙의료원 전국 약국 정보 조회 서비스(공공데이터포털). 영업시간이 실제와 다를 수 있어요.'
     : '병원 정보: 국립중앙의료원 전국 병·의원 찾기 서비스(공공데이터포털). 진료시간이 실제와 다를 수 있어요.';
-  return head + regRow + kinds + notice + filters + seg + body + `<p class="foot">${src}</p>`;
+  return head + regRow + kinds + notice + filters + seg + body + `<p class="foot">${src}</p><button class="secondary" data-act="back" style="width:100%;margin-top:16px">돌아가기</button>`;
 }
 
 // 긴급 출동 탭 위쪽 바로가기

@@ -136,7 +136,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-cp]'); if (!b || b.disabled) return;
   const a = b.dataset.cp;
   if (a === 'openview') { S.view = 'capsule'; render(); window.scrollTo(0, 0); return; }
-  if (a === 'close') { S.view = ''; render(); window.scrollTo(0, 0); return; }
+  if (a === 'close') { goBack(); return; }
   if (a === 'read') { read(b.dataset.id); return; }
   if (a === 'peek') { peek(b.dataset.id); return; }
   if (a === 'unseal') { b.disabled = true; unseal(b.dataset.id); return; }

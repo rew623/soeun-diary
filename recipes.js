@@ -135,7 +135,7 @@ function renderRecipes() {
   const ym = curMenuMonth(), doc = monthDoc(ym), [yy, mm] = ym.split('-').map(Number);
   const head = `<header class="vhead"><span class="no">급식 수사 · 센터 식단</span><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1>표준레시피</h1><button class="ghost" data-act="tab" data-v="food">← 급식 수사</button></div>
     <p class="mnav" style="margin-top:4px"><button data-r="mon" data-v="-1" aria-label="이전 달">◀</button><b>${yy}.${mm}</b><button data-r="mon" data-v="1" aria-label="다음 달">▶</button></p></header>`;
-  if (!doc) return head + `<p class="vempty" style="margin-top:14px">이 달 레시피가 없어요.</p>${foodHtml(ym)}`;
+  if (!doc) return head + `<p class="vempty" style="margin-top:14px">이 달 레시피가 없어요.</p>${foodHtml(ym)}<button class="secondary" data-act="back" style="width:100%;margin-top:16px">돌아가기</button>`;
   const stName = defaultStage(doc), st = doc.stages.find(s => s.stage === stName), t = today();
   const seg = `<div class="seg" style="margin-top:14px">${doc.stages.map(s => `<button class="${s.stage === stName ? 'on' : ''}" data-r="stage" data-v="${esc(s.stage)}">${esc(s.stage)}</button>`).join('')}</div>`;
   const G = grouped(st), todayG = G.find(g => g.dates.includes(t));
@@ -152,7 +152,7 @@ function renderRecipes() {
     `<h2 class="subh" style="margin-top:16px">${esc(stName)} 레시피 ${G.length}가지</h2>${G.filter(g => g !== todayG).map(card).join('')}
     <p class="foot">① 같은 번호는 알레르기 유발 식품 표시예요. "처음"은 급식 수사에서 아직 심문하지 않은 재료예요.<br>원본: ${esc(doc.file || '')}${doc.by ? `, ${esc(doc.by)} 수사관이 올림` : ''}</p>
     ${foodHtml(ym)}
-    <button class="danger" data-r="del" style="margin-top:6px">이 달 레시피 지우기</button>`;
+    <button class="danger" data-r="del" style="margin-top:6px">이 달 레시피 지우기</button><button class="secondary" data-act="back" style="width:100%;margin-top:16px">돌아가기</button>`;
 }
 function openDish(idx) {
   const doc = monthDoc(curMenuMonth()), st = doc && doc.stages.find(s => s.stage === defaultStage(doc)), it = st && st.items[idx];
