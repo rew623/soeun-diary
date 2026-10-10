@@ -1,0 +1,70 @@
+# 동네 탐문: 산책 지수용 날씨·미세먼지(3시간마다), 강원 행사·감염병(하루 한 번)을 받아 data/ 폴더에 올려요
+name: 동네 정보 받기
+
+on:
+  schedule:
+    - cron: '25 17,20,23,2,5,8,11,14 * * *'   # KST 02:25, 05:25, … 23:25 (단기예보 발표 뒤)
+  workflow_dispatch:
+    inputs:
+      what:
+        description: 'town(날씨·미세먼지) / daily(행사·감염병) / all'
+        default: all
+
+permissions:
+  contents: write
+
+concurrency:
+  group: town
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 날씨·미세먼지 받기
+        if: ${{ github.event_name == 'schedule' || inputs.what != 'daily' }}
+        run: node .github/scripts/fetch-town.mjs
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+
+      # 행사·감염병은 하루 한 번 (KST 05시대 차례) 또는 수동
+      - name: 오늘 몫인지 보기
+        id: when
+        if: ${{ !cancelled() }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            [ "${{ inputs.what }}" != "town" ] && echo "daily=1" >> "$GITHUB_OUTPUT" || true
+          elif [ "$(date -u +%H)" -ge 20 ] && [ "$(date -u +%H)" -le 22 ]; then
+            echo "daily=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 행사·감염병 받기
+        if: ${{ !cancelled() && steps.when.outputs.daily == '1' }}
+        run: node .github/scripts/fetch-daily.mjs
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+
+      - name: 바뀐 게 있으면 main에 올리기
+        if: ${{ !cancelled() }}
+        run: |
+          git add -A data
+          if git diff --cached --quiet; then
+            echo "그대로라 올리지 않아요"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "동네 정보 갱신 (날씨·미세먼지·행사·감염병)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 5))
+          done
+          exit 1

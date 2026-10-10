@@ -51,11 +51,13 @@ function sectionHtml() {
   const head = ym => { const [y, mo] = ym.split('-').map(Number), [age] = monthsDays(p.birth, ym + '-' + String(Math.min(28, +p.birth.slice(8))).padStart(2, '0')); return `${y}.${mo}${ym >= p.birth.slice(0, 7) ? ` · 생후 ${age}개월` : ''}`; };
   const dayHead = d => { const [y, mo, dd] = d.split('-').map(Number); return `<b>${mo}월 ${dd}일 (${WDK[new Date(Date.UTC(y, mo - 1, dd)).getUTCDay()]})</b><span>생후 ${daysBetween(p.birth, d) + 1}일</span>`; };
   const cell = m => { const ph = safeImg(PHOTOS[m.id]); return `<button class="acell" data-view="${m.id}" aria-label="${esc(m.title || '사진')} 크게 보기">${ph ? `<img src="${ph}" alt="" loading="lazy">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}${m.title ? `<small>${esc(m.title)}</small>` : ''}</button>`; };
-  return `<section><h2 class="sh" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">현장 사진첩</span><span>${L.length}장</span></h2>
+  // 달별 묶음: 최근 두 달만 펼쳐 두고 그 전 달은 접어 둬요 (누르면 펼쳐지고, 이 폰에 기억)
+  const cnt = ym => L.filter(m => m.date.slice(0, 7) === ym).length;
+  return `<section${isFold('a-free') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-free" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">현장 사진첩</span><span>${L.length}장</span></h2>
     <p class="foot" style="margin:0 0 10px">여러 장을 한 번에 올리면 찍은 날짜별로 나눠서 보관해요. 사진을 길게 누르면 여러 장 골라서 지우거나 날짜를 바꿀 수 있어요.</p>
     <button class="solve" data-al="pick" style="width:100%;min-height:50px">+ 사진 올리기 (여러 장 가능)</button>
     ${progHtml()}
-    ${groups.map(g => `<h3 class="agh">${head(g.ym)}</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
+    ${groups.map((g, gi) => `<div class="amon${isFold('m-' + g.ym, gi >= 2) ? ' folded' : ''}"><h3 class="agh" data-fold="m-${g.ym}">${head(g.ym)} · ${cnt(g.ym)}장</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}</div>`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
     ${L.length > shown.length ? `<button class="addperiod" data-al="more">더 보기 (${L.length - shown.length}장 남음)</button>` : ''}
   </section>`;
 }
@@ -297,7 +299,9 @@ document.addEventListener('click', async e => {
 
 const css = document.createElement('style');
 css.textContent = `
-.agh{font-size:12px;color:var(--muted);font-weight:400;letter-spacing:1px;margin:16px 0 6px}
+.agh{display:flex;align-items:center;font-size:13px;color:var(--navy);font-weight:700;letter-spacing:0;margin:16px 0 6px;padding:8px 12px;background:var(--card2);border-radius:14px}
+.agh::after{margin-left:auto!important}
+.amon.folded .agh{background:#FFFDF7;border:1.5px dashed var(--line)}
 .agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .acell{position:relative;display:block;padding:0;border:0;background:var(--card2);aspect-ratio:1;overflow:visible}
 .acell img{width:100%;height:100%;object-fit:cover;display:block;border:3px solid #FFFDF7;box-shadow:0 2px 6px rgba(43,38,34,.2)}

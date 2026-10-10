@@ -22,11 +22,15 @@
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
+- town.js: 동네 탐문 (S.view='town'): 산책 지수(날씨+미세먼지 점수, 성장 수사 탭 카드), 강원 행사·축제, 어린이 감염병 동향(긴급 출동 탭 카드). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
+- data/town.json(날씨·미세먼지, 3시간마다) · events.json(강원 행사) · disease.json(감염병 주간): .github/workflows/town.yml이 만듦 (직접 고치지 않음)
 - .github/workflows/hospitals.yml: 병원 정보 받기 (매주 월 03:00 KST + 수동), 시크릿 DATA_GO_KR_KEY
-- .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통, 시·군 목록 REGIONS, build-regions.mjs)
+- .github/workflows/town.yml: 동네 정보 받기 (3시간마다 fetch-town.mjs, 하루 한 번 KST 05시대 fetch-daily.mjs, 수동 실행 what=town/daily/all)
+- .github/scripts/: 공공데이터 API 호출 스크립트 (lib.mjs 공통(XML), api.mjs 공통(JSON), 시·군 목록 REGIONS, build-regions.mjs)
+  - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보, 에어코리아 대기오염정보·측정소정보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic)
 - 새 JS 파일은 index.html의 <script>와 sw.js의 SHELL 목록에 추가할 것
 
 ## Firestore 구조
@@ -44,6 +48,7 @@
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
 
 ## 주의할 점
+- 사건 앨범 칸과 사진첩 달 묶음은 접기 가능 (data-fold, localStorage soeun-fold). 사진첩은 최근 두 달만 기본으로 펼침
 - 파일 선택 칸(input type=file)은 #app 밖(body에 고정)이나 편집창(sheet) 안에 둘 것. 파일 창에서 돌아올 때 화면을 다시 그려 #app 안의 칸이 사라짐
 - GitHub Pages 배포(pages build and deployment)가 GitHub 쪽 오류로 가끔 실패함. 실패한 job을 재실행하면 됨
 - map-key.js를 바꾸면 sw.js VERSION도 올릴 것 (안 올리면 폰에 반영 안 됨)
