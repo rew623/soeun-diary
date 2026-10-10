@@ -18,13 +18,13 @@
 - hospitals.js: 긴급 출동 > 병원 수사 (강원 18개 시·군, 현재 위치의 시·군 자동 선택, 카카오맵(크게 보기), 목록, 필터, 관심 병원·약국, 공휴일 목록)
 - map-key.js: 카카오맵 JavaScript 키 (공개용, 등록 도메인 rew623.github.io)
 - viewer.js: 사진·보드 카드 크게 보기(3칸 트랙으로 옆으로 넘기기, 핀치 줌), 안드로이드 뒤로가기, 길게 누르기 막기
-- board.js: 사건 앨범 > 수사 보드
+- board.js: 사건 앨범 > 수사 보드 (콜라주 배치: 가운데 아기 사진 둘레로 빙글빙글, 크기·기울기 제각각, 사진은 테이프·메모는 압정, 실은 몇 장만, 처음엔 가운데가 보이게)
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
 - town.js: 동네 탐문 탭(S.tab='town'): 산책 지수(날씨+미세먼지+기상특보·미세먼지 경보 점수), 미세먼지, 강원 행사·축제. 어린이 감염병 동향은 TOWN.disHtml()로 예방접종 탭 맨 아래(기본 접힘, data-fold v-dis). 시·군은 병원 수사와 같은 칸(localStorage soeun-hosp-region)
 - posts.js: 육아 글 모음 (S.view='posts', 떠 있는 '📚 육아 글' 버튼): 네이버 블로그·카페 글 월령별(0~24개월)·주제별·우리 동네, 어느 화면에서나 떠 있는 버튼(짧게 누르면 열기, 0.6초 길게 누른 채 끌면 옮기기, 위치 localStorage soeun-posts-pos, 새 글 빨간 점), 읽은 글 표시(soeun-posts-read)
-- game.js: 게임 요소 — 수사관 계급(기록 by로 경험치 계산, 신분증에 계급), 오늘의 수사 지령(하루 3개, 성장 수사 탭 카드), 연속 수사, 훈장 24개, 도토리·소은 탐정 모자 가게(CHARS HATS, 명절·생일엔 저절로 모자), 다람쥐 집 꾸미기, 몸무게 예측 대결(guess 컬렉션, 성장 수사 탭), 놀이터(생후 며칠 퀴즈, 사진 짝맞추기). 계급·훈장은 기록으로 계산(두 폰 같음), 도토리·모자·최고 기록은 이 폰에만(localStorage soeun-game). 화면 S.view='medals'/'play'
+- game.js: 게임 요소 — 수사관 계급(기록 by로 경험치 계산, 신분증에 계급), 오늘의 수사 지령(하루 3개, 성장 수사 탭 카드), 연속 수사, 훈장 24개, 도토리·소은 탐정 모자 가게(CHARS HATS, 명절·생일엔 저절로 모자), 성장 수사 방 꾸미기(첫 화면 안내 말풍선 위 소은 탐정 방: 가구·벽지는 훈장 수첩에서 도토리로, 창밖은 시간대별 낮·저녁·밤, CHARS.guide('grow')가 GAME.roomSvg 사용), 몸무게 예측 대결(guess 컬렉션, 성장 수사 탭), 놀이터(생후 며칠 퀴즈, 사진 짝맞추기). 계급·훈장은 기록으로 계산(두 폰 같음), 도토리·모자·최고 기록은 이 폰에만(localStorage soeun-game). 화면 S.view='medals'/'play'
 - family.js: 사건 앨범 > 가족(S.albumView='family'): 엄마·아빠·소은이 가족 사진 (전체/엄마랑/아빠랑/셋이 다 같이), mom type:'fam' who='mom,dad'(ALBUM.queue로 올림). 친척 카드(people)는 사용자 요청으로 뺌 — 아직 둘만 씀
 - fun.js: 게임 요소 2 — 오늘 누가? 룰렛(집안일 배정, 과제 목록 localStorage soeun-roulette), 오늘의 운세 포춘 쿠키(날짜로 골라 두 폰 같게), 숨은 도토리 찾기(날짜로 정한 탭에 하루 1개), 스티커 뽑기(도토리 3개)·스티커북 30종, 소은 탐정 카드(기록으로 만든 트레이딩 카드), 수사 출석부(기록한 날 도장), 주간 MVP(월요일). 화면 S.view='fun'
 - memories.js: 사건 앨범 맨 위 '지난 오늘'(지난달·작년 같은 날 사진), '성장 스토리'(월별 사진 인스타 스토리처럼, 뒤로가기로 닫힘 SLIDE.close)
@@ -59,7 +59,7 @@
 
 ## 주의할 점
 - 탭 화면(#app)을 좌우로 밀면 옆 탭으로 넘어감 (index.html 하단). 지도·수사 보드(#bwrap)·입력칸·사진 고르기 중·하위 화면(S.view)은 제외, 막고 싶은 칸엔 data-noswipe
-- 사건 앨범 칸과 사진첩 달 묶음은 접기 가능 (data-fold, localStorage soeun-fold). 사진첩은 최근 두 달만 기본으로 펼침
+- 사건 앨범 순서: 지난 오늘 → 100일 보고서 → 현장 사진첩 → 월별 증거 사진 → 최초 목격 → 미확인 사건. 칸과 사진첩 달 묶음은 접기 가능 (data-fold, localStorage soeun-fold). 사진첩은 가장 최근 달만 기본으로 펼침, 펼친 달·사진첩 맨 아래에도 접기 단추
 - 파일 선택 칸(input type=file)은 #app 밖(body에 고정)이나 편집창(sheet) 안에 둘 것. 파일 창에서 돌아올 때 화면을 다시 그려 #app 안의 칸이 사라짐
 - GitHub Pages 배포(pages build and deployment)가 GitHub 쪽 오류로 가끔 실패함. 실패한 job을 재실행하면 됨
 - map-key.js를 바꾸면 sw.js VERSION도 올릴 것 (안 올리면 폰에 반영 안 됨)

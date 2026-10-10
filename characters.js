@@ -113,6 +113,9 @@ function guide(tab) {
   const L = lines(tab); if (!L.length) return '';
   if (seen[tab] == null) seen[tab] = 0;
   const i = seen[tab] % L.length, [w, prop, text] = L[i], [who, name] = WHO[w];
+  // 성장 수사(첫 화면)는 소은 탐정의 방 (훈장 수첩에서 도토리로 꾸민 가구·벽지가 보여요)
+  if (tab === 'grow' && window.GAME && GAME.roomSvg) return `<div class="guide ghome g-${who}" aria-live="polite"><button class="gchar groomb" data-guide="${tab}" aria-label="다음 말 듣기">${GAME.roomSvg()}</button><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button>
+    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 방을 누르면 다음 말` : ''}</small></div></div>`;
   return `<div class="guide g-${who}" aria-live="polite"><button class="gchar" data-guide="${tab}" aria-label="다음 말 듣기">${svg(who, prop, { size: 84 })}</button>
     <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 저를 누르면 다음 말` : ''}</small></div></div>`;
 }
@@ -139,6 +142,13 @@ css.textContent = `
 @keyframes ghop{0%{transform:translateY(0)}40%{transform:translateY(-10px) rotate(-6deg)}100%{transform:none}}
 @keyframes gpop{0%{opacity:.3;transform:scale(.96)}100%{opacity:1;transform:none}}
 .gchar .chr{animation:gbob 3.2s ease-in-out infinite;transform-origin:50% 100%}
+.ghome{position:relative;flex-direction:column;align-items:stretch;gap:0}
+.ghome .gchar{width:100%;margin:0;filter:none}
+.ghome .groom{border-radius:20px;border:1.5px solid var(--line);box-shadow:0 4px 0 #E6D2AE}
+.ghome .gbub{margin:12px 0 0;border-radius:20px}
+.ghome .gbub::before{left:50%;top:-9px;bottom:auto;margin-left:-7px;border:0;border-left:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:rotate(45deg);border-radius:4px 0 0 0}
+.ghedit{position:absolute;right:10px;top:10px;border:0;border-radius:99px;background:rgba(255,253,247,.92);font-size:12px;padding:4px 10px;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+.guide.ghome.hop .gchar{animation:none}
 @keyframes gbob{0%,100%{transform:none}50%{transform:translateY(-2px) rotate(1.5deg)}}
 @media (prefers-reduced-motion:reduce){.gchar .chr,.guide.hop .gchar,.guide.hop .gbub{animation:none}}
 .idb .ph.chrph{background:#FCEBD3;border-color:var(--line);overflow:hidden;padding:0}

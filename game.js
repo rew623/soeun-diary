@@ -5,7 +5,7 @@
 const KEY = 'soeun-game';
 function st() {
   let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-  return Object.assign({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '' }, s || {});
+  return Object.assign({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' }, s || {});
 }
 function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
 const played = k => st().played[k] === today();
@@ -164,7 +164,9 @@ function medalsView() {
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>훈장 수첩</h1><p>기록을 남길수록 수사관 계급이 올라가요. 기록 하나하나가 경험치예요.</p></header>
     <section><h2 class="sh"><span>수사관 계급</span><span>${wm || wd ? `이번 주 ${wm === wd ? '동점!' : (wm > wd ? '엄마' : '아빠') + ' 수사관 우세'}` : ''}</span></h2>${card('엄마')}${card('아빠')}
       <p class="foot" style="margin-top:8px">경험치: 성장 기록 10 · 사진 +3 · 최초 목격 12 · 예방접종 15 · 검진 20 · 식재료 10 · 급식 5 · 체온·투약 3</p></section>
-    <section><h2 class="sh"><span>🏠 소은 탐정의 집</span><span>${s.room.length}/${ROOM.length}</span></h2>${roomSvg()}
+    <section id="ghomeshop"><h2 class="sh"><span>🏠 성장 수사 방 꾸미기</span><span>${s.room.length}/${ROOM.length}</span></h2>
+      <p class="hint" style="margin:0 0 8px">여기서 산 가구와 벽지는 성장 수사(첫 화면)의 소은 탐정 방에 놓여요. 창밖은 시간에 따라 낮·저녁·밤으로 바뀌어요.</p>${roomSvg()}
+      <div class="gwall">${WALLS.map(([id, nm, c, col]) => { const own = s.walls.includes(id), cur = s.wall === id; return `<button class="${cur ? 'cur' : ''}" data-game="wall" data-id="${id}"><i style="background:${col}"></i>${nm}<small>${cur ? '쓰는 중' : own ? '바르기' : `🌰 ${c}`}</small></button>`; }).join('')}</div>
       ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:6px 0 0">오늘은 ${e[1]}! 소은 탐정이 특별 모자를 썼어요.</p>` : ''; })()}
       <div class="gshop">${ROOM.map(([id, nm, c]) => { const own = s.room.includes(id); return `<button class="${own ? 'own' : ''}" data-game="buy" data-id="${id}" ${own ? 'disabled' : ''}>${nm}<small>${own ? '놓았어요' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
     <section><h2 class="sh"><span>도토리 주머니</span><span>🌰 ${s.acorn}개 · 🔥 ${sk}일 연속</span></h2>
@@ -208,13 +210,23 @@ const ROOM = [
   ['jar', '도토리 항아리', 12, '<path d="M88 168c-12 0-14-24-4-30h20c10 6 8 30-4 30z" fill="#E8C770" stroke="#C99A1E"/><ellipse cx="94" cy="138" rx="10" ry="3" fill="#C99A1E"/><ellipse cx="90" cy="134" rx="5" ry="6" fill="#D99A5B"/><path d="M85 131q5-6 10 0z" fill="#7A4B2A"/><ellipse cx="99" cy="133" rx="5" ry="6" fill="#D99A5B"/><path d="M94 130q5-6 10 0z" fill="#7A4B2A"/>'],
   ['garland', '가랜드', 9, '<path d="M60 18q100 30 200 0" stroke="#B9A889" stroke-width="1.5" fill="none"/>' + [70, 95, 120, 145, 170, 195, 220, 245].map((x, i) => `<path d="M${x} ${20 + Math.sin(i / 7 * Math.PI) * 18}l8 0-4 10z" fill="${['#F49C9C', '#FCE8B4', '#7FC4E8', '#7FB77E'][i % 4]}"/>`).join('')]
 ];
+// 벽지 (도토리로 사서 바꾸기)
+const WALLS = [['cream', '크림', 0, '#FFF3DD'], ['pink', '분홍', 4, '#FBE3E0'], ['mint', '민트', 4, '#E3F2E6'], ['sky', '하늘', 4, '#E2EEF8'], ['lilac', '라일락', 6, '#EEE6F7']];
+// 창밖은 지금 시간대로: 낮 해, 저녁 노을, 밤 달·별
+function windowSvg() {
+  const h = new Date(Date.now() + 9 * 3600e3).getUTCHours();
+  const [sky, deco] = h >= 6 && h < 17 ? ['#CFE6F7', '<circle cx="70" cy="48" r="7" fill="#FCE8B4"/><ellipse cx="38" cy="74" rx="10" ry="4" fill="#fff"/>']
+    : h >= 17 && h < 20 ? ['#F6C9A8', '<circle cx="66" cy="70" r="8" fill="#F49C9C"/>']
+    : ['#2E3B5C', '<path d="M70 42a7 7 0 1 0 6 11 6 6 0 0 1-6-11z" fill="#FCE8B4"/><circle cx="34" cy="46" r="1.3" fill="#fff"/><circle cx="44" cy="76" r="1.1" fill="#fff"/><circle cx="76" cy="78" r="1.2" fill="#fff"/>'];
+  return `<rect x="22" y="34" width="62" height="54" rx="6" fill="${sky}" stroke="#fff" stroke-width="4"/>${deco}<path d="M53 34v54M22 61h62" stroke="#fff" stroke-width="3"/>`;
+}
 function roomSvg() {
-  const own = st().room, ph = safeImg(PHOTOS.profile);
+  const S0 = st(), own = S0.room, ph = safeImg(PHOTOS.profile), wall = (WALLS.find(w => w[0] === S0.wall) || WALLS[0])[3];
   const item = ([id, , , g]) => !own.includes(id) ? '' : g === 'FRAME'
     ? `<rect x="112" y="40" width="44" height="52" rx="3" fill="#B97648"/><rect x="117" y="45" width="34" height="42" fill="#FCEBD3"/>${ph ? `<image href="${ph}" x="117" y="45" width="34" height="42" preserveAspectRatio="xMidYMid slice"/>` : ''}` : g;
   return `<svg class="groom" viewBox="0 0 320 180" aria-label="다람쥐 집">
-    <rect width="320" height="180" fill="#FFF3DD"/><rect y="130" width="320" height="50" fill="#E8C9A0"/><path d="M0 130h320" stroke="#D7B486" stroke-width="2"/>
-    <rect x="22" y="34" width="62" height="54" rx="6" fill="#DCE7F1" stroke="#fff" stroke-width="4"/><path d="M53 34v54M22 61h62" stroke="#fff" stroke-width="3"/><circle cx="70" cy="48" r="6" fill="#FCE8B4"/>
+    <rect width="320" height="180" fill="${wall}"/><path d="M0 120h320" stroke="rgba(0,0,0,.05)" stroke-width="10"/><rect y="130" width="320" height="50" fill="#E8C9A0"/><path d="M0 130h320" stroke="#D7B486" stroke-width="2"/><path d="M0 150h320M0 168h320" stroke="#DDBB8F" stroke-width="1"/>
+    ${windowSvg()}
     ${ROOM.filter(r => r[0] === 'rug').map(item).join('')}${ROOM.filter(r => r[0] !== 'rug').map(item).join('')}
     <g transform="translate(118 72) scale(.82)">${CHARS.svg('baby', '', { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g></svg>`;
 }
@@ -360,6 +372,12 @@ document.addEventListener('click', async e => {
       s.acorn -= it[2]; s.room.push(it[0]); save(s); confetti(); toast(`${it[1]}을(를) 집에 놓았어요!`); render(); break;
     }
     case 'guess': openGuess(); break;
+    case 'wall': {
+      const s = st(), w = WALLS.find(x => x[0] === b.dataset.id); if (!w) return;
+      if (!s.walls.includes(w[0])) { if (s.acorn < w[2]) { toast(`도토리가 ${w[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= w[2]; s.walls.push(w[0]); toast(`${w[1]} 벽지를 발랐어요!`); }
+      s.wall = w[0]; save(s); render(); break;
+    }
+    case 'shop': S.view = 'medals'; render(); setTimeout(() => { const el = document.getElementById('ghomeshop'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); break;
     case 'guess-save': {
       const v = parseFloat(String(document.getElementById('gs-v').value).replace(',', '.')), W = wrecs(), last = W[W.length - 1];
       if (!(v > 1 && v < 30)) { document.getElementById('gs-err').textContent = '몸무게를 kg으로 넣어 주세요 (예: 6.3)'; return; }
@@ -423,6 +441,9 @@ css.textContent = `
 .gc.open .back{transform:rotateY(180deg)}.gc.open .face{transform:none}
 .gc.done .face{border-color:#5E9E57;box-shadow:0 0 0 3px #CFE6C3}
 .groom{width:100%;height:auto;display:block;border-radius:16px;border:1.5px solid var(--line)}
+.gwall{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}
+.gwall button{display:flex;flex-direction:column;align-items:center;gap:1px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:12px;padding:6px 2px;font-size:12px}
+.gwall i{width:26px;height:18px;border-radius:6px;border:1px solid var(--line)}.gwall small{font-size:10px;color:var(--muted)}.gwall .cur{border:2px solid var(--red)}
 .gshop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
 .gshop button{display:flex;flex-direction:column;align-items:center;gap:1px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:12px;padding:6px 2px;font-size:12px}
 .gshop small{font-size:10.5px;color:var(--muted)}.gshop .own{background:#F3F8EE;border-color:#B9D7A8}.gshop .own small{color:#5E9E57}
@@ -436,5 +457,5 @@ css.textContent = `
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save } };
+window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save } };
 })();

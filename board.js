@@ -8,11 +8,11 @@ const jit = (id, k, r) => (hash(id + k) % 1000) / 1000 * 2 * r - r;   // 카드�
 function cards() {
   const p = S.profile, t = today(), d = dayNo(t), out = [];
   const ph = safeImg(PHOTOS.profile);
-  out.push({ id: 'center', go: 'grow', cls: 'pola center', html: `${ph ? `<img src="${ph}" alt="${esc(p.name)} 사진">` : '<span class="bnoph">사진 없음</span>'}<b class="bt">${esc(p.name || '우리 아기')}</b><span class="bday">수사 <em>${d}</em>일째</span>` });
+  out.push({ id: 'center', go: 'grow', cls: 'pola center', html: `${ph ? `<img src="${ph}" alt="${esc(p.name)} 사진">` : `<span class="bnoph" style="background:#FCEBD3">${CHARS.svg('baby', 'lens', { size: 150 })}</span>`}<b class="bt">${esc(p.name || '우리 아기')}</b><span class="bday">수사 <em>${d}</em>일째</span>` });
 
   ['엄마', '아빠'].forEach(r => {
     const k = r === '엄마' ? 'mom' : 'dad', im = safeImg(PHOTOS[k]);
-    out.push({ id: k, go: 'grow', cls: 'pola small', html: `${im ? `<img src="${im}" alt="${r} 수사관 사진">` : `<span class="bnoph">${I_BADGE.replace(/16/g, '30')}</span>`}<b class="bt">${r} 수사관</b>${p[k] ? `<small>${esc(p[k])}</small>` : ''}` });
+    out.push({ id: k, go: 'grow', cls: 'pola small', html: `${im ? `<img src="${im}" alt="${r} 수사관 사진">` : `<span class="bnoph" style="background:#FCEBD3">${CHARS.svg(k, '', { face: true, size: 96 })}</span>`}<b class="bt">${r} 수사관</b>${p[k] ? `<small>${esc(p[k])}</small>` : ''}` });
   });
 
   const lh = latest('height'), lw = latest('weight');
@@ -54,30 +54,43 @@ function renderBoard() {
     <p class="foot">앨범 사진을 크게 보고 "보드에 붙이기"를 누르면 여기에 붙어요.</p>`;
 }
 
-// ---------- 자동 배치 (3칸 격자, 가운데는 아기, 가까운 칸부터 채움) ----------
+// ---------- 자동 배치 (콜라주: 가운데 아기 사진 둘레로 해바라기 씨처럼 빙글빙글, 크기·기울기 제각각, 살짝 겹쳐도 괜찮게) ----------
 function layout() {
   const wrap = document.getElementById('bwrap'), stage = document.getElementById('bstage');
-  const W = wrap.clientWidth, cols = 3, cw = W / cols, pad = 16;
+  const W = wrap.clientWidth;
   const els = [...stage.querySelectorAll('.bcard')];
   const center = els.find(e => e.dataset.center), others = els.filter(e => e !== center);
-  let R = Math.max(3, Math.ceil((others.length + 1) / cols)); if (R % 2 === 0) R++;
-  const mid = (R - 1) / 2, cells = [];
-  for (let r = 0; r < R; r++) for (let c = 0; c < cols; c++) if (!(r === mid && c === 1)) cells.push({ r, c, d: Math.hypot((r - mid) * 1.15, c - 1) + (r < mid ? -0.01 : 0) });
-  cells.sort((a, b) => a.d - b.d || a.r - b.r || a.c - b.c);
-  const place = new Map([[center, { r: mid, c: 1 }]]);
-  others.forEach((el, i) => place.set(el, cells[i]));
-  els.forEach(el => { el.style.width = (cw - pad * 1.4) + 'px'; });
-  const rowH = new Array(R).fill(0);
-  els.forEach(el => { const q = place.get(el); rowH[q.r] = Math.max(rowH[q.r], el.offsetHeight + 34); });
-  const top = [30]; for (let r = 1; r < R; r++) top[r] = top[r - 1] + (rowH[r - 1] || 60);
-  const H = top[R - 1] + (rowH[R - 1] || 60) + 20;
-  const pins = new Map();
+  // 카드 폭: 사진은 크게, 메모는 조금 작게 (카드마다 늘 같은 크기)
   els.forEach(el => {
-    const q = place.get(el), id = el.dataset.bid, w = el.offsetWidth, h = el.offsetHeight;
-    const x = q.c * cw + (cw - w) / 2 + jit(id, 'x', 5), y = top[q.r] + ((rowH[q.r] || h) - 34 - h) / 2 + jit(id, 'y', 6);
+    const id = el.dataset.bid, photo = el.classList.contains('pola');
+    const f = el === center ? .5 : photo ? .37 + (hash(id + 'w') % 7) / 100 : .33 + (hash(id + 'w') % 6) / 100;
+    el.style.width = Math.round(W * f) + 'px';
+  });
+  const box = el => ({ w: el.offsetWidth, h: el.offsetHeight });
+  const placed = [];
+  const hit = (x, y, w, h) => placed.some(q => x < q.x + q.w - 14 && x + w - 14 > q.x && y < q.y + q.h - 18 && y + h - 18 > q.y);   // 조금은 겹쳐도 돼요
+  const cb = box(center), cx = W / 2, cy = 0;
+  placed.push({ el: center, x: cx - cb.w / 2, y: cy - cb.h / 2, w: cb.w, h: cb.h });
+  const GOLD = 2.39996;
+  others.forEach((el, i) => {
+    const { w, h } = box(el), a0 = i * GOLD + (hash(el.dataset.bid) % 100) / 100;
+    for (let r = (cb.w + w) * .42, k = 0; k < 400; k++, r += 6) {
+      const a = a0 + k * .35, x = cx + Math.cos(a) * r * .95 - w / 2, y = cy + Math.sin(a) * r * 1.25 - h / 2;
+      if (x < 6 || x + w > W - 6) continue;
+      if (!hit(x, y, w, h)) { placed.push({ el, x, y, w, h }); return; }
+    }
+    const last = placed[placed.length - 1]; placed.push({ el, x: (W - w) / 2, y: last.y + last.h + 20, w, h });   // 자리가 없으면 맨 아래
+  });
+  const minY = Math.min(...placed.map(q => q.y)), maxY = Math.max(...placed.map(q => q.y + q.h));
+  const off = 34 - minY, H = maxY - minY + 70;
+  const pins = new Map();
+  placed.forEach(q => {
+    const el = q.el, id = el.dataset.bid, x = q.x + jit(id, 'x', 4), y = q.y + off + jit(id, 'y', 5);
     el.style.left = x + 'px'; el.style.top = y + 'px';
-    el.style.transform = `rotate(${jit(id, 'r', el === center ? 1.5 : 3.5).toFixed(2)}deg)`;
-    pins.set(el, { x: x + w / 2, y: y + 7 });
+    el.style.transform = `rotate(${jit(id, 'r', el === center ? 2 : 7).toFixed(2)}deg)`;
+    el.style.zIndex = el === center ? 3 : 1 + (hash(id + 'z') % 2);
+    el.classList.toggle('taped', el !== center && el.classList.contains('pola') && hash(id + 't') % 3 !== 0);   // 사진은 대부분 테이프로
+    pins.set(el, { x: x + q.w / 2, y: y + 7, taped: el.classList.contains('taped') });
   });
   stage.style.width = W + 'px'; stage.style.height = H + 'px';
   // 빨간 실: 가운데 압정에서 각 카드 압정으로, 살짝 처지는 곡선
@@ -86,10 +99,11 @@ function layout() {
   [svg, pinSvg].forEach(v => { v.setAttribute('width', W); v.setAttribute('height', H); v.setAttribute('viewBox', `0 0 ${W} ${H}`); });
   let g = '', pg = '';
   others.forEach(el => {
-    const p = pins.get(el), dist = Math.hypot(p.x - c0.x, p.y - c0.y), sag = Math.min(46, 10 + dist * 0.12);
+    const p = pins.get(el); if (hash(el.dataset.bid + 's') % 3 === 0) return;   // 실은 몇 장만 이어서 덜 복잡하게
+    const dist = Math.hypot(p.x - c0.x, p.y - c0.y), sag = Math.min(46, 10 + dist * 0.12);
     g += `<path d="M${c0.x.toFixed(1)} ${c0.y.toFixed(1)} Q${((c0.x + p.x) / 2).toFixed(1)} ${(Math.max(c0.y, p.y) + sag).toFixed(1)} ${p.x.toFixed(1)} ${p.y.toFixed(1)}" class="bstr"/>`;
   });
-  pins.forEach((p, el) => { pg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${el === center ? 7 : 5.5}" class="bpin"/><circle cx="${(p.x - 1.6).toFixed(1)}" cy="${(p.y - 1.8).toFixed(1)}" r="1.8" fill="#fff" fill-opacity=".7"/>`; });
+  pins.forEach((p, el) => { if (p.taped) return; pg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${el === center ? 7 : 5.5}" class="bpin"/><circle cx="${(p.x - 1.6).toFixed(1)}" cy="${(p.y - 1.8).toFixed(1)}" r="1.8" fill="#fff" fill-opacity=".7"/>`; });
   const sh = id => `<defs><filter id="${id}" x="-5%" y="-5%" width="110%" height="120%"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity=".45"/></filter></defs>`;
   svg.innerHTML = `${sh('bsh')}<g filter="url(#bsh)">${g}</g>`;
   pinSvg.innerHTML = `${sh('bsh2')}<g filter="url(#bsh2)">${pg}</g>`;
@@ -151,7 +165,7 @@ function bind(wrap) {
 function mount() {
   const wrap = document.getElementById('bwrap'); if (!wrap) return;
   dim = layout(); bind(wrap);
-  if (!T.init) { T.init = true; T.s = 1; T.x = 0; T.y = dim.H <= dim.vh ? (dim.vh - dim.H) / 2 : 0; }   // 처음엔 폰 폭에 맞춰 위에서부터
+  if (!T.init) { T.init = true; T.s = 1; T.x = 0; T.y = dim.H <= dim.vh ? (dim.vh - dim.H) / 2 : dim.vh * .42 - dim.c0.y - 90; }   // 처음엔 가운데 아기 사진이 보이게
   clamp(); apply();
   // 사진이 늦게 뜨면 카드 높이가 바뀌니 다시 배치
   wrap.querySelectorAll('img').forEach(im => { if (!im.complete) im.addEventListener('load', () => { if (document.getElementById('bwrap') === wrap) { dim = layout(); clamp(); apply(); } }, { once: true }); });
@@ -178,16 +192,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.da
 
 const css = document.createElement('style');
 css.textContent = `
-.bwrap{position:relative;margin:12px -12px 0;height:max(400px,calc(100vh - 250px - env(safe-area-inset-bottom,0px)));overflow:hidden;touch-action:none;border:7px solid #3A2A1C;border-radius:6px;box-shadow:inset 0 0 40px rgba(0,0,0,.55),0 4px 12px rgba(43,38,34,.35);
-  background-color:#6E5338;
-  background-image:radial-gradient(rgba(40,26,14,.55) 1px,transparent 1.6px),radial-gradient(rgba(220,180,130,.28) 1px,transparent 1.8px),radial-gradient(rgba(30,18,8,.35) 1.5px,transparent 2.4px);
+.bwrap{position:relative;margin:12px -12px 0;height:max(400px,calc(100vh - 250px - env(safe-area-inset-bottom,0px)));overflow:hidden;touch-action:none;border:8px solid #A9764A;border-radius:18px;box-shadow:inset 0 0 30px rgba(80,45,15,.35),0 4px 0 #8C5A33,0 8px 16px rgba(43,38,34,.25);
+  background-color:#C79A6B;
+  background-image:radial-gradient(rgba(110,70,35,.45) 1px,transparent 1.6px),radial-gradient(rgba(255,230,190,.35) 1px,transparent 1.8px),radial-gradient(rgba(90,55,25,.3) 1.5px,transparent 2.4px);
   background-size:7px 7px,11px 11px,23px 23px;background-position:0 0,3px 5px,9px 2px}
 .bstage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 .bstrings{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:0}
 .bstrings.bpins{z-index:4}
-.bstr{fill:none;stroke:#B3261E;stroke-width:2.2;stroke-linecap:round}
+.bstr{fill:none;stroke:#B3261E;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:1 0;opacity:.8}
 .bpin{fill:#B3261E;stroke:#6E1712;stroke-width:1}
-.bcard{position:absolute;z-index:1;display:flex;flex-direction:column;gap:3px;padding:16px 8px 9px;font-family:var(--body);font-size:11px;line-height:1.35;color:var(--ink);box-shadow:0 5px 10px rgba(0,0,0,.45);transform-origin:50% 7px;cursor:pointer;text-align:left}
+.bcard{position:absolute;z-index:1;display:flex;flex-direction:column;gap:3px;padding:16px 8px 9px;font-family:var(--body);font-size:11px;line-height:1.35;color:var(--ink);box-shadow:0 4px 9px rgba(60,35,10,.35);border-radius:4px;transform-origin:50% 7px;cursor:pointer;text-align:left}
 .bcard .bt{font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy);line-height:1.15;word-break:keep-all}
 .bcard small{font-size:10px;color:var(--muted)}
 .bcard p{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;border-top:1px dashed rgba(107,95,82,.45);padding-top:3px}
@@ -205,7 +219,10 @@ css.textContent = `
 .bcard .bday em{font-style:normal;color:var(--red);font-size:22px}
 .bcard.small .bt{font-size:14px}
 .bhint{position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:11px;color:#EAD9B2;background:linear-gradient(transparent,rgba(20,12,4,.7));text-align:center;pointer-events:none;z-index:4}
-.aview{margin-top:14px}`;
+.aview{margin-top:14px}
+.bcard.taped::before{content:"";position:absolute;top:-9px;left:50%;width:46%;height:16px;margin-left:-23%;background:rgba(248,216,209,.85);transform:rotate(-3deg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.bcard.taped:nth-of-type(3n)::before{background:rgba(252,232,180,.9)}.bcard.taped:nth-of-type(3n+1)::before{background:rgba(220,231,241,.92)}
+.bcard.note{border-radius:2px 2px 14px 2px}`;
 document.head.appendChild(css);
 
 window.BOARD = { render: renderBoard, mount };

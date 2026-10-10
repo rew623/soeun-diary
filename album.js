@@ -51,14 +51,15 @@ function sectionHtml() {
   const head = ym => { const [y, mo] = ym.split('-').map(Number), [age] = monthsDays(p.birth, ym + '-' + String(Math.min(28, +p.birth.slice(8))).padStart(2, '0')); return `${y}.${mo}${ym >= p.birth.slice(0, 7) ? ` · 생후 ${age}개월` : ''}`; };
   const dayHead = d => { const [y, mo, dd] = d.split('-').map(Number); return `<b>${mo}월 ${dd}일 (${WDK[new Date(Date.UTC(y, mo - 1, dd)).getUTCDay()]})</b><span>생후 ${daysBetween(p.birth, d) + 1}일</span>`; };
   const cell = m => { const ph = safeImg(PHOTOS[m.id]); return `<button class="acell" data-view="${m.id}" aria-label="${esc(m.title || '사진')} 크게 보기">${ph ? `<img src="${ph}" alt="" loading="lazy">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}${m.title ? `<small>${esc(m.title)}</small>` : ''}</button>`; };
-  // 달별 묶음: 최근 두 달만 펼쳐 두고 그 전 달은 접어 둬요 (누르면 펼쳐지고, 이 폰에 기억)
+  // 달별 묶음: 가장 최근 달만 펼쳐 두고 그 전 달은 접어 둬요 (누르면 펼쳐지고, 이 폰에 기억). 펼친 달 맨 아래에도 접기 단추
   const cnt = ym => L.filter(m => m.date.slice(0, 7) === ym).length;
   return `<section${isFold('a-free') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-free" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">현장 사진첩</span><span>${L.length}장</span></h2>
     <p class="foot" style="margin:0 0 10px">여러 장을 한 번에 올리면 찍은 날짜별로 나눠서 보관해요. 사진을 길게 누르면 여러 장 골라서 지우거나 날짜를 바꿀 수 있어요.</p>
     <button class="solve" data-al="pick" style="width:100%;min-height:50px">+ 사진 올리기 (여러 장 가능)</button>
     ${progHtml()}
-    ${groups.map((g, gi) => `<div class="amon${isFold('m-' + g.ym, gi >= 2) ? ' folded' : ''}"><h3 class="agh" data-fold="m-${g.ym}">${head(g.ym)} · ${cnt(g.ym)}장</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}</div>`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
+    ${groups.map((g, gi) => `<div class="amon${isFold('m-' + g.ym, gi >= 1) ? ' folded' : ''}"><h3 class="agh" data-fold="m-${g.ym}">${head(g.ym)} · ${cnt(g.ym)}장</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}<button class="afold" data-al="foldm" data-k="m-${g.ym}">▴ ${+g.ym.slice(5)}월 사진 접기</button></div>`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
     ${L.length > shown.length ? `<button class="addperiod" data-al="more">더 보기 (${L.length - shown.length}장 남음)</button>` : ''}
+    ${L.length ? '<button class="afold" data-al="folds">▴ 현장 사진첩 접기</button>' : ''}
   </section>`;
 }
 
@@ -284,6 +285,14 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'more': A.more += 30; render(); break;
+    // 아래쪽 접기 단추: 접고 나서 그 제목이 화면 위에 오게
+    case 'foldm': case 'folds': {
+      const box = b.closest(b.dataset.al === 'foldm' ? '.amon' : 'section'), key = b.dataset.al === 'foldm' ? b.dataset.k : 'a-free'; if (!box) return;
+      setFold(key, true); box.classList.add('folded');
+      const h = box.querySelector(b.dataset.al === 'foldm' ? '.agh' : '.sh'), y = h.getBoundingClientRect().top + window.scrollY - 70;
+      if (h.getBoundingClientRect().top < 70) window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      break;
+    }
     case 'save': {
       const id = b.dataset.id, d = document.getElementById('af-date').value;
       if (!d) { document.getElementById('af-err').textContent = '날짜를 골라 주세요'; return; }
@@ -335,6 +344,7 @@ css.textContent = `
 .exg i{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;color:var(--muted);font-style:normal}
 .exdel{position:absolute;top:3px;right:3px;min-width:26px;height:26px;border:0;border-radius:99px;background:rgba(31,42,68,.75);color:#fff;font-size:15px;line-height:1;padding:0 6px}
 .exdel.sure{background:var(--red);font-size:12px}
+.afold{display:block;width:100%;margin:10px 0 2px;border:1.5px dashed var(--line);background:#FFFDF7;border-radius:99px;min-height:40px;font-size:13px;color:var(--navy)}
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:10px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
