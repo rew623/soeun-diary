@@ -170,12 +170,10 @@ function medalsView() {
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
-    body = `<section id="ghomeshop"><h2 class="sh"><span>🏠 첫 화면 방 꾸미기</span><span>가구 ${s.room.length}/${ROOM.length}</span></h2>
-      <p class="hint" style="margin:0 0 8px">여기서 산 가구와 벽지는 성장 수사(첫 화면)의 소은 탐정 방에 놓여요. 창밖은 시간에 따라 낮·저녁·밤으로 바뀌어요.</p>${roomSvg()}
-      <h3 class="ghh">벽지</h3>
-      <div class="gwall">${WALLS.map(([id, nm, c, col]) => { const own = s.walls.includes(id), cur = s.wall === id; return `<button class="${cur ? 'cur' : ''}" data-game="wall" data-id="${id}"><i style="background:${col}"></i>${nm}<small>${cur ? '쓰는 중' : own ? '바르기' : `🌰 ${c}`}</small></button>`; }).join('')}</div>
-      <h3 class="ghh">가구</h3>
-      <div class="gshop">${ROOM.map(([id, nm, c]) => { const own = s.room.includes(id); return `<button class="${own ? 'own' : ''}" data-game="buy" data-id="${id}" ${own ? 'disabled' : ''}>${nm}<small>${own ? '놓았어요' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>
+    const rc = window.ROOMS ? ROOMS.count() : { own: 0, all: 0 };
+    body = `<section id="ghomeshop"><h2 class="sh"><span>🏠 첫 화면 방 꾸미기</span><span>모은 물건 ${rc.own}/${rc.all}</span></h2>
+      <p class="hint" style="margin:0 0 8px">자리마다 하나씩 골라 놓아요. 산 물건은 성장 수사(첫 화면) 방에 보여요. 창밖은 시간(낮·저녁·밤)과 계절에 따라 저절로 바뀌어요.</p>${roomSvg()}
+      ${window.ROOMS ? ROOMS.shop() : ''}</section>
     <section><h2 class="sh"><span>🎩 소은 탐정 모자</span><span>앱 곳곳의 다람쥐가 써요</span></h2>
       ${(() => { const e = eventHat(); return e && s.hat === 'det' ? `<p class="hint" style="margin:0 0 8px">오늘은 ${e[1]}! 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.</p>` : ''; })()}
       <div class="ghats">${HATS.map(([id, nm, c]) => { const own = s.hats.includes(id), cur = s.hat === id;
@@ -211,37 +209,8 @@ function eventHat() {
 }
 function skin() { const s = st(); if (s.hat !== 'det') return s.hat; const e = S.profile ? eventHat() : null; return e ? e[0] : 'det'; }
 
-// ---------- 다람쥐 집 꾸미기 (도토리로 가구 사기) ----------
-const ROOM = [
-  ['rug', '동그란 러그', 4, '<ellipse cx="160" cy="166" rx="92" ry="14" fill="#F6B4AA" opacity=".85"/><ellipse cx="160" cy="166" rx="70" ry="9" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="5 5"/>'],
-  ['plant', '화분', 5, '<path d="M38 152h24l-4 20H42z" fill="#C97B4A"/><path d="M50 152c-14-10-16-26-6-34 2 12 6 18 6 34zM50 152c12-12 18-24 10-34-4 12-8 20-10 34zM50 152c-2-16 2-28 0-40" stroke="#5E9E57" stroke-width="4" fill="#7FB77E" stroke-linecap="round"/>'],
-  ['frame', '소은이 액자', 6, 'FRAME'],
-  ['mobile', '모빌', 7, '<path d="M200 0v18M180 18h40M180 18v12M220 18v12M200 18v20" stroke="#B9A889" stroke-width="1.5"/><circle cx="180" cy="34" r="5" fill="#F4C542"/><path d="M216 30l4 8 4-8z" fill="#7FC4E8"/><circle cx="200" cy="42" r="5" fill="#F49C9C"/>'],
-  ['lamp', '스탠드', 8, '<path d="M272 172h20M282 172v-52" stroke="#1F2A44" stroke-width="3"/><path d="M268 122l14-24 14 24z" fill="#FCE8B4" stroke="#E0C590"/><ellipse cx="282" cy="124" rx="22" ry="5" fill="#FCE8B4" opacity=".5"/>'],
-  ['shelf', '책장', 10, '<rect x="232" y="96" width="40" height="72" rx="3" fill="#B97648"/><path d="M234 120h36M234 144h36" stroke="#8C5530" stroke-width="2"/><rect x="237" y="102" width="6" height="16" fill="#7FC4E8"/><rect x="245" y="104" width="6" height="14" fill="#F49C9C"/><rect x="253" y="101" width="6" height="17" fill="#F4C542"/><rect x="238" y="126" width="16" height="16" rx="3" fill="#FCEBD3"/><circle cx="262" cy="134" r="6" fill="#D99A5B"/>'],
-  ['jar', '도토리 항아리', 12, '<path d="M88 168c-12 0-14-24-4-30h20c10 6 8 30-4 30z" fill="#E8C770" stroke="#C99A1E"/><ellipse cx="94" cy="138" rx="10" ry="3" fill="#C99A1E"/><ellipse cx="90" cy="134" rx="5" ry="6" fill="#D99A5B"/><path d="M85 131q5-6 10 0z" fill="#7A4B2A"/><ellipse cx="99" cy="133" rx="5" ry="6" fill="#D99A5B"/><path d="M94 130q5-6 10 0z" fill="#7A4B2A"/>'],
-  ['garland', '가랜드', 9, '<path d="M60 18q100 30 200 0" stroke="#B9A889" stroke-width="1.5" fill="none"/>' + [70, 95, 120, 145, 170, 195, 220, 245].map((x, i) => `<path d="M${x} ${20 + Math.sin(i / 7 * Math.PI) * 18}l8 0-4 10z" fill="${['#F49C9C', '#FCE8B4', '#7FC4E8', '#7FB77E'][i % 4]}"/>`).join('')]
-];
-// 벽지 (도토리로 사서 바꾸기)
-const WALLS = [['cream', '크림', 0, '#FFF3DD'], ['pink', '분홍', 4, '#FBE3E0'], ['mint', '민트', 4, '#E3F2E6'], ['sky', '하늘', 4, '#E2EEF8'], ['lilac', '라일락', 6, '#EEE6F7']];
-// 창밖은 지금 시간대로: 낮 해, 저녁 노을, 밤 달·별
-function windowSvg() {
-  const h = new Date(Date.now() + 9 * 3600e3).getUTCHours();
-  const [sky, deco] = h >= 6 && h < 17 ? ['#CFE6F7', '<circle cx="70" cy="48" r="7" fill="#FCE8B4"/><ellipse cx="38" cy="74" rx="10" ry="4" fill="#fff"/>']
-    : h >= 17 && h < 20 ? ['#F6C9A8', '<circle cx="66" cy="70" r="8" fill="#F49C9C"/>']
-    : ['#2E3B5C', '<path d="M70 42a7 7 0 1 0 6 11 6 6 0 0 1-6-11z" fill="#FCE8B4"/><circle cx="34" cy="46" r="1.3" fill="#fff"/><circle cx="44" cy="76" r="1.1" fill="#fff"/><circle cx="76" cy="78" r="1.2" fill="#fff"/>'];
-  return `<rect x="22" y="34" width="62" height="54" rx="6" fill="${sky}" stroke="#fff" stroke-width="4"/>${deco}<path d="M53 34v54M22 61h62" stroke="#fff" stroke-width="3"/>`;
-}
-function roomSvg() {
-  const S0 = st(), own = S0.room, ph = safeImg(PHOTOS.profile), wall = (WALLS.find(w => w[0] === S0.wall) || WALLS[0])[3];
-  const item = ([id, , , g]) => !own.includes(id) ? '' : g === 'FRAME'
-    ? `<rect x="112" y="40" width="44" height="52" rx="3" fill="#B97648"/><rect x="117" y="45" width="34" height="42" fill="#FCEBD3"/>${ph ? `<image href="${ph}" x="117" y="45" width="34" height="42" preserveAspectRatio="xMidYMid slice"/>` : ''}` : g;
-  return `<svg class="groom" viewBox="0 0 320 180" aria-label="다람쥐 집">
-    <rect width="320" height="180" fill="${wall}"/><path d="M0 120h320" stroke="rgba(0,0,0,.05)" stroke-width="10"/><rect y="130" width="320" height="50" fill="#E8C9A0"/><path d="M0 130h320" stroke="#D7B486" stroke-width="2"/><path d="M0 150h320M0 168h320" stroke="#DDBB8F" stroke-width="1"/>
-    ${windowSvg()}
-    ${ROOM.filter(r => r[0] === 'rug').map(item).join('')}${ROOM.filter(r => r[0] !== 'rug').map(item).join('')}
-    <g transform="translate(118 72) scale(.82)">${CHARS.svg('baby', '', { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g></svg>`;
-}
+// ---------- 방 꾸미기는 room.js (ROOMS) ----------
+const roomSvg = () => window.ROOMS ? ROOMS.svg() : '';
 
 // ---------- 몸무게 예측 대결 ----------
 // guess 문서: { role, value, at, base(예측할 때의 마지막 측정 기록 id), by } — 다음 몸무게 기록이 생기면 가까운 쪽 승리
@@ -379,17 +348,7 @@ document.addEventListener('click', async e => {
     case 'qn': { const q = G.q; q.i++; q.picked = null; if (q.i >= q.rounds.length) quizEnd(); render(); window.scrollTo(0, 0); break; }
     case 'mem': memStart(); G.game = 'mem'; S.view = 'play'; render(); window.scrollTo(0, 0); break;
     case 'mc': memFlip(+b.dataset.i); break;
-    case 'buy': {
-      const s = st(), it = ROOM.find(x => x[0] === b.dataset.id); if (!it || s.room.includes(it[0])) return;
-      if (s.acorn < it[2]) { toast(`도토리가 ${it[2] - s.acorn}개 더 필요해요`); return; }
-      s.acorn -= it[2]; s.room.push(it[0]); save(s); confetti(); toast(`${it[1]}을(를) 집에 놓았어요!`); render(); break;
-    }
     case 'guess': openGuess(); break;
-    case 'wall': {
-      const s = st(), w = WALLS.find(x => x[0] === b.dataset.id); if (!w) return;
-      if (!s.walls.includes(w[0])) { if (s.acorn < w[2]) { toast(`도토리가 ${w[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= w[2]; s.walls.push(w[0]); toast(`${w[1]} 벽지를 발랐어요!`); }
-      s.wall = w[0]; save(s); render(); break;
-    }
     case 'shop': S.view = 'medals'; G.hub = 'deco'; render(); window.scrollTo(0, 0); break;
     case 'guess-save': {
       const v = parseFloat(String(document.getElementById('gs-v').value).replace(',', '.')), W = wrecs(), last = W[W.length - 1];

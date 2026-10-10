@@ -50,39 +50,37 @@ function renderBoard() {
   return `<div class="bwrap" id="bwrap"><div class="bstage" id="bstage">
     ${cs.map(c => `<div class="bcard ${c.cls}" data-bid="${esc(c.id)}" data-bgo="${c.go}" role="button" tabindex="0" ${c.id === 'center' ? 'data-center="1"' : ''}>${c.html}</div>`).join('')}
     <svg class="bstrings" id="bstrings" aria-hidden="true"></svg><svg class="bstrings bpins" id="bpins" aria-hidden="true"></svg></div>
-    <div class="bhint">두 손가락으로 확대, 끌어서 이동 · 카드를 누르면 크게 보기</div></div>
+    <div class="bhint">두 손가락으로 벌려 확대, 끌어서 이동 · 카드를 누르면 크게 보기</div></div>
     <p class="foot">앨범 사진을 크게 보고 "보드에 붙이기"를 누르면 여기에 붙어요.</p>`;
 }
 
-// ---------- 자동 배치 (콜라주: 가운데 아기 사진 둘레로 해바라기 씨처럼 빙글빙글, 크기·기울기 제각각, 살짝 겹쳐도 괜찮게) ----------
+// ---------- 자동 배치 (콜라주: 가운데 아기 사진 둘레로 사방에 고르게, 크기·기울기 제각각, 살짝 겹쳐도 괜찮게) ----------
+// 판은 화면보다 넓게 쓰고(옆으로도 퍼지게), 처음엔 판 전체 폭이 화면에 들어오게 줄여서 보여 줘요
 function layout() {
   const wrap = document.getElementById('bwrap'), stage = document.getElementById('bstage');
-  const W = wrap.clientWidth;
+  const W = wrap.clientWidth, vh = wrap.clientHeight;
   const els = [...stage.querySelectorAll('.bcard')];
   const center = els.find(e => e.dataset.center), others = els.filter(e => e !== center);
-  // 카드 폭: 사진은 크게, 메모는 조금 작게 (카드마다 늘 같은 크기)
   els.forEach(el => {
     const id = el.dataset.bid, photo = el.classList.contains('pola');
-    const f = el === center ? .5 : photo ? .37 + (hash(id + 'w') % 7) / 100 : .33 + (hash(id + 'w') % 6) / 100;
-    el.style.width = Math.round(W * f) + 'px';
+    el.style.width = (el === center ? 190 : photo ? 128 + hash(id + 'w') % 26 : 122 + hash(id + 'w') % 22) + 'px';
   });
-  const box = el => ({ w: el.offsetWidth, h: el.offsetHeight });
   const placed = [];
-  const hit = (x, y, w, h) => placed.some(q => x < q.x + q.w - 14 && x + w - 14 > q.x && y < q.y + q.h - 18 && y + h - 18 > q.y);   // 조금은 겹쳐도 돼요
-  const cb = box(center), cx = W / 2, cy = 0;
-  placed.push({ el: center, x: cx - cb.w / 2, y: cy - cb.h / 2, w: cb.w, h: cb.h });
-  const GOLD = 2.39996;
+  const hit = (x, y, w, h) => placed.some(q => x < q.x + q.w - 22 && x + w - 22 > q.x && y < q.y + q.h - 30 && y + h - 30 > q.y);   // 조금은 겹쳐도 돼요
+  const cw = center.offsetWidth, ch = center.offsetHeight;
+  placed.push({ el: center, x: -cw / 2, y: -ch / 2, w: cw, h: ch });
+  const GOLD = 2.39996, ar = Math.max(.8, Math.min(1.5, vh / W));   // 화면 비율에 맞춰 둥글게
   others.forEach((el, i) => {
-    const { w, h } = box(el), a0 = i * GOLD + (hash(el.dataset.bid) % 100) / 100;
-    for (let r = (cb.w + w) * .42, k = 0; k < 400; k++, r += 6) {
-      const a = a0 + k * .35, x = cx + Math.cos(a) * r * .95 - w / 2, y = cy + Math.sin(a) * r * 1.25 - h / 2;
-      if (x < 6 || x + w > W - 6) continue;
+    const w = el.offsetWidth, h = el.offsetHeight, a0 = i * GOLD + (hash(el.dataset.bid) % 100) / 100;
+    for (let r = (cw + w) * .4, k = 0; k < 800; k++, r += 3.5) {
+      const a = a0 + k * .3, x = Math.cos(a) * r - w / 2, y = Math.sin(a) * r * ar - h / 2;
       if (!hit(x, y, w, h)) { placed.push({ el, x, y, w, h }); return; }
     }
-    const last = placed[placed.length - 1]; placed.push({ el, x: (W - w) / 2, y: last.y + last.h + 20, w, h });   // 자리가 없으면 맨 아래
   });
-  const minY = Math.min(...placed.map(q => q.y)), maxY = Math.max(...placed.map(q => q.y + q.h));
-  const off = 34 - minY, H = maxY - minY + 70;
+  const M = 30, minX = Math.min(...placed.map(q => q.x)) - M, maxX = Math.max(...placed.map(q => q.x + q.w)) + M;
+  const minY = Math.min(...placed.map(q => q.y)) - M, maxY = Math.max(...placed.map(q => q.y + q.h)) + M + 20;
+  const SW = Math.max(W, maxX - minX), H = maxY - minY, ox = (SW - (maxX - minX)) / 2 - minX, off = -minY;
+  placed.forEach(q => { q.x += ox; q.y += 0; });
   const pins = new Map();
   placed.forEach(q => {
     const el = q.el, id = el.dataset.bid, x = q.x + jit(id, 'x', 4), y = q.y + off + jit(id, 'y', 5);
@@ -92,11 +90,11 @@ function layout() {
     el.classList.toggle('taped', el !== center && el.classList.contains('pola') && hash(id + 't') % 3 !== 0);   // 사진은 대부분 테이프로
     pins.set(el, { x: x + q.w / 2, y: y + 7, taped: el.classList.contains('taped') });
   });
-  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.width = SW + 'px'; stage.style.height = H + 'px';
   // 빨간 실: 가운데 압정에서 각 카드 압정으로, 살짝 처지는 곡선
   // 실은 카드 뒤로 지나가고(글씨를 가리지 않게), 압정은 카드 위에 꽂아요
   const c0 = pins.get(center), svg = document.getElementById('bstrings'), pinSvg = document.getElementById('bpins');
-  [svg, pinSvg].forEach(v => { v.setAttribute('width', W); v.setAttribute('height', H); v.setAttribute('viewBox', `0 0 ${W} ${H}`); });
+  [svg, pinSvg].forEach(v => { v.setAttribute('width', SW); v.setAttribute('height', H); v.setAttribute('viewBox', `0 0 ${SW} ${H}`); });
   let g = '', pg = '';
   others.forEach(el => {
     const p = pins.get(el); if (hash(el.dataset.bid + 's') % 3 === 0) return;   // 실은 몇 장만 이어서 덜 복잡하게
@@ -107,7 +105,7 @@ function layout() {
   const sh = id => `<defs><filter id="${id}" x="-5%" y="-5%" width="110%" height="120%"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity=".45"/></filter></defs>`;
   svg.innerHTML = `${sh('bsh')}<g filter="url(#bsh)">${g}</g>`;
   pinSvg.innerHTML = `${sh('bsh2')}<g filter="url(#bsh2)">${pg}</g>`;
-  return { W, H, vh: wrap.clientHeight, c0 };
+  return { W, SW, H, vh, c0, min: Math.min(.5, (W - 12) / SW, vh / H) };   // 판 전체가 한 화면에 들어올 만큼까지 줄일 수 있게
 }
 
 // ---------- 끌어서 이동, 핀치 줌 ----------
@@ -116,8 +114,8 @@ let dim = null, g = null, moved = false;
 const pts = new Map();
 function clamp() {
   if (!dim) return;
-  T.s = Math.min(2.5, Math.max(0.5, T.s));
-  const sw = dim.W * T.s, sh = dim.H * T.s, m = 60;
+  T.s = Math.min(2.5, Math.max(dim.min || .5, T.s));
+  const sw = dim.SW * T.s, sh = dim.H * T.s, m = 60;
   T.x = rng(T.x, dim.W - sw - m, m); T.y = rng(T.y, dim.vh - sh - m, m);
 }
 function apply() { const st = document.getElementById('bstage'); if (st) st.style.transform = `translate(${T.x}px,${T.y}px) scale(${T.s})`; }
@@ -137,7 +135,7 @@ function bind(wrap) {
     pts.set(e.pointerId, local(e));
     if (g.pinch && pts.size >= 2) {
       const [a, b] = [...pts.values()], mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-      T.s = Math.min(2.5, Math.max(0.5, g.s0 * Math.hypot(a.x - b.x, a.y - b.y) / g.d0));
+      T.s = Math.min(2.5, Math.max(dim.min || .5, g.s0 * Math.hypot(a.x - b.x, a.y - b.y) / g.d0));
       T.x = mid.x - g.qx * T.s; T.y = mid.y - g.qy * T.s;
     } else if (!g.pinch) {
       const p = local(e), dx = p.x - g.sx, dy = p.y - g.sy;
@@ -155,7 +153,7 @@ function bind(wrap) {
   wrap.addEventListener('wheel', e => {                  // PC: 휠로 확대
     e.preventDefault();
     const p = local(e), s = T.s * (e.deltaY < 0 ? 1.1 : 1 / 1.1), q = { x: (p.x - T.x) / T.s, y: (p.y - T.y) / T.s };
-    T.s = Math.min(2.5, Math.max(0.5, s)); T.x = p.x - q.x * T.s; T.y = p.y - q.y * T.s; clamp(); apply();
+    T.s = Math.min(2.5, Math.max(dim.min || .5, s)); T.x = p.x - q.x * T.s; T.y = p.y - q.y * T.s; clamp(); apply();
   }, { passive: false });
   // 끌다가 손을 뗀 건 누른 걸로 치지 않아요
   wrap.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
@@ -165,7 +163,10 @@ function bind(wrap) {
 function mount() {
   const wrap = document.getElementById('bwrap'); if (!wrap) return;
   dim = layout(); bind(wrap);
-  if (!T.init) { T.init = true; T.s = 1; T.x = 0; T.y = dim.H <= dim.vh ? (dim.vh - dim.H) / 2 : dim.vh * .42 - dim.c0.y - 90; }   // 처음엔 가운데 아기 사진이 보이게
+  if (!T.init) {   // 처음엔 판 폭이 화면에 꼭 맞게, 가운데 아기 사진이 화면 가운데 오게
+    T.init = true; T.s = Math.min(1, (dim.W - 12) / dim.SW); T.x = (dim.W - dim.SW * T.s) / 2;
+    T.y = dim.H * T.s <= dim.vh ? (dim.vh - dim.H * T.s) / 2 : dim.vh / 2 - (dim.c0.y + 110) * T.s;
+  }
   clamp(); apply();
   // 사진이 늦게 뜨면 카드 높이가 바뀌니 다시 배치
   wrap.querySelectorAll('img').forEach(im => { if (!im.complete) im.addEventListener('load', () => { if (document.getElementById('bwrap') === wrap) { dim = layout(); clamp(); apply(); } }, { once: true }); });
