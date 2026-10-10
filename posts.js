@@ -2,7 +2,7 @@
 // 어느 화면에서나 오른쪽 위에 "📚 육아 글" 버튼이 떠 있고, 0.6초 길게 누른 채 끌면 옮길 수 있어요 (위치는 이 폰에 기억)
 // 데이터: Actions(town.yml)가 하루 한 번 만드는 data/posts.json. 글은 원래 사이트(네이버)에서 열려요
 (function () {
-const P = { data: null, at: 0, loading: false, tab: 'month', topic: '', month: null, read: {} };
+const P = { data: null, at: 0, loading: false, tab: 'month', topic: '', month: null, read: {}, seed: Math.random() * 1e9 | 0, more: false };
 const READK = 'soeun-posts-read';
 try { P.read = JSON.parse(localStorage.getItem(READK) || '{}') || {}; } catch (e) {}
 const NAMES = { chuncheon: '춘천시', wonju: '원주시', gangneung: '강릉시', donghae: '동해시', taebaek: '태백시', sokcho: '속초시', samcheok: '삼척시', hongcheon: '홍천군', hoengseong: '횡성군', yeongwol: '영월군', pyeongchang: '평창군', jeongseon: '정선군', cheorwon: '철원군', hwacheon: '화천군', yanggu: '양구군', inje: '인제군', goseong: '고성군', yangyang: '양양군' };
@@ -70,7 +70,16 @@ function sync() {
   bub.querySelector('i').hidden = !(P.data && P.data.updated && P.data.updated !== seen);
 }
 
-function list(L) {
+// 앱을 열 때마다(seed)·'다른 글 보기'마다 순서를 섞어 8개씩: 안 읽은 글 먼저
+const N = 8, hsh = t => { let h = 7; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) | 0; return h >>> 0; };
+function pick(L) {
+  if (!L || L.length <= N) return L;
+  const o = L.map(x => ({ x, r: (P.read[x.u] ? 2e9 : 0) + hsh(P.seed + x.u) % 1e9 })).sort((a, b) => a.r - b.r).map(o => o.x);
+  return P.more ? o : o.slice(0, N);
+}
+const tools = L => L && L.length > N ? `<div class="pmore"><button class="ghost" data-post="shuffle">🔄 다른 글 보기</button><button class="ghost" data-post="all">${P.more ? '8개만 보기' : `모두 보기 (${L.length})`}</button></div>` : '';
+function list(L0) {
+  const L = pick(L0);
   if (!L || !L.length) return `<p class="vempty">${P.loading ? '불러오는 중…' : '글을 아직 못 받았어요. 처음 설정하면 하루 안에 생겨요.'}</p>`;
   return `<div class="plist">${L.map(x => `<a class="post ${P.read[x.u] ? 'read' : ''}" href="${esc(x.u)}" target="_blank" rel="noopener" data-post="read" data-u="${esc(x.u)}">
     <span class="pk ${x.k}">${x.k === 'b' ? '블로그' : '카페'}</span>
@@ -86,11 +95,11 @@ function render_() {
   const seg = `<div class="seg" style="margin-top:14px">${[['month', '월령별'], ['topic', '주제별'], ['town', '우리 동네']].map(([k, l]) => `<button class="${P.tab === k ? 'on' : ''}" data-post="tab" data-v="${k}">${l}</button>`).join('')}</div>`;
   let body = '';
   if (P.tab === 'month') {
-    body = `<div class="pmon"><button data-post="mon" data-v="-1" aria-label="이전 월령" ${m <= 0 ? 'disabled' : ''}>◀</button><b>${m === 0 ? '신생아' : m + '개월 아기'}</b>${m === myMonth() ? '<em>지금</em>' : ''}<button data-post="mon" data-v="1" aria-label="다음 월령" ${m >= 24 ? 'disabled' : ''}>▶</button></div>${list(D.months && D.months[m])}`;
+    body = `<div class="pmon"><button data-post="mon" data-v="-1" aria-label="이전 월령" ${m <= 0 ? 'disabled' : ''}>◀</button><b>${m === 0 ? '신생아' : m + '개월 아기'}</b>${m === myMonth() ? '<em>지금</em>' : ''}<button data-post="mon" data-v="1" aria-label="다음 월령" ${m >= 24 ? 'disabled' : ''}>▶</button></div>${list(D.months && D.months[m])}${tools(D.months && D.months[m])}`;
   } else if (P.tab === 'topic') {
-    body = `<div class="chips" style="margin:2px 0 12px">${topics.map(t => `<button class="chip ${t === tp ? 'on' : ''}" data-post="topic" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>${list(D.topics && D.topics[tp])}`;
+    body = `<div class="chips" style="margin:2px 0 12px">${topics.map(t => `<button class="chip ${t === tp ? 'on' : ''}" data-post="topic" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>${list(D.topics && D.topics[tp])}${tools(D.topics && D.topics[tp])}`;
   } else {
-    body = `<p class="hint" style="margin:0 0 10px">${NAMES[code]} 근처 아기랑 가 볼 만한 곳 글이에요. 지역은 병원 수사·동네 탐문에서 바꿔요.</p>${list(D.regions && D.regions[code])}`;
+    body = `<p class="hint" style="margin:0 0 10px">${NAMES[code]} 근처 아기랑 가 볼 만한 곳 글이에요. 지역은 병원 수사·동네 탐문에서 바꿔요.</p>${list(D.regions && D.regions[code])}${tools(D.regions && D.regions[code])}`;
   }
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>육아 글 모음</h1><p>네이버 블로그·카페 글을 하루 한 번 모아요. 누르면 원래 글이 열려요.</p></header>
     ${seg}<section style="margin-top:12px">${body}</section>
@@ -103,9 +112,11 @@ document.addEventListener('click', e => {
   const v = b.dataset.v;
   switch (b.dataset.post) {
     case 'close': S.view = ''; render(); window.scrollTo(0, 0); break;
-    case 'tab': P.tab = v; render(); break;
+    case 'tab': P.tab = v; P.more = false; render(); break;
     case 'mon': P.month = Math.max(0, Math.min(24, (P.month == null ? myMonth() : P.month) + +v)); render(); break;
     case 'topic': P.topic = v; render(); break;
+    case 'shuffle': P.seed = Math.random() * 1e9 | 0; P.more = false; render(); toast('다른 글로 바꿨어요'); break;
+    case 'all': P.more = !P.more; render(); break;
     case 'read': P.read[b.dataset.u] = Date.now(); try { const k = Object.keys(P.read); if (k.length > 300) k.sort((a, c) => P.read[a] - P.read[c]).slice(0, k.length - 300).forEach(x => delete P.read[x]); localStorage.setItem(READK, JSON.stringify(P.read)); } catch (x) {} b.classList.add('read'); break;
   }
 });
@@ -121,6 +132,7 @@ css.textContent = `
 .pbub.drag{transition:none;box-shadow:0 10px 24px rgba(31,42,68,.35);scale:1.12}
 .pbub:active:not(.drag){scale:.94}
 @media (prefers-reduced-motion:reduce){.pbub{transition:none}}
+.pmore{display:flex;gap:8px;justify-content:center;margin:10px 0 2px}.pmore .ghost{font-size:13px;min-height:38px}
 .pmon{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px}
 .pmon b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--navy)}
 .pmon em{font-style:normal;font-size:11px;background:var(--red);color:#fff;border-radius:99px;padding:1px 8px}

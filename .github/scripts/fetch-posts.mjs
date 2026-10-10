@@ -63,6 +63,12 @@ async function mix(query, sort, n, ok) {
   return out;
 }
 
+// 여러 검색(정확도순 + 최신순)을 합쳐 넉넉히 모아요: 앱에서 8개씩 돌려 보여 줘서 열 때마다·'다른 글 보기'마다 다른 글이 나와요
+async function pool(qs, n, ok) {
+  const out = [], seen = new Set();
+  for (const [q, sort] of qs) { for (const x of await mix(q, sort, n, ok)) if (!seen.has(x.t) && !seen.has(x.u) && out.length < n) { seen.add(x.t); seen.add(x.u); out.push(x); } if (out.length >= n) break; }
+  return out;
+}
 const TOPICS = [['수면', '아기 수면교육'], ['이유식', '아기 이유식'], ['발달', '아기 발달 놀이'], ['아플 때', '아기 열 감기 대처'], ['육아템', '육아템 추천'], ['외출', '아기랑 가볼만한곳'], ['예방접종', '아기 예방접종 후기'], ['엄마·아빠', '육아 꿀팁']];
 way = await pickWay();
 if (!way) { console.error('네이버 검색 API에 연결하지 못했어요 (API HUB 앱에 블로그·카페글 검색을 골랐는지, 키를 바르게 넣었는지 확인해 주세요)'); process.exit(1); }
@@ -71,13 +77,13 @@ const babyOk = x => BABY.test(x.t + ' ' + x.d);
 for (let m = 0; m <= 24; m++) {
   // 제목에 그 월령이 딱 들어간 글만 (3개월에 13개월·아기고양이 글이 섞이지 않게)
   const mm = new RegExp(`(^|[^0-9])${m}\\s?개월`), ok = m === 0 ? (x => /신생아|조리원|50일|백일|100일/.test(x.t) && babyOk(x)) : (x => mm.test(x.t) && babyOk(x));
-  out.months[m] = await mix(m === 0 ? '신생아 육아' : `${m}개월 아기 육아`, 'sim', 12, ok);
+  out.months[m] = await pool(m === 0 ? [['신생아 육아', 'sim'], ['신생아 육아', 'date'], ['신생아 조리원', 'sim']] : [[`${m}개월 아기 육아`, 'sim'], [`${m}개월 아기`, 'date'], [`${m}개월 아기 발달`, 'sim']], 30, ok);
   console.log(`월령 ${m}개월: ${out.months[m].length}`);
 }
-for (const [k, q] of TOPICS) { out.topics[k] = await mix(q, 'sim', 12, babyOk); console.log(`주제 ${k}: ${out.topics[k].length}`); }
+for (const [k, q] of TOPICS) { out.topics[k] = await pool([[q, 'sim'], [q, 'date']], 30, babyOk); console.log(`주제 ${k}: ${out.topics[k].length}`); }
 for (const r of REGIONS) {
   const base = r.name.replace(/[시군]$/, ''), ok = x => x.t.includes(base) && /아기|아이|유아|키즈|육아|가볼만|가족|어린이|놀이|체험|공원|카페/.test(x.t + ' ' + x.d) && !/아고다|호텔 예약|숙소 예약|펜션|라인업|초대가수/.test(x.t + ' ' + x.d);
-  out.regions[r.code] = await mix(`${base} 아기랑 가볼만한곳`, 'sim', 10, ok);
+  out.regions[r.code] = await pool([[`${base} 아기랑 가볼만한곳`, 'sim'], [`${base} 아기랑`, 'date'], [`${base} 키즈카페`, 'sim']], 20, ok);
   console.log(`지역 ${r.name}: ${out.regions[r.code].length}`);
 }
 // 동네 소식: 우리 시·군의 아이 대상 행사·체험·공연 소식 (블로그·카페·뉴스 최신순, 3주 안)
