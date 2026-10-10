@@ -20,7 +20,7 @@
 - viewer.js: 사진·보드 카드 크게 보기(3칸 트랙으로 옆으로 넘기기, 핀치 줌), 안드로이드 뒤로가기, 길게 누르기 막기
 - board.js: 사건 앨범 > 수사 보드
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
-- album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report')
+- album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기
 - characters.js: 다람쥐 캐릭터 SVG (CHARS.svg: baby=소은 탐정, mom=엄마 수사관, dad=아빠 수사관, 소품 lens/shield/spoon/thermo/camera/acorn/note/heart), 탭별 안내 말풍선 CHARS.guide(tab), 편집창 제목 옆엔 이 폰 수사관 얼굴
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
@@ -39,7 +39,7 @@
   - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
   - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
   - recipes/{YYYY-MM}: title, file, stages[{ stage, items[{ d, meal, raw, ing[{ n, g }], how, src }] }], by, updatedAt
-- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장), board: true/false = 수사 보드에 붙인 사진
+- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id), board: true/false = 수사 보드에 붙인 사진
 - 보안 규칙: families/{fid} 아래는 members에 있는 사람만 읽기·쓰기 (members 제외 하위 컬렉션 전체 허용이라 새 컬렉션도 규칙 수정 불필요)
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
 

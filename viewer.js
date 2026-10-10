@@ -43,6 +43,7 @@ function info(key) {
   if (mn) return { cap: `${mn.title || '식단표'} (${mn.month.replace('-', '.')})`, edit: () => openMenu(key) };
   const m = S.moments.find(x => x.id === key);
   if (m) {
+    if (m.type === 'extra') { const pm = S.moments.find(x => x.id === m.of); return { cap: `${pm ? pm.title : '최초 목격'} 사진, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => pm ? openMoment(pm.id) : null, boardId: key }; }
     if (m.type === 'report') return { cap: `100일 보고서 사진`, edit: () => ALBUM.openReport(), boardId: key };
     if (m.type === 'free') return { cap: `${m.title || '현장 사진'}, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => ALBUM.openFree(key), boardId: key };
     return { cap: `${m.title}, 생후 ${dayNo(m.date)}일 (${fmtK(m.date, true)})`, edit: () => openMoment(key), boardId: key };

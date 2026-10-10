@@ -17,7 +17,7 @@ const TBL = {
   ep: ['title', 'start', 'end', 'memo'],
   log: ['ep', 'kind', 'at', 'value', 'dose', 'site', 'memo', 'by'],
   visit: ['date', 'hospital', 'diag', 'rx', 'next', 'ask', 'by'],
-  mom: ['type', 'title', 'date', 'memo', 'photo', 'by'],
+  mom: ['type', 'title', 'date', 'memo', 'photo', 'by', 'of'],   // of: 최초 목격 추가 사진(type:'extra')이 붙은 기록 id
   food: ['name', 'start', 'result', 'reaction', 'memo', 'by'],
   meal: ['date', 'slot', 'menu', 'amount', 'eat', 'memo', 'photo', 'by'],
   cube: ['name', 'count', 'made', 'memo'],
