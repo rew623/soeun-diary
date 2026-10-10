@@ -77,7 +77,7 @@ for (let m = 0; m <= 24; m++) {
 for (const [k, q] of TOPICS) { out.topics[k] = await mix(q, 'sim', 12, babyOk); console.log(`주제 ${k}: ${out.topics[k].length}`); }
 for (const r of REGIONS) {
   const base = r.name.replace(/[시군]$/, ''), ok = x => x.t.includes(base) && /아기|아이|유아|키즈|육아|가볼만|가족|어린이|놀이|체험|공원|카페/.test(x.t + ' ' + x.d) && !/아고다|호텔 예약|숙소 예약|펜션|라인업|초대가수/.test(x.t + ' ' + x.d);
-  out.regions[r.code] = await mix(`${base} 아기랑 가볼만한곳`, 'date', 10, ok);
+  out.regions[r.code] = await mix(`${base} 아기랑 가볼만한곳`, 'sim', 10, ok);
   console.log(`지역 ${r.name}: ${out.regions[r.code].length}`);
 }
 console.log(`호출 ${calls}번, 실패 ${fails}번`);

@@ -90,7 +90,7 @@ function render_() {
   } else if (P.tab === 'topic') {
     body = `<div class="chips" style="margin:2px 0 12px">${topics.map(t => `<button class="chip ${t === tp ? 'on' : ''}" data-post="topic" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>${list(D.topics && D.topics[tp])}`;
   } else {
-    body = `<p class="hint" style="margin:0 0 10px">${NAMES[code]} 근처 "아기랑" 최신 글이에요. 지역은 병원 수사·동네 탐문에서 바꿔요.</p>${list(D.regions && D.regions[code])}`;
+    body = `<p class="hint" style="margin:0 0 10px">${NAMES[code]} 근처 아기랑 가 볼 만한 곳 글이에요. 지역은 병원 수사·동네 탐문에서 바꿔요.</p>${list(D.regions && D.regions[code])}`;
   }
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>육아 자료실</h1><p>네이버 블로그·카페 글을 하루 한 번 모아요. 누르면 원래 글이 열려요.</p></header>
     ${seg}<section style="margin-top:12px">${body}</section>

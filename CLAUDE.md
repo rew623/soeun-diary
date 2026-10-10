@@ -50,6 +50,7 @@
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
 
 ## 주의할 점
+- 탭 화면(#app)을 좌우로 밀면 옆 탭으로 넘어감 (index.html 하단). 지도·수사 보드(#bwrap)·입력칸·사진 고르기 중·하위 화면(S.view)은 제외, 막고 싶은 칸엔 data-noswipe
 - 사건 앨범 칸과 사진첩 달 묶음은 접기 가능 (data-fold, localStorage soeun-fold). 사진첩은 최근 두 달만 기본으로 펼침
 - 파일 선택 칸(input type=file)은 #app 밖(body에 고정)이나 편집창(sheet) 안에 둘 것. 파일 창에서 돌아올 때 화면을 다시 그려 #app 안의 칸이 사라짐
 - GitHub Pages 배포(pages build and deployment)가 GitHub 쪽 오류로 가끔 실패함. 실패한 job을 재실행하면 됨

@@ -1260,6 +1260,37 @@ loadCache();
 refresh();
 setInterval(()=>{if(S.tab==='sick'&&S.mode==='ok'&&!$sheet.classList.contains('open'))render()},60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!busy&&!$sheet.classList.contains('open'))refresh()});
+// 좌우로 밀면 옆 탭으로 (손가락을 따라 화면이 움직이고, 충분히 밀면 부드럽게 넘어가요)
+// 지도·수사 보드·입력칸·사진 고르기 중·하위 화면(병원 수사, 보고서 등)에서는 안 해요
+(function(){
+  const ORDER=['grow','vac','food','sick','album','town'];
+  let sw=null;
+  const W=()=>$app.clientWidth||innerWidth;
+  const setX=(x,ms)=>{$app.style.transition=ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1),opacity ${ms}ms`:'none';$app.style.transform=x?`translate3d(${x}px,0,0)`:'';$app.style.opacity=x?String(Math.max(.4,1-Math.abs(x)/W()*0.6)):''};
+  $app.addEventListener('touchstart',e=>{
+    sw=null;
+    if(e.touches.length!==1||S.mode!=='ok'||S.view||!S.profile||$sheet.classList.contains('open'))return;
+    if(e.target.closest('input,textarea,select,.hmap,.hmapwrap,#bwrap,.board,[data-noswipe]'))return;
+    if(document.querySelector('.agrid.selmode'))return;
+    const t=e.touches[0];sw={x:t.clientX,y:t.clientY,t:Date.now(),lock:0,dx:0};
+  },{passive:true});
+  $app.addEventListener('touchmove',e=>{
+    if(!sw)return;const t=e.touches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;
+    if(!sw.lock){if(Math.abs(dx)<10&&Math.abs(dy)<10)return;sw.lock=Math.abs(dx)>Math.abs(dy)*1.4?1:-1}
+    if(sw.lock<0){sw=null;return}
+    e.preventDefault();
+    const i=ORDER.indexOf(S.tab),edge=(dx>0&&i<=0)||(dx<0&&i>=ORDER.length-1);
+    sw.dx=edge?dx*0.25:dx;setX(sw.dx,0);
+  },{passive:false});
+  const end=()=>{
+    if(!sw||sw.lock!==1){sw=null;return}
+    const dx=sw.dx,v=Math.abs(dx)/Math.max(1,Date.now()-sw.t),i=ORDER.indexOf(S.tab),j=i+(dx<0?1:-1);sw=null;
+    if(j<0||j>=ORDER.length||!(Math.abs(dx)>W()*0.22||(v>0.45&&Math.abs(dx)>40))){setX(0,220);return}
+    const dir=dx<0?-1:1;setX(dir*W(),180);
+    setTimeout(()=>{S.tab=ORDER[j];S.view='';render();window.scrollTo(0,0);setX(-dir*W()*0.35,0);requestAnimationFrame(()=>requestAnimationFrame(()=>setX(0,240)))},170);
+  };
+  $app.addEventListener('touchend',end);$app.addEventListener('touchcancel',end);
+})();
 </script>
 <script type="module" src="app.js"></script>
 </body>
