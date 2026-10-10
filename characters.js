@@ -15,7 +15,13 @@ const PROPS = {
   camera: '<rect x="73" y="80" width="30" height="21" rx="6" fill="#1F2A44"/><rect x="78" y="76" width="9" height="5" rx="2" fill="#1F2A44"/><circle cx="88" cy="90.5" r="6.5" fill="#DCE7F1" stroke="#FFF8EC" stroke-width="2.5"/><circle cx="98" cy="84" r="1.6" fill="#F6B4AA"/>',
   acorn: '<g transform="translate(4 -9)"><ellipse cx="88" cy="93" rx="8.5" ry="10" fill="#D99A5B"/><path d="M78 88q10-11 20 0z" fill="#7A4B2A"/><path d="M88 78v-5" stroke="#7A4B2A" stroke-width="2.5" stroke-linecap="round"/><path d="M84 93q2 4 5 4" stroke="#fff" stroke-opacity=".6" stroke-width="2" fill="none" stroke-linecap="round"/></g>',
   note: '<rect x="76" y="72" width="24" height="30" rx="3" fill="#FFFDF7" stroke="#C9B48E" stroke-width="2" transform="rotate(8 88 87)"/><path d="M81 81h14M80 87h14M79 93h9" stroke="#C9B48E" stroke-width="2" stroke-linecap="round" transform="rotate(8 88 87)"/><circle cx="96" cy="97" r="5" fill="none" stroke="#B3261E" stroke-width="2"/>',
-  heart: '<path d="M88 100c-9-6-14-11-14-17a6 6 0 0 1 14-3 6 6 0 0 1 14 3c0 6-5 11-14 17z" fill="#F08A8A"/><path d="M80 82a3 3 0 0 1 4-2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>'
+  heart: '<path d="M88 100c-9-6-14-11-14-17a6 6 0 0 1 14-3 6 6 0 0 1 14 3c0 6-5 11-14 17z" fill="#F08A8A"/><path d="M80 82a3 3 0 0 1 4-2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  rattle: '<path d="M78 98l12-17" stroke="#F4C542" stroke-width="4" stroke-linecap="round"/><circle cx="94" cy="75" r="8.5" fill="#F49C9C"/><circle cx="91" cy="72" r="1.6" fill="#fff"/><circle cx="97" cy="77" r="1.6" fill="#fff"/><circle cx="93" cy="79" r="1.2" fill="#FCE8B4"/><path d="M89 69a6 6 0 0 1 5-2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+  bottle: '<g transform="rotate(18 90 84)"><path d="M86 68q4-7 8 0z" fill="#F4C542"/><rect x="84.5" y="68" width="11" height="4" rx="1.5" fill="#7FC4E8"/><rect x="85" y="72" width="10" height="24" rx="4" fill="#FFFDF7" stroke="#9DBEE3" stroke-width="1.6"/><rect x="86.5" y="82" width="7" height="12.5" rx="2.5" fill="#FFF3DD"/><path d="M87 77h3M87 81h3" stroke="#9DBEE3" stroke-width="1.2"/></g>',
+  balloon: '<path d="M80 96q8-8 2-16t10-16" stroke="#B9A889" stroke-width="1.4" fill="none"/><ellipse cx="94" cy="54" rx="10" ry="12" fill="#F49C9C"/><path d="M92 66l2 3 2-3z" fill="#E07A7A"/><path d="M89 48a5 6 0 0 1 4-4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  bouquet: '<circle cx="88" cy="73" r="5" fill="#F49CB8"/><circle cx="97" cy="76" r="5" fill="#FCE8B4"/><circle cx="93" cy="67" r="4.5" fill="#F6B4AA"/><circle cx="88" cy="73" r="1.6" fill="#E59A5C"/><circle cx="97" cy="76" r="1.6" fill="#E59A5C"/><circle cx="93" cy="67" r="1.4" fill="#E59A5C"/><path d="M80 98l7-20 13 5z" fill="#C9E4C5" stroke="#7FB77E" stroke-width="1.2"/><path d="M84 88l8 3" stroke="#F49C9C" stroke-width="2.4" stroke-linecap="round"/>',
+  coffee: '<path d="M89 70q-3-4 0-8M95 70q-3-4 0-8" stroke="#C9B48E" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M82 74h16l-2 20q0 3-3 3h-6q-3 0-3-3z" fill="#FFFDF7" stroke="#B97648" stroke-width="1.8"/><ellipse cx="90" cy="75" rx="7.5" ry="2" fill="#8C5530"/><path d="M97 79q6 1 4 7t-6 2" stroke="#B97648" stroke-width="1.8" fill="none"/><rect x="83.5" y="83" width="13" height="4" fill="#F49C9C" opacity=".7"/>',
+  wrench: '<path d="M79 98l14-17" stroke="#8C99A6" stroke-width="5" stroke-linecap="round"/><circle cx="96" cy="77" r="7" fill="#9AA5B1"/><circle cx="99" cy="74" r="3.2" fill="#FFF8EC"/><path d="M80 97l5-6" stroke="#B3261E" stroke-width="5" stroke-linecap="round"/>'
 };
 
 // 소은 탐정 모자 (도토리로 바꿔 쓰기, GAME.skin())
@@ -30,6 +36,9 @@ const HATS = {
   cap: '<path d="M30 39q24-32 48 0z" fill="#B3261E"/><path d="M62 37q18-3 27 4q-13 3-27-1z" fill="#8E1E17"/><circle cx="54" cy="14" r="2.6" fill="#8E1E17"/><path d="M54 15v22" stroke="#8E1E17" stroke-width="1.2" opacity=".6"/><text x="46" y="33" font-size="10" font-weight="700" font-family="sans-serif" fill="#fff">S</text>',
   straw: '<ellipse cx="54" cy="37" rx="37" ry="7" fill="#E8C77A"/><path d="M38 37q0-22 16-22t16 22z" fill="#F0D48E"/><rect x="38" y="29" width="32" height="5" fill="#F49C9C"/><path d="M24 37q30 6 60 0" stroke="#D4B062" stroke-width="1.2" fill="none"/>',
   bunny: '<g transform="rotate(-14 42 24)"><ellipse cx="42" cy="13" rx="6.5" ry="16" fill="#FFFDF7" stroke="#F0D0D8"/><ellipse cx="42" cy="14" rx="3" ry="11" fill="#F6B4AA"/></g><g transform="rotate(14 66 24)"><ellipse cx="66" cy="13" rx="6.5" ry="16" fill="#FFFDF7" stroke="#F0D0D8"/><ellipse cx="66" cy="14" rx="3" ry="11" fill="#F6B4AA"/></g><path d="M27 38q27-24 54 0" stroke="#F49CB8" stroke-width="4.5" fill="none" stroke-linecap="round"/>',
+  bear: '<path d="M27 39q27-26 54 0" stroke="#8C5530" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="33" cy="24" r="8" fill="#B98A5E"/><circle cx="33" cy="24" r="4" fill="#F6B4AA"/><circle cx="75" cy="24" r="8" fill="#B98A5E"/><circle cx="75" cy="24" r="4" fill="#F6B4AA"/>',
+  beret: '<ellipse cx="50" cy="31" rx="27" ry="9" fill="#B3261E" transform="rotate(-10 50 31)"/><path d="M27 36q24 6 50-4" stroke="#8E1E17" stroke-width="2" fill="none"/><circle cx="54" cy="21" r="2.6" fill="#8E1E17"/>',
+  tiara: '<path d="M34 37l4-12 6 7 10-14 10 14 6-7 4 12z" fill="#F4E08A" stroke="#C99A1E" stroke-width="1.5" stroke-linejoin="round"/><circle cx="54" cy="27" r="3" fill="#F49CB8"/><circle cx="41" cy="32" r="1.8" fill="#7FC4E8"/><circle cx="67" cy="32" r="1.8" fill="#7FC4E8"/>',
   chef: '<ellipse cx="45" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="63" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="54" cy="15" rx="11" ry="9" fill="#fff" stroke="#E0C9A2"/><rect x="38" y="24" width="32" height="13" rx="3" fill="#fff" stroke="#E0C9A2"/>'
 };
 // 옷 (도토리로 사서 소은·엄마·아빠 따로 입히기, GAME.wear(who)) — 몸통 타원 안에 맞춰 그림(clip), 밖으로 나오는 건 out
@@ -152,7 +161,7 @@ function guide(tab) {
     <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 저를 누르면 다음 말` : ''}</small></div></div>`;
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-guide]'); if (!b) return;
+  const b = e.target.closest('[data-guide]'); if (!b || e.target.closest('[data-rfx],[data-roompic]') || b.closest('.groom-edit')) return;
   const tab = b.dataset.guide; seen[tab] = (seen[tab] || 0) + 1;
   const old = b.closest('.guide'), t = document.createElement('div'); t.innerHTML = guide(tab);
   const nu = t.firstElementChild; old.replaceWith(nu); nu.classList.add('hop');

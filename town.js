@@ -329,5 +329,12 @@ css.textContent = `
 .evd{flex-shrink:0;font-family:var(--display);font-size:13px;color:var(--navy);white-space:nowrap}.evd.on{color:var(--red)}`;
 document.head.appendChild(css);
 
-window.TOWN = { render: render_, disHtml, load };
+// 방의 날씨 창용: 지금 시각 산책 지수·날씨 그림 (아직 못 받았으면 받기 시작하고 null)
+function now() {
+  if (!T.town) { if (!T.loading) load(); return null; }
+  const code = reg(), W = T.town.weather && T.town.weather.data && T.town.weather.data[code]; if (!W || !W.length) return null;
+  const k = nowKey().slice(0, 10), h = W.find(x => x[0].slice(0, 10) >= k) || W[W.length - 1];
+  return { s: score(h, code).s, tmp: h[1], ico: ico(h), name: NAMES[code] };
+}
+window.TOWN = { render: render_, disHtml, load, now };
 })();

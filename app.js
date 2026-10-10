@@ -58,7 +58,7 @@ const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const fref = () => doc(db, 'families', M.fid);
-const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid'];
+const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos'];
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
 const list = c => [...M.col[c].values()].sort((a, b) => ((a._o ?? 0) - (b._o ?? 0)) || String(a.id).localeCompare(String(b.id)));
 const app = () => window.__app;
@@ -267,7 +267,7 @@ const H = {
   // 놀이 저장 (families/{fid}/game/shared): 도토리는 늘고 준 만큼만(increment) 보내 두 폰이 동시에 모아도 안 사라져요
   async saveGame(obj, acornDelta, union) {
     const row = {};
-    Object.keys(union || {}).forEach(k => { if (['hats', 'room', 'clothes', 'stickers'].includes(k) && Array.isArray(union[k]) && union[k].length) row[k] = arrayUnion(...union[k].map(String)); });
+    Object.keys(union || {}).forEach(k => { if (['hats', 'room', 'clothes', 'stickers', 'props'].includes(k) && Array.isArray(union[k]) && union[k].length) row[k] = arrayUnion(...union[k].map(String)); });
     GAME_KEYS.forEach(k => { if (k !== 'acorn' && obj && obj[k] !== undefined) row[k] = obj[k]; });
     if (obj && obj.acornSet != null) row.acorn = Math.max(0, Math.round(+obj.acornSet) || 0);
     else if (acornDelta) row.acorn = increment(Math.round(+acornDelta) || 0);

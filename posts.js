@@ -139,5 +139,5 @@ css.textContent = `
 .post.read b{color:var(--muted);font-weight:400}`;
 document.head.appendChild(css);
 
-window.POSTS = { render: render_, load, sync };
+window.POSTS = { render: render_, load, sync, fresh: () => { let seen = ''; try { seen = localStorage.getItem(SEENK) || ''; } catch (e) {} return !!(P.data && P.data.updated && P.data.updated !== seen); } };
 })();

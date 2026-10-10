@@ -3,7 +3,7 @@
 // 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid'];
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos'];
 const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -237,15 +237,46 @@ function card() {
 }
 
 // ---------- 도토리 놀이터 화면 (S.view='medals') : 놀이 | 꾸미기 | 계급·훈장 ----------
-const HATS = [['det', '탐정 모자', 0], ['flower', '꽃 화관', 5], ['bunny', '토끼 머리띠', 6], ['beanie', '털모자', 7], ['party', '생일 고깔', 8], ['cap', '야구 모자', 8], ['straw', '밀짚모자', 9], ['chef', '요리사 모자', 10], ['santa', '산타 모자', 12], ['crown', '왕관', 15]];
-// 엄마·아빠 모자 (s.hatOf {mom, dad}, ''면 원래 리본·중절모)
-function hatOf(who) { const h = (st().hatOf || {})[who]; return h || ''; }
-// 옷: 한 번 사면 셋 다 입을 수 있고, 입는 옷은 사람마다 따로 (s.clothes 산 옷, s.wear {baby, mom, dad})
 const CLOTHES = [['', '기본', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
   ['hoodie', '곰 후드티', 8], ['sailor', '세일러복', 8], ['bee', '꿀벌 옷', 9], ['tiger', '호랑이 옷', 9], ['soccer', '축구 유니폼', 9], ['dress', '꽃무늬 원피스', 10], ['trench', '탐정 코트', 10],
   ['dino', '공룡 옷', 10], ['tutu', '발레 튜튜', 11], ['suit', '정장', 12], ['santa', '산타 옷', 12], ['hanbok', '색동 한복', 15], ['hanbokB', '파랑 한복', 15]];
 const WHO = [['baby', '소은'], ['mom', '엄마'], ['dad', '아빠']];
-function wear(who) { const s = st(); return (s.wear || {})[who] || ''; }
+// 식구마다 따로 사는 꾸미기 (산 물건은 그 사람만, 두 폰엔 같이): [id, 이름, 도토리], 맨 앞은 기본(무료)
+const HATN = { det: '탐정 모자', flower: '꽃 화관', bunny: '토끼 머리띠', bear: '곰돌이 귀', beanie: '털모자', party: '생일 고깔', cap: '야구 모자', straw: '밀짚모자', chef: '요리사 모자', santa: '산타 모자', crown: '왕관', beret: '베레모', tiara: '티아라' };
+const CLN = Object.fromEntries(CLOTHES.map(c => [c[0], c]));
+const hatL = (ids, c) => ids.map((id, i) => [id, HATN[id] || '', c[i]]);
+const clL = ids => ids.map(id => [id, (CLN[id] || ['', '기본'])[1], (CLN[id] || [0, 0, 0])[2]]);
+const KIT = {
+  baby: { hat: hatL(['det', 'bunny', 'bear', 'flower', 'beanie', 'party', 'santa', 'crown'], [0, 6, 6, 5, 7, 8, 12, 15]),
+    cloth: clL(['', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'santa', 'hanbok']),
+    prop: [['lens', '돋보기', 0], ['rattle', '딸랑이', 3], ['bottle', '젖병', 3], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5]] },
+  mom: { hat: [['', '빨간 리본', 0], ...hatL(['flower', 'beret', 'bunny', 'beanie', 'straw', 'santa', 'tiara'], [5, 7, 6, 7, 9, 12, 14])],
+    cloth: clL(['', 'stripe', 'pajama', 'apron', 'cardigan', 'knit', 'rain', 'dress', 'trench', 'hanbok']),
+    prop: [['heart', '하트', 0], ['note', '수첩', 2], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6]] },
+  dad: { hat: [['', '중절모', 0], ...hatL(['det', 'cap', 'beanie', 'straw', 'chef', 'santa', 'crown'], [6, 8, 7, 9, 10, 12, 15])],
+    cloth: clL(['', 'stripe', 'pajama', 'hoodie', 'knit', 'soccer', 'apron', 'trench', 'suit', 'hanbokB']),
+    prop: [['camera', '카메라', 0], ['note', '수첩', 2], ['lens', '돋보기', 3], ['coffee', '커피', 4], ['wrench', '공구', 5], ['balloon', '풍선', 5]] }
+};
+const KINDS = [['hat', '🎩 모자', 'hats'], ['cloth', '👕 옷', 'clothes'], ['prop', '🧸 손에 든 소품', 'props']];
+const PROP0 = { baby: 'lens', mom: 'heart', dad: 'camera' };
+// 지금 쓰는 것
+function cur(s, who, kind) {
+  if (kind === 'hat') return who === 'baby' ? (s.hat || 'det') : ((s.hatOf || {})[who] || '');
+  if (kind === 'cloth') return (s.wear || {})[who] || '';
+  const p = (s.propOf || {})[who]; if (p) return p;
+  return who === 'baby' && s.slot && s.slot.prop ? String(s.slot.prop).slice(2) : PROP0[who];
+}
+// 가졌나: 기본(0) · 이 사람 몫으로 산 것 · 예전에 같이 쓰던 때 산 것(소은 몫, 또는 지금 입고 있는 사람 몫)
+function owns(s, who, kind, id) {
+  const it = KIT[who][kind].find(x => x[0] === id); if (!it) return false; if (!it[2]) return true;
+  const L = s[KINDS.find(k => k[0] === kind)[2]] || [];
+  if (L.includes(who + '.' + id)) return true;
+  if (L.includes(id) && (who === 'baby' || cur(s, who, kind) === id)) return true;
+  return kind === 'prop' && who === 'baby' && (s.room || []).includes('p-' + id);
+}
+function hatOf(who) { return cur(st(), who, 'hat'); }
+function wear(who) { return cur(st(), who, 'cloth'); }
+function propOf(who) { return cur(st(), who, 'prop'); }
 const HUB = [['play', '🎮 놀이'], ['deco', '🛋️ 꾸미기'], ['rank', '🏅 계급·훈장']];
 function medalsView() {
   const s = st(), on = medalsOn(), sk = streak(), wk = addDays(today(), -6), tab = G.hub || 'play';
@@ -262,10 +293,9 @@ function medalsView() {
   } else if (tab === 'deco') {
     const rc = window.ROOMS ? ROOMS.count() : { own: 0, all: 0 };
     body = `<section id="ghomeshop"><h2 class="sh"><span>🏠 첫 화면 방 꾸미기</span><span>모은 물건 ${rc.own}/${rc.all}</span></h2>
-      <p class="hint" style="margin:0 0 8px">자리마다 하나씩 골라 놓아요. 산 물건은 성장 수사(첫 화면) 방에 보여요. 창밖은 시간(낮·저녁·밤)과 계절에 따라 저절로 바뀌어요.</p>${roomSvg()}
+      <p class="hint" style="margin:0 0 8px">자리마다 하나씩 골라 놓아요. 산 물건은 성장 수사(첫 화면) 방에 보여요. ✨ 표시는 방에서 누르면 기능이 나오는 특수 소품이에요.</p>${window.ROOMS ? ROOMS.editor() : roomSvg()}
       ${window.ROOMS ? ROOMS.shop() : ''}</section>
-    ${hatsHtml(s)}
-    ${clothesHtml(s)}
+    ${kitHtml(s)}
     <p class="foot">도토리·가구·모자·옷·스티커는 엄마·아빠 폰에 똑같이 보여요. 게임 최고 기록과 오늘 한 놀이는 폰마다 따로예요.</p>`;
   } else {
     const card = role => { const r = rank(role), k = role === '엄마' ? 'mom' : 'dad', w = xp(role, wk);
@@ -282,34 +312,29 @@ function medalsView() {
 }
 
 // 구매 확인 창: 바로 사지 않고 미리보기·값·남는 도토리를 보여 준 뒤 '사기'
-function confirmBuy(name, cost, pv, attrs) {
+function confirmBuy(name, cost, pv, attrs, note) {
   const s = st(), lack = cost - s.acorn;
   pending = undefined;
   openSheet(`<h3>${esc(name)}, 살까요?</h3><div class="gbuy">${pv}</div>
     <p class="gbuyp">🌰 <b>${cost}</b>개 · 지금 ${s.acorn}개${lack > 0 ? '' : ` → 사고 나면 ${s.acorn - cost}개`}</p>
-    <p class="hint" style="text-align:center;margin:0 0 10px">한 번 사면 엄마·아빠 폰 모두에서 쓸 수 있어요.</p>
+    <p class="hint" style="text-align:center;margin:0 0 10px">${note || '한 번 사면 엄마·아빠 폰 모두에서 쓸 수 있어요.'}</p>
     <div class="actions"><button class="secondary" data-act="close">취소</button>${lack > 0 ? `<button class="primary" disabled>도토리 ${lack}개 모자라요</button>` : `<button class="primary" ${attrs} data-ok="1">🌰 ${cost}개로 사기</button>`}</div>`);
 }
 function whoSeg() { const who = G.wearWho || 'baby'; return `<div class="seg gwho">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${l}</button>`).join('')}</div>`; }
-function hatsHtml(s) {
-  const who = G.wearWho || 'baby', own = s.hats || ['det'];
-  const cur = who === 'baby' ? s.hat : ((s.hatOf || {})[who] || '');
-  const L = who === 'baby' ? HATS : [['', who === 'mom' ? '빨간 리본' : '중절모', 0], ...HATS];
-  const e = who === 'baby' ? eventHat() : null;
-  return `<section id="ghats"><h2 class="sh"><span>🎩 모자 가게</span><span>모은 모자 ${own.filter(h => h !== 'det').length}/${HATS.length - 1}</span></h2>
-    <p class="hint" style="margin:0 0 8px">한 번 사면 소은·엄마·아빠 모두 쓸 수 있어요.${e && s.hat === 'det' ? ` 오늘은 ${e[1]}! 소은이가 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.` : ''}</p>
+const kpv = (who, kind, id, size) => kind === 'hat' ? CHARS.svg(who, '', { face: true, size, hat: id }) : kind === 'cloth' ? CHARS.svg(who, '', { size, outfit: id }) : CHARS.svg(who, id, { size });
+function kitHtml(s) {
+  const who = G.wearWho || 'baby', nm = WHO.find(w => w[0] === who)[1], e = who === 'baby' ? eventHat() : null;
+  const allOpen = KINDS.every(([k]) => !isFold(`k-${k}`, true));
+  const bar = `<div class="rbar"><button class="ghost" data-game="kitfold" data-v="${allOpen ? 'close' : 'open'}">${allOpen ? '모두 접기 ▴' : '모두 펼치기 ▾'}</button></div>`;
+  return `<section id="gkit"><h2 class="sh"><span>👗 식구 꾸미기</span><span>모자 · 옷 · 소품</span></h2>
+    <p class="hint" style="margin:0 0 8px">소은·엄마·아빠가 각자 어울리는 물건을 따로 사요. 산 물건은 그 사람만 써요.${e && s.hat === 'det' ? ` 오늘은 ${e[1]}! 소은이가 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.` : ''}</p>
     ${whoSeg()}
-    <div class="ghats">${L.map(([id, nm, c]) => { const has = !id || id === 'det' || own.includes(id), on = cur === id;
-      return `<button class="ghat${on ? ' cur' : ''}" data-game="hat" data-id="${id}">${CHARS.svg(who, '', { face: true, size: 58, hat: id })}<b>${nm}</b><small>${on ? '쓰는 중' : has ? '쓰기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>`;
-}
-function clothesHtml(s) {
-  const who = G.wearWho || 'baby', cur = (s.wear || {})[who] || '', own = s.clothes || [];
-  return `<section id="gclothes"><h2 class="sh"><span>👕 옷 가게</span><span>모은 옷 ${own.length}/${CLOTHES.length - 1}</span></h2>
-    <p class="hint" style="margin:0 0 8px">한 번 사면 소은·엄마·아빠 모두 입을 수 있어요. 누구에게 입힐지 먼저 골라요.</p>
-    ${whoSeg()}
-    <div class="gwear">${WHO.map(([k, l]) => `<span class="${who === k ? 'on' : ''}">${CHARS.svg(k, '', { size: 78 })}<b>${l}</b><small>${(CLOTHES.find(c => c[0] === ((s.wear || {})[k] || '')) || CLOTHES[0])[1]}</small></span>`).join('')}</div>
-    <div class="ghats gcl">${CLOTHES.map(([id, nm, c]) => { const has = !id || own.includes(id), on = cur === id;
-      return `<button class="ghat${on ? ' cur' : ''}" data-game="wear" data-id="${id}">${CHARS.svg(who, '', { size: 64, outfit: id })}<b>${nm}</b><small>${on ? '입는 중' : has ? '입히기' : `🌰 ${c}`}</small></button>`; }).join('')}</div></section>`;
+    <div class="gwear">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${CHARS.svg(k, cur(s, k, 'prop'), { size: 78 })}<b>${l}</b></button>`).join('')}</div>
+    ${bar}${KINDS.map(([kind, label]) => { const L = KIT[who][kind], c = cur(s, who, kind), ci = L.find(x => x[0] === c), have = L.filter(x => x[2] && owns(s, who, kind, x[0])).length;
+      return `<div class="amon rgrp${isFold(`k-${kind}`, true) ? ' folded' : ''}"><h3 class="agh" data-fold="k-${kind}"><span>${label}</span><small class="rcur">${ci ? ci[1] : ''} · ${have}/${L.length - 1}</small></h3>
+        <div class="ghats${kind === 'hat' ? '' : ' gcl'}">${L.map(([id, n, cost]) => { const has = owns(s, who, kind, id), on = c === id;
+          return `<button class="ghat${on ? ' cur' : ''}${has ? '' : ' lock'}" data-game="kit" data-k="${kind}" data-id="${id}">${kpv(who, kind, id, kind === 'hat' ? 58 : 64)}<b>${n}</b><small>${on ? (kind === 'hat' ? '쓰는 중' : kind === 'cloth' ? '입는 중' : '드는 중') : has ? (kind === 'hat' ? '쓰기' : kind === 'cloth' ? '입히기' : '들기') : `🌰 ${cost}`}</small></button>`; }).join('')}</div></div>`; }).join('')}${bar}
+    <p class="foot" style="margin-top:6px">${nm} 몫으로 산 물건은 ${nm}만 써요. 엄마·아빠 폰에는 똑같이 보여요.</p></section>`;
 }
 
 // ---------- 명절·기념일 모자 (기본 탐정 모자일 때만 저절로) ----------
@@ -459,21 +484,18 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'wearwho': G.wearWho = b.dataset.v; render(); break;
-    case 'wear': {
-      const s = st(), c = CLOTHES.find(x => x[0] === b.dataset.id), who = G.wearWho || 'baby'; if (!c) return;
-      s.clothes = s.clothes || []; s.wear = s.wear || {};
-      if (c[0] && !s.clothes.includes(c[0])) {
-        if (b.dataset.ok !== '1') { confirmBuy(c[1], c[2], CHARS.svg(who, '', { size: 130, outfit: c[0] }), `data-game="wear" data-id="${c[0]}"`); return; }
-        if (s.acorn < c[2]) { toast(`도토리가 ${c[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= c[2]; s.clothes.push(c[0]); closeSheet(); toast(`${c[1]}을(를) 샀어요!`); confetti(); }
-      s.wear[who] = c[0]; save(s); render(); break;
-    }
-    case 'hat': {
-      const s = st(), who = G.wearWho || 'baby', id = b.dataset.id, h = HATS.find(x => x[0] === id);
-      if (id && !h) return;
-      if (h && !(s.hats || []).includes(h[0]) && h[2] > 0) {
-        if (b.dataset.ok !== '1') { confirmBuy(h[1], h[2], CHARS.svg(who, '', { face: true, size: 110, hat: id }), `data-game="hat" data-id="${id}"`); return; }
-        if (s.acorn < h[2]) { toast(`도토리가 ${h[2] - s.acorn}개 더 필요해요`); return; } s.acorn -= h[2]; s.hats = (s.hats || []).concat(h[0]); closeSheet(); toast(`${h[1]}을(를) 샀어요!`); confetti(); }
-      if (who === 'baby') s.hat = id || 'det'; else { s.hatOf = Object.assign({}, s.hatOf || {}, { [who]: id }); }
+    case 'kitfold': { const who = G.wearWho || 'baby', v = b.dataset.v === 'close'; KINDS.forEach(([k]) => setFold(`k-${k}`, v)); render(); break; }
+    case 'kit': {
+      const s = st(), who = G.wearWho || 'baby', kind = b.dataset.k, id = b.dataset.id, it = (KIT[who][kind] || []).find(x => x[0] === id); if (!it) return;
+      if (!owns(s, who, kind, id)) {
+        const nm = WHO.find(w => w[0] === who)[1];
+        if (b.dataset.ok !== '1') { confirmBuy(`${nm}의 ${it[1]}`, it[2], kpv(who, kind, id, kind === 'hat' ? 110 : 130), `data-game="kit" data-k="${kind}" data-id="${id}"`, `${nm} 몫이에요. 엄마·아빠 폰 모두에서 보여요.`); return; }
+        if (s.acorn < it[2]) { toast(`도토리가 ${it[2] - s.acorn}개 더 필요해요`); return; }
+        const key = KINDS.find(k => k[0] === kind)[2]; s.acorn -= it[2]; s[key] = (s[key] || []).concat(who + '.' + id); closeSheet(); toast(`${nm}의 ${it[1]}을(를) 샀어요!`); confetti();
+      }
+      if (kind === 'hat') { if (who === 'baby') s.hat = id || 'det'; else s.hatOf = Object.assign({}, s.hatOf || {}, { [who]: id }); }
+      else if (kind === 'cloth') s.wear = Object.assign({}, s.wear || {}, { [who]: id });
+      else s.propOf = Object.assign({}, s.propOf || {}, { [who]: id });
       save(s); render(); break;
     }
     case 'quiz': if (quizStart()) { G.game = 'quiz'; S.view = 'play'; render(); window.scrollTo(0, 0); } break;
@@ -521,7 +543,7 @@ button.gchip{min-height:30px}
 .grt i{display:block;height:8px;border-radius:99px;background:var(--card2);overflow:hidden;margin:3px 0}.grt u{display:block;height:100%;background:var(--red);border-radius:99px}
 .gbuy{display:grid;place-items:center;margin:4px 0 6px}.gbuy .chr{background:#FCEBD3;border-radius:20px}.gbuy .rpv{width:160px;height:auto;max-height:130px;border-radius:14px;background:#FFF8EC}.gbuy .rsw{width:120px;height:80px;border-radius:14px}.gbuy .rpp{font-size:56px}
 .gbuyp{text-align:center;font-size:15px;margin:4px 0}.gbuyp b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--red)}
-.gwho{margin-bottom:8px}.gwear{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.gwear span{display:flex;flex-direction:column;align-items:center;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:6px 2px}.gwear span.on{border:2.5px solid var(--red)}.gwear b{font-size:13px;color:var(--navy)}.gwear small{font-size:11px;color:var(--muted)}
+.gwho{margin-bottom:8px}.gwear{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.gwear>*{display:flex;flex-direction:column;align-items:center;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:6px 2px}.gwear .on{border:2.5px solid var(--red)}.ghat.lock .chr{opacity:.6;filter:grayscale(.3)}.gwear b{font-size:13px;color:var(--navy)}.gwear small{font-size:11px;color:var(--muted)}
 .gcl .chr{border-radius:14px!important;background:#FFF8EC!important}
 .ghats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ghat{display:flex;flex-direction:column;align-items:center;gap:2px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:8px 4px}
@@ -571,5 +593,7 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, confirmBuy };
+window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; },
+  // 방에서 식구를 누르면: 그 식구 꾸미기 칸으로 (접힌 칸은 펼쳐서)
+  kitFor: who => { G.wearWho = who; G.hub = 'deco'; KINDS.forEach(([k]) => setFold(`k-${k}`, false)); render(); const el = document.getElementById('gkit'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
 })();
