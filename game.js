@@ -66,6 +66,27 @@ function rank(role) {
 // 수사관 신분증에 붙는 계급 줄
 function rankHtml(role) { const r = rank(role); return `<span class="grank"><b>${r.name}</b><i><u style="width:${r.pct}%"></u></i></span>`; }
 
+// ---------- 수사관 신분증 (첫 화면 담당 수사관을 누르면): 사진이 크게 + 계급·기록 한눈에, 편집은 작은 단추 ----------
+function idCard(role) {
+  const k = role === '엄마' ? 'mom' : 'dad', p = S.profile || {}, ph = safeImg(PHOTOS[k]), r = rank(role), wk = xp(role, addDays(today(), -6)), me = myRole() === role;
+  const by = L => (L || []).filter(o => o.by === role);
+  const recs = by(S.records), moms = by(S.moments), photos = moms.filter(m => m.photo).length + recs.filter(x => x.photo).length;
+  const firsts = moms.filter(m => m.type === 'first' || !m.type).length, vacs = (S.vaccines || []).filter(v => v.done && v.by === role).length, meals = by(S.meals).length;
+  const dates = [...recs.map(x => x.date), ...moms.map(x => x.date), ...by(S.meals).map(x => x.date), ...(S.vaccines || []).filter(v => v.done && v.by === role).map(v => v.done)].filter(Boolean).sort();
+  const last = dates[dates.length - 1], other = role === '엄마' ? '아빠' : '엄마', wo = xp(other, addDays(today(), -6));
+  const stat = (ic, n, l) => `<span><em>${ic}</em><b>${n}</b><small>${l}</small></span>`;
+  pending = undefined;
+  openSheet(`<div class="idc">
+    <div class="idctop"><span class="idcno">수사관 신분증 · No.${fileNo()}</span><button class="ghost idced" data-act="inv" data-v="${role}">✏️ 편집</button></div>
+    ${ph ? `<button class="idcph" data-view="${k}" aria-label="사진 크게 보기"><img src="${ph}" alt="${role} 수사관 사진"></button>` : `<div class="idcph none">${CHARS.svg(k, (window.GAME && GAME.propOf ? GAME.propOf(k) : ''), { size: 150 })}<button class="ghost" data-act="inv" data-v="${role}">📷 사진 넣기</button></div>`}
+    <div class="idcname"><b>${role} 수사관</b>${p[k] ? `<span>${esc(p[k])}</span>` : ''}${me ? '<em>나</em>' : ''}</div>
+    <div class="idcrank"><span class="idcst">${r.name}</span><span class="idcrt"><small>Lv.${r.lv} · 경험치 ${r.x}점</small><i><u style="width:${r.pct}%"></u></i><small>${r.next ? `${r.next}까지 ${r.need}점` : '최고 계급이에요!'}</small></span></div>
+    <p class="idcwk">이번 주 <b>+${wk}점</b>${wk || wo ? ` · ${wk === wo ? `${other} 수사관과 동점` : wk > wo ? `${other} 수사관보다 ${wk - wo}점 앞서요 🔥` : `${other} 수사관이 ${wo - wk}점 앞서요`}` : ''}</p>
+    <div class="idcs">${stat('📏', recs.length, '성장 기록')}${stat('📷', photos, '사진')}${stat('👀', firsts, '최초 목격')}${stat('💉', vacs, '예방접종')}${meals ? stat('🥄', meals, '급식') : ''}</div>
+    <p class="foot" style="margin:8px 0 0;text-align:center">${last ? `마지막 기록 ${fmtK(last, true)} (생후 ${dayNo(last)}일)` : '아직 남긴 기록이 없어요'}</p>
+    <div class="actions"><button class="secondary" data-act="close">닫기</button></div></div>`);
+}
+
 // ---------- 연속 수사 ----------
 function activeDays() {
   const d = new Set();
@@ -543,6 +564,18 @@ button.gchip{min-height:30px}
 .grt i{display:block;height:8px;border-radius:99px;background:var(--card2);overflow:hidden;margin:3px 0}.grt u{display:block;height:100%;background:var(--red);border-radius:99px}
 .gbuy{display:grid;place-items:center;margin:4px 0 6px}.gbuy .chr{background:#FCEBD3;border-radius:20px}.gbuy .rpv{width:160px;height:auto;max-height:130px;border-radius:14px;background:#FFF8EC}.gbuy .rsw{width:120px;height:80px;border-radius:14px}.gbuy .rpp{font-size:56px}
 .gbuyp{text-align:center;font-size:15px;margin:4px 0}.gbuyp b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--red)}
+.idc{display:flex;flex-direction:column;align-items:center}
+.idctop{width:100%;display:flex;align-items:center;justify-content:space-between;margin:-4px 0 8px}.idcno{font-size:11.5px;color:var(--muted);letter-spacing:.02em}.idced{min-height:30px;padding:3px 10px;font-size:12px}
+.idcph{border:0;padding:0;background:none;width:min(78%,300px);aspect-ratio:4/5;border-radius:18px;overflow:hidden;box-shadow:0 6px 16px rgba(43,38,34,.25);border:6px solid #fff;transform:rotate(-1.5deg)}
+.idcph img{width:100%;height:100%;object-fit:cover;display:block}
+.idcph.none{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#FCEBD3;transform:none}
+.idcname{display:flex;align-items:baseline;gap:8px;margin:14px 0 6px}.idcname b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--navy)}.idcname span{font-size:14px;color:var(--muted)}.idcname em{font-style:normal;font-size:11px;background:var(--red);color:#fff;border-radius:99px;padding:1px 8px}
+.idcrank{width:100%;display:flex;align-items:center;gap:10px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:8px 12px}
+.idcst{font-family:var(--display);font-size:20px;color:#fff;background:var(--navy);border-radius:10px;padding:4px 10px;white-space:nowrap}
+.idcrt{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}.idcrt small{font-size:11.5px;color:var(--muted)}.idcrt i{display:block;height:8px;border-radius:99px;background:var(--card2);overflow:hidden}.idcrt u{display:block;height:100%;background:var(--red);border-radius:99px}
+.idcwk{margin:8px 0 6px;font-size:13.5px}.idcwk b{color:var(--red)}
+.idcs{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px}
+.idcs span{display:flex;flex-direction:column;align-items:center;background:var(--card2);border-radius:12px;padding:6px 2px}.idcs em{font-style:normal;font-size:16px}.idcs b{font-family:var(--display);font-weight:400;font-size:19px;color:var(--navy)}.idcs small{font-size:10.5px;color:var(--muted)}
 .gwho{margin-bottom:8px}.gwear{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.gwear>*{display:flex;flex-direction:column;align-items:center;background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:6px 2px}.gwear .on{border:2.5px solid var(--red)}.ghat.lock .chr{opacity:.6;filter:grayscale(.3)}.gwear b{font-size:13px;color:var(--navy)}.gwear small{font-size:11px;color:var(--muted)}
 .gcl .chr{border-radius:14px!important;background:#FFF8EC!important}
 .ghats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -593,7 +626,7 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; },
+window.GAME = { roomSvg, rankHtml, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
   // 방에서 식구를 누르면: 그 식구 꾸미기 칸으로 (접힌 칸은 펼쳐서)
   kitFor: who => { G.wearWho = who; G.hub = 'deco'; KINDS.forEach(([k]) => setFold(`k-${k}`, false)); render(); const el = document.getElementById('gkit'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
 })();

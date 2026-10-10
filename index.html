@@ -643,7 +643,7 @@ function renderGrow(){
 
   return `
   <div class="filebar"><span>사건 파일 No.${fileNo()}</span><button class="ghost" data-act="settings">대상 정보</button></div>
-  <div class="squad"><span class="lab">담당 수사관</span><div class="badges">${['엄마','아빠'].map(r=>{const k=r==='엄마'?'mom':'dad',nm=p[k],ph=safeImg(PHOTOS[k]);return `<button class="idb ${myRole()===r?'me':''}" ${ph?`data-view="${k}"`:`data-act="inv" data-v="${r}"`}>${ph?`<img class="ph" src="${ph}" alt="${r} 수사관 사진">`:`<span class="ph chrph">${CHARS.svg(k,'',{face:1,size:52})}</span>`}<span class="tx"><b>${r} 수사관</b>${GAME.rankHtml(r)}<span>${nm?esc(nm):'사진, 이름 추가'}</span>${myRole()===r?'<em style="align-self:flex-start;margin-top:2px">나</em>':''}</span></button>`}).join('')}</div></div>
+  <div class="squad"><span class="lab">담당 수사관</span><div class="badges">${['엄마','아빠'].map(r=>{const k=r==='엄마'?'mom':'dad',nm=p[k],ph=safeImg(PHOTOS[k]);return `<button class="idb ${myRole()===r?'me':''}" data-act="idcard" data-v="${r}">${ph?`<img class="ph" src="${ph}" alt="${r} 수사관 사진">`:`<span class="ph chrph">${CHARS.svg(k,'',{face:1,size:52})}</span>`}<span class="tx"><b>${r} 수사관</b>${GAME.rankHtml(r)}<span>${nm?esc(nm):'사진, 이름 추가'}</span>${myRole()===r?'<em style="align-self:flex-start;margin-top:2px">나</em>':''}</span></button>`}).join('')}</div></div>
   <div class="suspect">${pol}
     <div class="info"><span class="lab">수사 대상</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
   </div>
@@ -1239,6 +1239,7 @@ document.addEventListener('click',async e=>{
     if(ok){closeSheet();toast('삭제했어요');if(act==='delmom')ALBUM.dropExtras(a.dataset.id)}break}
   case 'role':closeSheet();await setRole(a.dataset.v);toast(a.dataset.v+' 수사관으로 등록했어요');break;
   case 'inv':openInv(a.dataset.v);break;
+  case 'idcard':GAME.idCard(a.dataset.v);break;
   case 'saveinv':{const role=a.dataset.v,k=role==='엄마'?'mom':'dad',p=S.profile;
     const np={name:p.name,birth:p.birth,mom:p.mom||'',dad:p.dad||''};np[k]=val('i-name');if(pending!==undefined)np[k+'Photo']=pending;
     if(document.getElementById('i-me').checked){np.role=role;try{localStorage.setItem('investigator',role)}catch(e){}S.me.role=role}
