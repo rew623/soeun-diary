@@ -186,7 +186,7 @@ function detailShort(code, d) {
   lines.push(`🌡️ 최저 ${lo}° · 최고 ${hi}°${hi - lo >= 10 ? ` — 일교차 ${hi - lo}°라 겉옷 챙겨요` : ''}`);
   const step = H.filter(h => hr(h) % 3 === 0 && hr(h) >= 6);
   const strip = step.map(h => `<span><small>${hr(h)}시</small><em>${ico(h)}</em><b>${h[1]}°</b><i>${h[4] >= 30 ? h[4] + '%' : ''}</i></span>`).join('');
-  return `<div class="wdet"><b class="wdt">🔎 ${dLabel(d)} 날씨 자세히</b><div class="wdps">${parts}</div><div class="wstrip">${strip}</div>${lines.map(l => `<p>${l}</p>`).join('')}</div>`;
+  return `<div class="wdet amon${isFold('t-det') ? ' folded' : ''}"><h3 class="agh wdt" data-fold="t-det">🔎 ${dLabel(d)} 날씨 자세히</h3><div class="wdps">${parts}</div><div class="wstrip">${strip}</div>${lines.map(l => `<p>${l}</p>`).join('')}<button class="afold" data-town="detfold">▴ 날씨 자세히 접기</button></div>`;
 }
 // 중기예보(3일 뒤~)로 쓰는 날씨 설명: 오전·오후 하늘과 강수확률, 최저·최고
 function midInfo(code, d) {
@@ -205,7 +205,7 @@ function detailMid(code, d) {
   const mp = Math.max(...[m.am, m.pm, m.all].filter(Boolean).map(x => x.pop)), wf = [m.am, m.pm, m.all].filter(Boolean).map(x => x.wf).join(' ');
   const lines = [/비|소나기/.test(wf) ? `☔ <b>비 소식</b>이 있어요 (강수확률 최대 ${mp}%) — 시간은 2~3일 전에 자세히 나와요` : /눈/.test(wf) ? `🌨️ <b>눈 소식</b>이 있어요 (강수확률 최대 ${mp}%)` : `🌤️ 비 소식 없어요 (강수확률 최대 ${mp}%)`];
   if (m.hi != null) lines.push(`🌡️ 최저 ${m.lo}° · 최고 ${m.hi}°${m.hi - m.lo >= 10 ? ` — 일교차 ${m.hi - m.lo}°라 겉옷 챙겨요` : ''}`);
-  return `<div class="wdet"><b class="wdt">🔎 ${dLabel(d)} 날씨 자세히</b><div class="wdps">${p('오전', m.am)}${p('오후', m.pm)}${p('하루', m.all)}</div>${lines.map(l => `<p>${l}</p>`).join('')}<p class="foot" style="margin:4px 0 0">기상청 중기예보라 오전·오후로만 나와요. 바람·습도·시간별은 가까워지면 보여요.</p></div>`;
+  return `<div class="wdet amon${isFold('t-det') ? ' folded' : ''}"><h3 class="agh wdt" data-fold="t-det">🔎 ${dLabel(d)} 날씨 자세히</h3><div class="wdps">${p('오전', m.am)}${p('오후', m.pm)}${p('하루', m.all)}</div>${lines.map(l => `<p>${l}</p>`).join('')}<p class="foot" style="margin:4px 0 0">기상청 중기예보라 오전·오후로만 나와요. 바람·습도·시간별은 가까워지면 보여요.</p><button class="afold" data-town="detfold">▴ 날씨 자세히 접기</button></div>`;
 }
 function week(code) {
   const W = (T.town && T.town.weather && T.town.weather.data && T.town.weather.data[code]) || [], M = T.town && T.town.mid, out = [];
@@ -345,6 +345,7 @@ document.addEventListener('click', e => {
     case 'evkid': T.evKid = !T.evKid; T.evMore = 12; render(); break;
     case 'evmore': T.evMore += 12; render(); break;
     case 'day': { T.day = b.dataset.v || null; render(); const el = document.getElementById('twalk'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); break; }
+    case 'detfold': { const box = b.closest('.wdet'); if (!box) break; setFold('t-det', true); box.classList.add('folded'); const h = box.querySelector('.agh'); if (h.getBoundingClientRect().top < 70) window.scrollTo({ top: Math.max(0, h.getBoundingClientRect().top + window.scrollY - 80), behavior: 'smooth' }); break; }
     case 'newsmore': T.newsOpen = true; render(); break;
     case 'newsfold': { T.newsOpen = false; render(); const el = document.getElementById('tnews'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); break; }
     case 'place': searchPlaces(b.dataset.v); break;
@@ -365,7 +366,7 @@ css.textContent = `
 .wd{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border-radius:12px;background:#FFFDF7;border:1.5px solid var(--line);font:inherit;color:inherit;min-width:0;cursor:pointer}
 .wd.sel{border:2.5px solid var(--red);background:#FFF3EF;box-shadow:0 2px 0 rgba(179,38,30,.25)}
 .wdet{margin:10px 0 4px;padding:10px 12px;background:#FFFDF7;border:1.5px dashed var(--line);border-radius:14px}
-.wdt{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);margin-bottom:6px}
+.wdet .wdt{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);margin:0 0 6px;padding:6px 10px}.wdet.folded{padding:6px}.wdet.folded .wdt{margin:0}.wdet .afold{margin-top:8px}
 .wdet p{margin:5px 0 0;font-size:13.5px;line-height:1.5}.wdet p b{color:var(--navy)}
 .wdps{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px}
 .wdp{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;border-radius:12px;background:var(--card2);text-align:center}
