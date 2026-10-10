@@ -38,11 +38,17 @@
 - studio.js: 기념 사진관(S.view='studio') + 같이 쓰는 그림 도구 window.CV (img·cover·kraft·tape·stamp·text·svgImg, photos()·stats()·nick()·occasion() 기념일(100일마다·돌 앞뒤 3일, 매달 그날), share(Web Share, 안 되면 저장)·save). 사진 한 장에 틀 5가지(탐정 도장·폴라로이드·사건 파일·필름·깔끔하게, 세로 1080×1350/정사각)·큰/작은 글씨·몸무게·키·말풍선·이모지 스티커(끌어 옮기기, 눌러서 작게·크게·돌리기·지우기) → JPEG로 카톡 보내기·저장·사건 앨범에 넣기(ALBUM.queue). 들어가는 곳: 성장 수사 기념일 배너, 사건 앨범 '📸 기념 사진관', 사진 크게 보기의 '🎨 꾸미기'(STUDIO.open(key))
 - posecam.js: 같은 포즈 촬영기(body에 붙는 .pcam 화면, POSECAM.open/close): 카메라 위에 지난 달 사진을 반투명하게 겹쳐(겹치기 슬라이더·좌우 뒤집기·격자·앞뒤 카메라) 같은 자세로 찍고 → 'N개월 사진으로'(mom type:'month', 이미 있으면 바꿀지 물음) 또는 현장 사진첩. 들어가는 곳: 월별 증거 사진 칸 '📷 같은 포즈로 찍기'(data-pcopen)
 - movie.js: 성장 영상 만들기(S.view='movie', 녹화는 body에 붙는 .mvo 화면): 템플릿 4가지(성장 스토리·100일의 기록·같은 포즈 타임랩스·이번 달 하이라이트), 장면 길이·세로/정사각·오르골 음악(WebAudio 반짝반짝 작은 별). canvas를 실시간으로 그리며 MediaRecorder로 녹화(mp4 되면 mp4, 아니면 webm, 720×1280) → 카톡 보내기·폰에 저장. 영상은 앱에 올리지 않음(Storage는 이미지만). 녹화 중 화면이 꺼지거나 다른 앱으로 가면 멈춤(Wake Lock으로 화면 켜 둠). 들어가는 곳: 사건 앨범 '🎬 성장 영상 만들기', 기념일 배너
+- wanted.js: 이번 주 수배범(성장 수사 카드 WANTED.card, 화면 S.view='wanted'): 매주 월요일 월령에 맞는 수배범, 엄마·아빠가 그 주에 남긴 기록·사진이 공격(남긴 때 t, 없으면 기록 날짜, 사진은 한 사람 하루 12장까지, 같은 날 둘 다 기록하면 협동 +5). 체력은 지난 4주 평균 공격량 80%(30~150), 현상금 도토리 10 + 금요일까지 잡으면 5 → game/shared wanted 칸에 받은 주(월요일 날짜)를 runTransaction으로(saveGame once {key,val}, 두 폰이 두 번 안 받게, 이번 주·지난주만). 체포 기록부·약점 표(접기 w-weak)
+- look.js: 닮은꼴 판정단(성장 수사 카드 LOOK.card, 화면 S.view='look'): 하루 한 번 엄마 닮음/반반/아빠 닮음 + 닮은 곳(눈·코…), 둘 다 판정해야 서로 공개(통계에서도 오늘 것은 빼 둠), 달마다 비율 막대(엄마 #D9546A · 반반 #CBC2B4 · 아빠 #3F6FA8, 색약 검사 통과)와 판결문. look 컬렉션
+- capsule.js: 봉인된 증거물(S.view='capsule', 성장 수사 탭 CAPSULE.banner): 편지(5000자)+사진을 첫 돌·두 돌·초등학교 입학(만 6세 다음 해 3월 2일)·열 살·스무 살 생일·다음 100일·직접 날짜로 봉인, 그날까지 쓴 사람도 못 열고 못 고침(지우기만, 앱에서 지키는 봉인), 처음 열 때 봉인 해제 장면(localStorage soeun-capsule-seen), 사진은 열린 뒤에만 불러옴. capsule 컬렉션, 열리는 날 아침 알림
+- paper.js: 월간 소은일보(S.view='paper', 매달 1~5일 성장 수사 탭 PAPER.banner): 그달 기록으로 canvas 신문(1080×1600) — 제호(이름+일보, 제1호=태어난 달), 큰 제목(지난 기념일→최초 목격→kg 돌파→접종→사진 수), 대표 사진·사진 줄·이달의 숫자, 두 단 기사(성장·다가오는 날·사건사고·보건·수배·닮은꼴·탐험·급식·발달·봉인·독자 투고·이달의 날씨·광고, 넘치면 뺌) → 카톡·저장·인쇄(@media print). 매달 1일 아침 알림
+- explore.js: 소은이 탐험 지도(S.view='explore', 동네 탐문 탭 EXPLORE.townCard): 앨범 사진의 geo(올릴 때 EXIF GPS, album.js photoMeta)로 장소(200m 안은 같은 곳, 다녀간 날 가장 많은 곳=본부), 카카오맵 사진 핀(HOSP.sdk, 지도 요소는 다시 그려도 유지), 처음 가 본 곳, 탐험 일지(그날 사진을 찍은 시각 tm 순서로 이은 길·직선 거리·첫~마지막 사진 시각 — GPS로 계속 따라간 길은 아님), 강원 18개 시·군 도장판·강원 밖, 탐험 배지, 위치 없는 사진 직접 꽂기(지금 위치/지도에서, setGeo). 동네 이름은 카카오 coord2RegionCode → localStorage soeun-geo-rg
 - push-key.js: 알림 VAPID 공개키(Firebase 콘솔 → 클라우드 메시징 → 웹 푸시 인증서). 비어 있으면 알림 끔. 바꾸면 VERSION 올릴 것
 - charges.js: 성장 수사·수사 보드의 장난 혐의 사실 (기록 근거 + 월령별 단골 혐의, 날짜로 골라 두 폰에 같게)
 - checkups.js: 예방접종 탭 > 영유아검진 (검진 8회 + 구강검진 3회 일정을 태어난 날로 계산)
 - data/h-{시군}.json · p-{시군}.json · regions.json: Actions가 매주 만드는 강원 시·군별 병원·약국 목록과 시·군 가운데·범위 (직접 고치지 않음)
-- data/town.json(날씨·미세먼지, 3시간마다, 날씨 시간별 [시각, 기온, 하늘, 강수형태, 강수확률, 풍속, 습도, 강수량mm, 적설cm]) · events.json(강원 행사) · disease.json(감염병 주간) · posts.json(육아 인기글)·news.json(시·군 아이 행사 소식)·posts-meta.json(글 바뀐 날) 하루 한 번: .github/workflows/town.yml이 만듦 (직접 고치지 않음)
+- data/town.json(날씨·미세먼지, 3시간마다, 날씨 시간별 [시각, 기온, 하늘, 강수형태, 강수확률, 풍속, 습도, 강수량mm, 적설cm]) · events.json(강원 행사) · disease.json(감염병 주간) · posts.json(육아 인기글)·news.json(시·군 아이 행사 소식)·posts-meta.json(글 바뀐 날) 하루 한 번 · wx-YYYY-MM.json(날씨 일기: 시·군별 하루 요약 [최저, 최고, 하늘, 비·눈 시간, 강수mm, 적설cm, 시간 수], 그날 첫 실행 때 한 번, 소은일보 '이달의 날씨'): .github/workflows/town.yml이 만듦 (직접 고치지 않음)
+- .github/workflows/storage-cors.yml + scripts/storage-cors.mjs: 사진 저장소(Storage 버킷)에 앱 주소(https://rew623.github.io)의 사진 읽기(CORS GET) 허용 — 사진관·영상·신문이 사진을 canvas로 그리려면 꼭 필요. 스크립트를 바꾸면 저절로 한 번 실행, 시크릿 FIREBASE_SERVICE_ACCOUNT. 시크릿이 없으면 Google Cloud Shell에서: echo '[{"origin":["https://rew623.github.io"],"method":["GET","HEAD"],"maxAgeSeconds":3600}]' > cors.json && gcloud storage buckets update gs://soeun-diary.firebasestorage.app --cors-file=cors.json
 - .github/workflows/hospitals.yml: 병원 정보 받기 (매주 월 03:00 KST + 수동), 시크릿 DATA_GO_KR_KEY
 - .github/workflows/notify.yml: 아침 알림 (매일 08:50 KST, notify.mjs + firebase-admin), 시크릿 FIREBASE_SERVICE_ACCOUNT(없으면 건너뜀). 예방접종 D-3·1·당일, 영유아검진 기간 시작·마감 7일 전, 이유식 3일째, 100·200일·생일·매달 그날. 보기 전용 가족에겐 기념일만
 - .github/workflows/town.yml: 동네 정보 받기 (3시간마다 fetch-town.mjs, 하루 한 번 KST 05시대 fetch-daily.mjs, 수동 실행 what=town/daily/all)
@@ -58,11 +64,13 @@
 - families/{fid} 하위 컬렉션:
   - members/{uid}: { role(엄마/아빠), name, email, viewer(보기 전용이면 true) }
   - records, periods, vaccines, ep, log, visit, mom(앨범), food, meal, cube, menu(식단표 사진), people(가족 앨범의 가족: name, rel, photo, by), dev(발달 체크: 문서 id=항목 id, at, by), guess(몸무게 예측: role, value, at, base=그때 마지막 측정 기록 id, by), push(알림 받는 폰: token, uid, role, viewer, at)
-  - game/shared: 두 폰이 같이 쓰는 놀이 저장 { acorn, hats, hat, hatOf{mom,dad}, room, slot{자리:id}, clothes, wear{baby,mom,dad}, stickers, roulette, pic(액자 사진 id), paid(받은 보상), props, propOf{baby,mom,dad}, pos{자리|식구: [dx,dy,크기]}, regrant(보상 다시 준 날), by, updatedAt } (2026.10 추가, 저장은 mergeFields로 보낸 칸만 통째로)
+  - game/shared: 두 폰이 같이 쓰는 놀이 저장 { acorn, hats, hat, hatOf{mom,dad}, room, slot{자리:id}, clothes, wear{baby,mom,dad}, stickers, roulette, pic(액자 사진 id), paid(받은 보상), props, propOf{baby,mom,dad}, pos{자리|식구: [dx,dy,크기]}, regrant(보상 다시 준 날), wanted(수배범 현상금 받은 주 월요일), by, updatedAt } (2026.10 추가, 저장은 mergeFields로 보낸 칸만 통째로)
   - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
   - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
+  - look/{날짜_mom|dad}: date, pick(mom·dad·both), parts(닮은 곳 id 쉼표로), by (닮은꼴 판정단, 2026.10 추가)
+  - capsule/{id}: title(봉투 글), body(편지 5000자), open(열리는 날), occ(첫 돌 등), sealed(봉인한 날), photo, by (봉인된 증거물, 2026.10 추가)
   - recipes/{YYYY-MM}: title, file, stages[{ stage, items[{ d, meal, raw, ing[{ n, g }], how, src }] }], by, updatedAt
-- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id) / fam(가족 사진, who=나온 사람 id 쉼표로: mom·dad·people id), board: true/false = 수사 보드에 붙인 사진
+- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id) / fam(가족 사진, who=나온 사람 id 쉼표로: mom·dad·people id), board: true/false = 수사 보드에 붙인 사진, geo: "위도,경도"(소수 4자리, 찍은 곳)·tm: "HH:MM"(찍은 시각) — 탐험 지도용, 보낼 때만 쓰는 칸(app.js OPT)이라 다른 칸을 고쳐 저장해도 안 지워짐
 - 보안 규칙: families/{fid} 아래는 members에 있는 사람만 읽기·쓰기 (members 제외 하위 컬렉션 전체 허용이라 새 컬렉션도 규칙 수정 불필요)
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
 
@@ -75,5 +83,8 @@
 - 뒤로가기: 크롬은 화면을 만지기 전에 넣은 기록 칸을 건너뛸 수 있어, 앱을 열자마자 뒤로가기를 누르면 안내 없이 꺼질 수 있음. 놀이터 안 게임·룰렛·스티커(S.view play/fun)에서 뒤로가기는 도토리 놀이터로. 같은 포즈 촬영기·영상 녹화 화면도 뒤로가기로 닫힘(viewer.js popstate에서 POSECAM.close·MOVIE.close)
 - 탭 밀기는 옆으로 스크롤되는 줄(overflow-x auto/scroll, 예: 동네 탐문 시간별 날씨) 위에서는 안 함 (그 줄을 넘김)
 - 속도(2026.10 점검): render()는 #app 전체를 다시 그리므로 연달아 여러 번 부르지 말 것 — 사진 주소 불러오기(loadPhotos)는 다 받은 뒤 한 번만 그림(예전엔 4장마다 그려 사진 400장이면 열 때 8초 버벅임). render 안이나 직후에 scrollY·scrollHeight·getBoundingClientRect 같은 배치 값을 읽으면 화면 전체 배치를 억지로 계산해 느려짐(staySave는 0.3초 뒤). 폰 사본 저장(saveCache)은 2초 모아서, 앱 내릴 때 바로 씀. 사진 칸 img는 loading=lazy decoding=async (수사 보드·성장 앨범 책은 레이아웃·인쇄 때문에 그대로). 글씨는 11px보다 작게 하지 않기
-- canvas로 사진을 그려 저장하는 기능(사진관·영상·촬영기)은 Firebase 사진을 crossOrigin='anonymous'로 불러와야 함(Storage가 CORS * 허용, sw.js 사진 캐시도 cors로 받음). 그냥 불러오면 canvas가 막혀 저장이 안 됨. 사진 주소는 safeImg로 거른 것만
+- canvas로 사진을 그려 저장하는 기능(사진관·영상·신문)은 Firebase 사진을 crossOrigin으로 불러와야 하고, 버킷에 CORS 설정이 있어야 함(storage-cors.yml, 오류 응답에만 붙는 CORS 헤더에 속지 말 것). CV.img: crossOrigin → fetch(cache reload)→blob → Storage SDK getBlob(window.__photoBlob) 순서. sw.js 사진 캐시는 cors + cache:'reload'로 받음. 안 되면 사진관은 '📱 폰에서' 고르기 안내. 사진 주소는 safeImg로 거른 것만
+- 확인창은 폰 기본 confirm/alert 말고 앱 모양 ask() 쓸 것 (index.html, `if(!await ask('지울까요?',{ok:'지우기',danger:true}))return`, 뒤로가기로 닫힘). 알림 띠(toast)는 크라프트 카드 + Jua. 글꼴은 Jua·Gowun Dodum만 (select도 상속)
+- 성장 수사 첫 화면 방 그림 안엔 단추를 두지 않음(방이 좁아짐) — '🛋️ 방 꾸미기'는 아래 말풍선 맨 아랫줄 오른쪽 (사용자 요청)
+- 사건 앨범 도구 칸(.atools): 기념 사진관·성장 영상·소은일보·봉인된 증거물·탐험 지도·닮은꼴 판정단
 - 앨범 칸은 원본 사진(최대 1600px·약 300KB)을 작게 보여 주는 거라 사진이 아주 많아지면 데이터·메모리가 큼 → 썸네일을 따로 저장하려면 사진 기록에 칸(thumbUrl)을 추가해야 해서 사용자 확인 후

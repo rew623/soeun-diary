@@ -131,7 +131,7 @@ function overlay() {
 const msg = (t, p) => { const el = M.el; el.querySelector('.mvmsg').textContent = t; if (p != null) el.querySelector('.mvprog i').style.width = Math.round(p * 100) + '%'; };
 function close() {
   if (!M.el || M.el.hidden) return false;
-  if (M.busy) { if (!confirm('영상 만들기를 그만둘까요?')) return true; M.abort = true; }
+  if (M.busy && !M.abort) { ask('영상 만들기를 그만둘까요?', { ok: '그만두기', no: '계속 만들기', danger: true }).then(ok => { if (ok) { M.abort = true; close(); } }); return true; }
   M.el.hidden = true; document.documentElement.classList.remove('pc-open');
   const v = M.el.querySelector('video'); v.pause(); return true;
 }

@@ -9,29 +9,48 @@ const A = { more: 30 };
 const isFree = m => m.type === 'free';
 const frees = () => S.moments.filter(m => isFree(m) && m.photo).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : (a.id < b.id ? 1 : -1));
 
-// ---------- 사진 찍은 날짜 (JPEG EXIF) ----------
+// ---------- 사진 찍은 날짜·곳 (JPEG EXIF) ----------
 // 줄이기 전 원본 파일에서 읽어요 (줄이면 EXIF가 사라져요). 못 읽으면 ''
-async function photoDate(file) {
+// 찍은 시각(tm 'HH:MM')과 찍은 곳(GPS)은 탐험 지도용 "위도,경도" (소수 4자리, 약 10m). 폰·올리는 방법에 따라 위치가 지워져 있을 수 있어요
+async function photoMeta(file) {
   try {
     const v = new DataView(await file.slice(0, 256 * 1024).arrayBuffer());
-    if (v.getUint16(0) !== 0xFFD8) return '';
+    if (v.getUint16(0) !== 0xFFD8) return { date: '', tm: '', geo: '' };
     for (let o = 2; o + 10 < v.byteLength;) {
       const mk = v.getUint16(o), len = v.getUint16(o + 2);
       if ((mk & 0xFF00) !== 0xFF00 || mk === 0xFFDA) break;
-      if (mk === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) return tiffDate(v, o + 10);
+      if (mk === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) return tiff(v, o + 10);
       o += 2 + len;
     }
   } catch (x) {}
-  return '';
+  return { date: '', tm: '', geo: '' };
 }
-function tiffDate(v, t) {
+const photoDate = async file => (await photoMeta(file)).date;
+function tiff(v, t) {
   const le = v.getUint16(t) === 0x4949, u16 = p => v.getUint16(p, le), u32 = p => v.getUint32(p, le);
   const str = e => { const n = u32(e + 4), at = n > 4 ? t + u32(e + 8) : e + 8; let r = ''; for (let i = 0; i < n - 1; i++) r += String.fromCharCode(v.getUint8(at + i)); return r; };
-  const scan = (ifd, want) => { const out = {}, n = u16(ifd); for (let i = 0; i < n; i++) { const e = ifd + 2 + i * 12, tag = u16(e); if (want.includes(tag)) out[tag] = tag === 0x8769 ? t + u32(e + 8) : str(e); } return out; };
-  const i0 = scan(t + u32(t + 4), [0x8769, 0x0132]);
-  const ex = i0[0x8769] ? scan(i0[0x8769], [0x9003, 0x9004]) : {};
-  const m = /^(\d{4}):(\d\d):(\d\d)/.exec(ex[0x9003] || ex[0x9004] || i0[0x0132] || '');
-  return m && m[1] > '1990' ? `${m[1]}-${m[2]}-${m[3]}` : '';
+  // 칸 위치(e)만 모아 두고 필요한 것만 읽어요
+  const scan = (ifd, want) => { const out = {}, n = u16(ifd); for (let i = 0; i < n; i++) { const e = ifd + 2 + i * 12, tag = u16(e); if (want.includes(tag)) out[tag] = e; } return out; };
+  const sub = e => t + u32(e + 8);
+  const rat3 = e => { const at = t + u32(e + 8); let r = 0; for (let i = 0; i < 3; i++) { const d = u32(at + i * 8 + 4); if (!d) return NaN; r += u32(at + i * 8) / d / Math.pow(60, i); } return r; };
+  let date = '', tm = '', geo = '', i0 = {};
+  try {
+    i0 = scan(t + u32(t + 4), [0x8769, 0x8825, 0x0132]);
+    const ex = i0[0x8769] ? scan(sub(i0[0x8769]), [0x9003, 0x9004]) : {};
+    const m = /^(\d{4}):(\d\d):(\d\d)(?: (\d\d):(\d\d))?/.exec((ex[0x9003] && str(ex[0x9003])) || (ex[0x9004] && str(ex[0x9004])) || (i0[0x0132] && str(i0[0x0132])) || '');
+    date = m && m[1] > '1990' ? `${m[1]}-${m[2]}-${m[3]}` : '';
+    if (date && m[4] && +m[4] < 24 && +m[5] < 60) tm = `${m[4]}:${m[5]}`;
+  } catch (x) {}
+  try {
+    const g = i0[0x8825] ? scan(sub(i0[0x8825]), [1, 2, 3, 4]) : {};
+    if (g[2] && g[4]) {
+      let la = rat3(g[2]), lo = rat3(g[4]);
+      if (g[1] && str(g[1]) === 'S') la = -la;
+      if (g[3] && str(g[3]) === 'W') lo = -lo;
+      if (isFinite(la) && isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && (Math.abs(la) > .01 || Math.abs(lo) > .01)) geo = la.toFixed(4) + ',' + lo.toFixed(4);
+    }
+  } catch (x) {}
+  return { date, tm, geo };
 }
 const localDay = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const clampDay = d => { const b = S.profile.birth, t = today(); return !d ? t : d < b ? b : d > t ? t : d; };
@@ -99,7 +118,7 @@ async function pump() {
       try { photo = await readPhoto(it.file, true); } catch (x) { await qDel(it.id); toast('읽지 못한 사진 1장은 건너뛰었어요'); items = await qAll(); continue; }
       const date = clampDay(it.date || it.fb || (it.lm ? localDay(it.lm) : ''));
       // 줄 번호를 문서 id로 써서, 올린 뒤 앱이 꺼져 다시 올려도 같은 사진이 두 장 생기지 않아요
-      const res = await run('saveItem', 'mom', { id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date, memo: '', photo, by: it.by || myRole() });
+      const res = await run('saveItem', 'mom', Object.assign({ id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date, memo: '', photo, by: it.by || myRole() }, it.geo ? { geo: it.geo, tm: it.tm || '' } : {}));
       PHOTOS[res.id] = photo; last = res; Q.done++;
       await qDel(it.id);
       items = await qAll();
@@ -134,7 +153,7 @@ async function queue(list, more) {
   const files = [...list].filter(f => /^image\//.test(f.type));
   if (!files.length) return;
   const by = myRole(), base = Date.now(), rows = [];
-  for (let i = 0; i < files.length; i++) rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: await photoDate(files[i]), lm: files[i].lastModified || 0, by }, more || {}));
+  for (let i = 0; i < files.length; i++) { const meta = await photoMeta(files[i]); rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: meta.date, geo: meta.geo, tm: meta.tm, lm: files[i].lastModified || 0, by }, more || {})); }
   try { await qdo('readwrite', st => { rows.forEach(r => st.put(r)); }); }
   catch (x) { mem.push(...rows); }
   Q.total += rows.length; Q.left += rows.length; showProg();
@@ -167,7 +186,7 @@ async function pumpMem() {
     while (mem.length) {
       const it = mem[0]; showProg();
       const photo = await readPhoto(it.file, true);
-      const res = await run('saveItem', 'mom', { id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date: clampDay(it.date || it.fb || localDay(it.lm)), memo: '', photo, by: it.by });
+      const res = await run('saveItem', 'mom', Object.assign({ id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date: clampDay(it.date || it.fb || localDay(it.lm)), memo: '', photo, by: it.by }, it.geo ? { geo: it.geo, tm: it.tm || '' } : {}));
       PHOTOS[res.id] = photo; mem.shift(); Q.done++; Q.left = mem.length; apply(res.data);
     }
     toast(`사진 ${Q.done}장을 보관했어요`); Q.done = Q.total = Q.left = 0;
@@ -375,5 +394,5 @@ css.textContent = `
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:11px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
-window.ALBUM = { shared, sectionHtml, openFree, isFree, photoDate, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
+window.ALBUM = { shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
 })();

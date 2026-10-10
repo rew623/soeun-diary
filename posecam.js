@@ -74,7 +74,7 @@ function snap() {
 const shotFile = () => new Promise((res, rej) => $('.pcshot').toBlob(b => b ? res(new File([b], `pose_${today().replace(/-/g, '')}.jpg`, { type: 'image/jpeg', lastModified: Date.now() })) : rej(new Error('사진을 만들지 못했어요')), 'image/jpeg', .9));
 async function saveMonth(n, btn) {
   const t = n + '개월', ex = S.moments.find(m => m.type === 'month' && m.title === t);
-  if (ex && ex.photo && !confirm(`${t} 사진을 방금 찍은 사진으로 바꿀까요?`)) return;
+  if (ex && ex.photo && !await ask(`${t} 사진을 방금 찍은 사진으로 바꿀까요?`)) return;
   btn.disabled = true;
   try {
     const photo = await readPhoto(await shotFile(), true);

@@ -170,10 +170,32 @@ async function mid(regions) {
   return Object.keys(land).length ? { tmFc, land, ta } : null;
 }
 
+// ---------- 날씨 일기 (소은일보 '이달의 날씨'용) ----------
+// 오늘(KST) 시간별 예보를 하루 요약으로 data/wx-YYYY-MM.json { 시군: { 일: [최저, 최고, 하늘(낮 6~18시 가장 많은 것 1맑음 3구름많음 4흐림), 비·눈 시간 수, 강수량mm, 적설cm, 요약한 시간 수] } }
+// 그날 가장 많은 시간을 담은 예보(보통 새벽 첫 실행)로 남기고, 그 뒤엔 바꾸지 않아요 (하루 한 번만 파일이 바뀌게)
+export async function diary(w, now = Date.now()) {
+  const day = new Date(now + 9 * 3600e3).toISOString().slice(0, 10), ymd = day.replace(/-/g, ''), dd = day.slice(8);
+  const file = dataFile(`wx-${day.slice(0, 7)}.json`);
+  let cur = {}; try { cur = JSON.parse(await readFile(file, 'utf8')); } catch (e) {}
+  let changed = 0;
+  for (const [code, rows] of Object.entries((w && w.data) || {})) {
+    const R = (rows || []).filter(r => String(r[0]).startsWith(ymd) && Number.isFinite(r[1])); if (R.length < 6) continue;
+    const old = (cur[code] || {})[dd]; if (old && old[6] >= R.length) continue;
+    const dayR = R.filter(r => { const h = +String(r[0]).slice(8, 10); return h >= 6 && h <= 18; }), cnt = {};
+    (dayR.length ? dayR : R).forEach(r => { cnt[r[2]] = (cnt[r[2]] || 0) + 1; });
+    const sky = +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || 0, T = R.map(r => r[1]);
+    (cur[code] = cur[code] || {})[dd] = [Math.min(...T), Math.max(...T), sky, R.filter(r => r[3] > 0).length, +R.reduce((a, r) => a + (r[7] || 0), 0).toFixed(1), +R.reduce((a, r) => a + (r[8] || 0), 0).toFixed(1), R.length];
+    changed++;
+  }
+  if (changed) { await writeFile(file, JSON.stringify(cur) + '\n'); console.log(`날씨 일기 ${day}: ${changed}곳`); }
+  return changed;
+}
+if (!process.env.TOWN_DIARY_TEST) {   // 시험할 때는 받기 없이 diary만
 const regions = (JSON.parse(await readFile(dataFile('regions.json'), 'utf8')).regions || []).filter(r => r.lat && r.lng);
 if (!regions.length) { console.error('data/regions.json에 시·군 좌표가 없어요'); process.exit(1); }
 const w = await weather(regions), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions), md = await mid(regions);
 if (!Object.keys(w.data).length && !Object.keys(a.now).length) { console.error('날씨·미세먼지를 하나도 못 받았어요 (활용신청을 확인해 주세요)'); process.exit(1); }
+try { await diary(w); } catch (e) { console.warn(`날씨 일기 실패: ${e.message}`); }
 
 const out = dataFile('town.json');
 let old = null; try { old = JSON.parse(await readFile(out, 'utf8')); } catch (e) {}
@@ -182,3 +204,4 @@ if (old && JSON.stringify({ weather: old.weather, air: old.air, warn: old.warn, 
 const updated = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
 await writeFile(out, JSON.stringify({ updated, ...body }) + '\n');
 console.log(`town.json 저장 (${updated})`);
+}

@@ -106,7 +106,7 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'del':
-      if (confirm('이 검진의 해결 기록을 지울까요?') && await write('deleteCheckup', id)) { closeSheet(); toast('해결 기록을 지웠어요'); }
+      if (await ask('이 검진의 해결 기록을 지울까요?') && await write('deleteCheckup', id)) { closeSheet(); toast('해결 기록을 지웠어요'); }
       break;
   }
 });

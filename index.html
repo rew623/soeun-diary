@@ -31,7 +31,7 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
 img{-webkit-user-drag:none}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
-button,input,textarea{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2.5px solid var(--red);outline-offset:2px}
 main{max-width:560px;margin:0 auto;padding:18px 20px calc(170px + env(safe-area-inset-bottom,0px))}
@@ -184,6 +184,10 @@ section{margin-top:26px}
 body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,body.viewer [data-al=pick],body.viewer [data-fam=up],body.viewer [data-fa=up],body.viewer [data-fam=add],body.viewer .gcard,body.viewer .gguess .ghost,body.viewer [data-act=addmom],body.viewer [data-act=addmonth],body.viewer .rpick[data-al]{display:none!important}
 .vban{background:#FFFDF7;border-radius:14px}
 .rpick{min-height:40px;border-radius:99px;padding:6px 16px}
+.atools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.atools button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:16px;padding:10px 4px;font-size:13px;color:var(--ink);box-shadow:0 2px 0 var(--line);min-width:0;word-break:keep-all}
+.atools i{font-style:normal;font-size:22px;line-height:1.2}
+.atools button:active{transform:translateY(2px);box-shadow:none}
 .rtext{margin:0;font-size:14px;line-height:1.7}
 .rstats{border-top:2px solid var(--ink)}
 .rstat{display:flex;flex-direction:column;padding:8px 0;border-bottom:1px dashed var(--line);font-size:15px}.rstat small{font-size:12px;color:var(--muted)}
@@ -345,7 +349,14 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(40px +
 .field input,.field textarea,.addrow input{border-radius:14px;border-width:1.5px}
 .pick input[hidden]{display:none}
 .pick{display:inline-flex;align-items:center}
-.toast{border-radius:99px;background:var(--navy)}
+.toast{border-radius:99px;background:#FFFDF7;color:var(--navy);border:2px solid var(--navy);font-family:var(--display);font-size:15px;line-height:1.4;letter-spacing:0;padding:10px 18px;box-shadow:0 4px 0 var(--navy),0 10px 20px rgba(31,42,68,.18);white-space:normal;width:max-content;max-width:min(90vw,500px);text-align:center;word-break:keep-all}
+.askbox{position:fixed;inset:0;z-index:90;background:rgba(31,42,68,.45);display:grid;place-items:center;padding:24px;animation:askin .15s ease-out}
+.askc{width:100%;max-width:340px;background:var(--card);border:1.5px solid var(--line);border-radius:24px;padding:18px 18px 16px;text-align:center;outline:1.5px dashed var(--stitch);outline-offset:-8px;box-shadow:0 6px 0 #E6D2AE,0 16px 30px rgba(31,42,68,.25)}
+.askf{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--butter)}
+.askc p{margin:10px 0 16px;font-family:var(--display);font-size:17px;line-height:1.5;color:var(--navy);word-break:keep-all}
+.aska{display:flex;gap:8px}.aska button{flex:1;min-height:48px}
+.aska .primary{font-size:17px}.aska .askd{background:var(--red)}
+@keyframes askin{from{opacity:0}to{opacity:1}}
 html body .charge{border-radius:20px;border:1.5px solid var(--line);border-left:6px solid var(--red);outline:0;box-shadow:0 4px 0 #E6D2AE}
 html body .acell img{border-radius:12px}
 .vhead .no,.rhead .no{display:table;margin-bottom:8px}
@@ -417,6 +428,11 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="studio.js"></script>
 <script src="posecam.js"></script>
 <script src="movie.js"></script>
+<script src="wanted.js"></script>
+<script src="look.js"></script>
+<script src="capsule.js"></script>
+<script src="paper.js"></script>
+<script src="explore.js"></script>
 <script src="push-key.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
@@ -461,23 +477,23 @@ const fmt=(k,v)=>String(+(+v).toFixed(KINDS[k].dec));
 const safeImg=s=>typeof s==='string'&&(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s)||/^https:\/\/firebasestorage\.googleapis\.com\/[^"'<>\s]+$/.test(s))?s:'';
 let pending;
 function readPhoto(file,big){const LIM=big?380000:180000;return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{const max=big?1600:900,sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);let q=.82,d=c.toDataURL('image/jpeg',q);while(d.length>LIM&&q>.35){q-=.08;d=c.toDataURL('image/jpeg',q)}if(d.length>LIM){const c2=document.createElement('canvas');c2.width=c.width/2;c2.height=c.height/2;c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);d=c2.toDataURL('image/jpeg',.7)}res(d)};img.src=fr.result};fr.readAsDataURL(file)})}
-let EXTRA_FILES=[];
+let EXTRA_FILES=[],PGEO=null;   // PGEO: 편집창에서 고른 사진의 찍은 곳·시각 (탐험 지도)
 function photoField(src,label,big,multi){EXTRA_FILES=[];return `<div class="field"><span>${label||'사진 (선택)'}</span><label class="pbox"><img id="pv" class="pv" alt="" ${src?`src="${src}"`:'hidden'}><span class="pbox-in">${I_CAM}<b>여기를 눌러 사진 고르기</b><small>찍은 날짜도 알아서 읽어요</small></span><span class="pbox-ch">사진 바꾸기</span><input type="file" accept="image/*" id="f-photo" ${big?'data-big="1"':''} ${multi?'multiple':''} hidden></label><button class="danger prm" data-act="rmphoto" ${src?'':'hidden'}>사진 빼기</button></div>`}
-document.addEventListener('change',async e=>{if(e.target.id!=='f-photo'||!e.target.files[0])return;const f0=e.target.files[0];EXTRA_FILES=[...e.target.files].slice(1).filter(f=>/^image\//.test(f.type));const exh=document.getElementById('exfield');if(exh){const o=exh.querySelector('.exnew');if(o)o.remove();if(EXTRA_FILES.length)exh.insertAdjacentHTML('beforeend',`<p class="hint exnew" style="margin:6px 0 0;color:var(--red)">+ ${EXTRA_FILES.length}장은 저장하면 '사진 더'에 붙어요</p>`)}const dEl=document.getElementById('m-date')||document.getElementById('af-date');try{const tk=dEl?await ALBUM.photoDate(f0):'';pending=await readPhoto(f0,e.target.dataset.big==='1');if(tk&&tk>=S.profile.birth&&tk<=today()&&dEl.value!==tk){dEl.value=tk;toast('사진 찍은 날짜('+fmtK(tk,true)+')로 맞췄어요')}const pv=document.getElementById('pv');pv.src=pending;pv.hidden=false;const rm=document.querySelector('[data-act=rmphoto]');if(rm)rm.hidden=false}catch(err){toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요')}});
+document.addEventListener('change',async e=>{if(e.target.id!=='f-photo'||!e.target.files[0])return;const f0=e.target.files[0];EXTRA_FILES=[...e.target.files].slice(1).filter(f=>/^image\//.test(f.type));const exh=document.getElementById('exfield');if(exh){const o=exh.querySelector('.exnew');if(o)o.remove();if(EXTRA_FILES.length)exh.insertAdjacentHTML('beforeend',`<p class="hint exnew" style="margin:6px 0 0;color:var(--red)">+ ${EXTRA_FILES.length}장은 저장하면 '사진 더'에 붙어요</p>`)}const dEl=document.getElementById('m-date')||document.getElementById('af-date');try{const mt=await ALBUM.photoMeta(f0),tk=dEl?mt.date:'';PGEO=mt.geo?{geo:mt.geo,tm:mt.tm||''}:null;pending=await readPhoto(f0,e.target.dataset.big==='1');if(tk&&tk>=S.profile.birth&&tk<=today()&&dEl.value!==tk){dEl.value=tk;toast('사진 찍은 날짜('+fmtK(tk,true)+')로 맞췄어요')}const pv=document.getElementById('pv');pv.src=pending;pv.hidden=false;const rm=document.querySelector('[data-act=rmphoto]');if(rm)rm.hidden=false}catch(err){toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요')}});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 
 // ---------- storage (Google Sheets via Apps Script) ----------
-const S={me:{role:''},eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
+const S={me:{role:''},looks:[],capsules:[],eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
 const PHOTOS={};let busy=false;
 const DEMO=false;
 const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',photo:false,mom:'',dad:'',momPhoto:false,dadPhoto:false},
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
   periods:[{id:'p1',name:'출생',month:0,confirmed:'',hospital:''},{id:'p2',name:'2개월',month:2,confirmed:'',hospital:''},{id:'p3',name:'4개월',month:4,confirmed:'2026-11-10',hospital:'우리동네 소아청소년과'},{id:'p4',name:'6개월',month:6,confirmed:'',hospital:''}],
   foods:[{id:'f1',name:'쌀',start:'2026-09-20',result:'통과',reaction:'',memo:'',by:'엄마'},{id:'f2',name:'소고기',start:'2026-09-23',result:'',reaction:'',memo:'',by:'아빠'}],meals:[{id:'ml1',date:'2026-09-23',slot:'아침',menu:'소고기 쌀미음',amount:'40g',eat:'잘먹음',memo:'',photo:false,by:'아빠'}],cubes:[{id:'c1',name:'소고기',count:'5',made:'2026-09-20',memo:''}],menus:[],
-  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
+  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
   vaccines:[{id:'v1',period:'p1',name:'B형간염 1차',sub:'',done:'2026-07-06',memo:''},{id:'v2',period:'p2',name:'DTaP-IPV/Hib 1차',sub:'5가 혼합 백신',done:'2026-09-08',memo:''},{id:'v3',period:'p2',name:'폐렴구균 1차',sub:'',done:'2026-09-08',memo:''},{id:'v4',period:'p3',name:'DTaP-IPV/Hib 2차',sub:'',done:'',memo:''},{id:'v5',period:'p3',name:'폐렴구균 2차',sub:'',done:'',memo:''},{id:'v6',period:'p4',name:'DTaP-IPV/Hib 3차',sub:'',done:'',memo:''}]};
-const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses'};
+const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses',look:'looks',capsule:'capsules'};
 let dseq=100;const nid=p=>p+(dseq++);
 const MOCK={
   getData:()=>{const d=JSON.parse(JSON.stringify(DB));d.game=Object.assign({},d.game||{},{srv:true});return d},getPhoto:()=>'',getPhotos:()=>({}),
@@ -491,9 +507,10 @@ const MOCK={
   deletePeriod:id=>{DB.periods=DB.periods.filter(x=>x.id!==id);DB.vaccines=DB.vaccines.filter(v=>v.period!==id);return{data:MOCK.getData()}},
   saveVaccine:v=>{const id=v.id||nid('v');const o={id,period:v.period,name:v.name,sub:v.sub||'',done:v.done||'',memo:v.memo||'',by:v.done?(v.by||''):''};const i=DB.vaccines.findIndex(x=>x.id===id);if(i>=0)DB.vaccines[i]=o;else DB.vaccines.push(o);return{id,data:MOCK.getData()}},
   deleteVaccine:id=>{DB.vaccines=DB.vaccines.filter(x=>x.id!==id);return{data:MOCK.getData()}},
-  saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
+  saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people'||k==='capsule')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
-  saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={});if(g0[once])throw new Error('이미 받은 보상이에요');g0[once]=(o||{})[once]||true;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
+  setGeo:(id,geo)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.geo=geo;return{data:MOCK.getData()}},
+  saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={}),k=typeof once==='string'?once:once.key,v=typeof once==='string'?null:once.val;if(v===null?g0[k]:(g0[k]&&String(g0[k])>=v))throw new Error('이미 받은 보상이에요');g0[k]=v===null?((o||{})[k]||true):v;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveRecipe:r=>{DB.recipes=DB.recipes.filter(x=>x.month!==r.month).concat([Object.assign({},r,{by:DB.me.role})]);return{data:MOCK.getData()}},
@@ -504,7 +521,7 @@ const MOCK={
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
-function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
+function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
 function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
@@ -528,6 +545,7 @@ async function loadPhotos(){
   S.records.slice().sort(desc).forEach(r=>{if(r.photo)add(r.id)});
   S.moments.forEach(m=>{if(m.photo)add(m.id)});
   (S.people||[]).forEach(x=>{if(x.photo)add(x.id)});
+  (S.capsules||[]).forEach(c=>{if(c.photo&&c.open&&c.open<=today())add(c.id)});   // 봉인된 증거물 사진은 열린 뒤에만
   S.meals.slice().sort(desc).slice(0,20).forEach(m=>{if(m.photo)add(m.id)});
   S.menus.filter(m=>m.month===curMenuMonth()).forEach(m=>{if(m.photo)add(m.id)});
   if(!want.length)return;want.forEach(id=>LOADING.add(id));
@@ -597,13 +615,15 @@ function render(){
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
   $tab.innerHTML=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
-  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
+  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
   if(S.view==='studio')STUDIO.mount();
+  if(S.view==='paper')PAPER.mount();
+  if(S.view==='explore')EXPLORE.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();FUN.check();FUN.afterRender();
+  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();
 }
 
 const REC_SHOW=5;   // 수사 기록은 최근 몇 건만 펼쳐 두고 나머지는 접어요
@@ -655,9 +675,11 @@ function renderGrow(){
   ${(()=>{const oc=CV.occasion();if(!oc.label)return '';const today_=!oc.soon,dd=daysBetween(today(),oc.date);
     return `<div class="anniv"><span class="anb">${today_?'🎉':'⏳'}</span><span class="ant"><b>${today_?`오늘은 ${esc(CV.nick())} ${oc.label}!`:`${oc.label}까지 ${dd}일!`}</b><small>${today_?'기념 사진·영상을 만들어 가족에게 보내요':'미리 기념 사진·영상을 준비해 둘까요?'}</small></span>
       <span class="anbt"><button data-st="open">📸 기념 사진</button><button data-mvset="open" data-v="${/일$/.test(oc.label)&&oc.label==='100일'?'d100':'story'}">🎬 기념 영상</button></span></div>`})()}
-  ${CHARS.guide('grow')}${GAME.card()}
+  ${CAPSULE.banner()}${PAPER.banner()}
+  ${CHARS.guide('grow')}${GAME.card()}${WANTED.card()}
   ${next}${CHECKUPS.nextCard()}
   ${CHARGES.html()}
+  ${LOOK.card()}
   <section><h2 class="sh">증거 기록</h2><div class="stats">${stats}</div></section>
   ${GAME.guessHtml()}
   <section>
@@ -885,7 +907,7 @@ function renderAlbum(){
   ${(()=>{const rp=ALBUM.reportDoc(),ph=(rp&&safeImg(PHOTOS[rp.id]))||safeImg(PHOTOS[(firsts().slice().reverse().find(m=>m.photo&&safeImg(PHOTOS[m.id]))||{}).id])||safeImg(PHOTOS.profile);
     return `<button class="nextcard rcard100" data-act="report" style="margin-top:14px">${ph?`<span class="r100ph"><img src="${ph}" alt=""><i>${d<100?'D-'+(100-d):'100일'}</i></span>`:''}<span><small>${d<100?fmtK(d100,true)+' 기밀 해제 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>태어나서 100일까지 키·몸무게 변화, 최초 목격, 접종을 한 장에 정리해요 · ${d<100?'미리 보기':'보고서 보기'}</small></span>${ph?'':`<span class="d">${d<100?'D-'+(100-d):'100일'}</span>`}</button>`})()}
   <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost rpick" data-al="report" style="flex:1">📷 ${ALBUM.reportDoc()?'보고서 사진 바꾸기':'보고서 사진 미리 올리기'}</button><button class="ghost rpick" data-book="open" style="flex:1">📖 성장 앨범 책 (PDF)</button></div>
-  <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost rpick" data-st="open" style="flex:1">📸 기념 사진관</button><button class="ghost rpick" data-mvset="open" style="flex:1">🎬 성장 영상 만들기</button></div>
+  <div class="atools"><button data-st="open"><i>📸</i>기념 사진관</button><button data-mvset="open"><i>🎬</i>성장 영상</button><button data-pp="open"><i>📰</i>${esc(((p.name||'우리 아기').replace(/^[가-힣](?=[가-힣]{2}$)/,'')))}일보</button><button data-cp="openview"><i>🔒</i>봉인된 증거물</button><button data-xp="open"><i>🗺️</i>탐험 지도</button><button data-lk="open"><i>🔍</i>닮은꼴 판정단</button></div>
   ${ALBUM.sectionHtml()}
   <section${fsec('a-month')}><h2 class="sh" data-fold="a-month"><span>월별 증거 사진</span><span>매달 ${+p.birth.slice(8)}일</span></h2><div class="mgrid">${mm}</div><div class="mbtns"><button class="storybtn" data-story>▶ 성장 스토리 보기</button><button class="storybtn pose" data-pcopen="">📷 같은 포즈로 찍기</button></div></section>
   <section${fsec('a-first')}><h2 class="sh" data-fold="a-first" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">최초 목격 기록</span><span>${F.length}건 확보</span></h2>
@@ -1141,6 +1163,12 @@ function openSolve(pid){
 }
 
 const $toast=document.getElementById('toast');let tt;
+// 앱 모양 확인창 (폰 기본 confirm은 시스템 글꼴이라 앱과 어울리지 않아요): if(!await ask('지울까요?',{ok:'지우기',danger:true}))return
+function ask(msg,o={}){return new Promise(res=>{const w=myRole()==='아빠'?'dad':myRole()==='엄마'?'mom':'baby',el=document.createElement('div');el.className='askbox';
+  el.innerHTML=`<div class="askc" role="alertdialog" aria-modal="true"><span class="askf">${window.CHARS?CHARS.svg(w,'',{face:1,size:48}):''}</span><p>${esc(msg).replace(/\n/g,'<br>')}</p><div class="aska"><button class="secondary" data-ask="0">${esc(o.no||'취소')}</button><button class="primary${o.danger?' askd':''}" data-ask="1">${esc(o.ok||'확인')}</button></div></div>`;
+  const done=v=>{el.remove();window.__askClose=null;res(v)};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-ask]');if(b)done(b.dataset.ask==='1');else if(e.target===el)done(false)});
+  window.__askClose=()=>{done(false);return true};document.body.appendChild(el);el.querySelector('[data-ask="1"]').focus()})}
 function toast(m){$toast.textContent=m;$toast.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>$toast.classList.remove('show'),2200)}
 
 document.addEventListener('click',async e=>{
@@ -1180,7 +1208,7 @@ document.addEventListener('click',async e=>{
   case 'savemom':{const title=a.dataset.type==='month'?a.dataset.title:val('m-title'),d=val('m-date');
     if(!title)return err('m-err','무엇을 목격했는지 적어 주세요');if(!d)return err('m-err','날짜를 입력해 주세요');
     if(a.dataset.type==='month'&&!a.dataset.id&&!pending)return err('m-err','사진을 골라 주세요');
-    const o={id:a.dataset.id,type:a.dataset.type,title,date:d,memo:val('m-memo'),by:myRole()};if(pending!==undefined)o.photo=pending;
+    const o={id:a.dataset.id,type:a.dataset.type,title,date:d,memo:val('m-memo'),by:myRole()};if(pending!==undefined)o.photo=pending;if(pending&&PGEO)Object.assign(o,PGEO);
     const res=await write('saveItem','mom',o);if(res){if(pending)PHOTOS[res.id]=pending;else if(pending===null)delete PHOTOS[res.id];if(EXTRA_FILES.length&&a.dataset.type!=='month'){ALBUM.queue(EXTRA_FILES,{type:'extra',of:res.id,fb:d});EXTRA_FILES=[]}render();closeSheet();toast(a.dataset.type==='month'?'증거 사진을 보관했어요':'최초 목격을 기록했어요')}break}
   case 'addfood':openFood(null,a.dataset.v||'');break;
   case 'editfood':openFood(a.dataset.id);break;

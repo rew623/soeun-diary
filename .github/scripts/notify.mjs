@@ -49,6 +49,10 @@ for (const fam of (await db.collection('families').get()).docs) {
   if (dn === 200) add(`🌟 오늘 ${name} 생후 200일!`, `벌써 200일이에요. 오늘 사진 한 장 남겨요`, 'day200', true);
   if (today.slice(5) === b.slice(5) && today > b) add(`🎂 오늘 ${name} 생일!`, `${+today.slice(0, 4) - +b.slice(0, 4)}번째 생일 축하해요`, 'bday', true);
   if (dn > 1 && dn !== 100 && today.slice(8) === b.slice(8) && dn < 800) add(`📸 ${name} 생후 ${Math.round(days(b, today) / 30.44)}개월 되는 날`, `월별 증거 사진 찍을 시간이에요`, 'month', true);
+  // 봉인된 증거물이 열리는 날 (기념일처럼 보기 전용 가족에게도)
+  for (const c of await all(fam.ref, 'capsule')) if (c.open === today) add('🔓 오늘 봉인된 증거물이 열려요', `${c.by || '수사관'} 수사관이 ${String(c.sealed || '').replace(/-/g, '.')}에 봉인한 편지예요. 사건 앨범 → 봉인된 증거물에서 열어 보세요`, 'cap-' + c.id, true);
+  // 매달 1일: 지난달 소은일보 발행
+  if (today.slice(8) === '01' && addDays(today, -1).slice(0, 7) >= b.slice(0, 7)) add(`📰 ${name}일보 ${+addDays(today, -1).slice(5, 7)}월호 발행`, '지난달 소식이 신문 한 장에 담겼어요. 가족 단톡방에 보내 볼까요?', 'paper', true);
   if (!msgs.length) continue;
   console.log(`${fam.id}: ${msgs.map(m => m.title).join(' / ')} → ${tokens.length}대`);
   for (const t of tokens) {

@@ -231,6 +231,7 @@ window.addEventListener('pointerdown', () => { if (!waitExit) guard(); }, true);
 const sheetOpen = () => document.getElementById('sheet').classList.contains('open');
 window.addEventListener('popstate', () => {
   if (history.state && history.state.soeunGuard) return;
+  if (window.__askClose && __askClose()) { guard(); return; }            // 앱 확인창
   if (isOpen()) { close(); guard(); return; }                          // 1) 사진 크게 보기
   if (sheetOpen()) { closeSheet(); guard(); return; }                  // 2) 편집창 같은 아래 창
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리

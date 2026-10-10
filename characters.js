@@ -163,8 +163,8 @@ function guide(tab) {
   if (seen[tab] == null) seen[tab] = 0;
   const i = seen[tab] % L.length, [w, prop, text] = L[i], [who, name] = WHO[w];
   // 성장 수사(첫 화면)는 소은 탐정의 방 (도토리 놀이터 > 꾸미기에서 도토리로 산 가구·벽지가 보여요)
-  if (tab === 'grow' && window.GAME && GAME.roomSvg) return `<div class="guide ghome g-${who}" aria-live="polite"><button class="gchar groomb" data-guide="${tab}" aria-label="다음 말 듣기">${GAME.roomSvg()}</button><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button>
-    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 방을 누르면 다음 말` : ''}</small></div></div>`;
+  if (tab === 'grow' && window.GAME && GAME.roomSvg) return `<div class="guide ghome g-${who}" aria-live="polite"><button class="gchar groomb" data-guide="${tab}" aria-label="다음 말 듣기">${GAME.roomSvg()}</button>
+    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><div class="gfoot"><small>${L.length > 1 ? `${i + 1}/${L.length} · 방을 누르면 다음 말` : ''}</small><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button></div></div></div>`;
   return `<div class="guide g-${who}" aria-live="polite"><button class="gchar" data-guide="${tab}" aria-label="다음 말 듣기">${svg(who, prop, { size: 84 })}</button>
     <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 저를 누르면 다음 말` : ''}</small></div></div>`;
 }
@@ -196,7 +196,8 @@ css.textContent = `
 .ghome .groom{border-radius:20px;border:1.5px solid var(--line);box-shadow:0 4px 0 #E6D2AE}
 .ghome .gbub{margin:12px 0 0;border-radius:20px}
 .ghome .gbub::before{left:50%;top:-9px;bottom:auto;margin-left:-7px;border:0;border-left:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:rotate(45deg);border-radius:4px 0 0 0}
-.ghedit{position:absolute;left:8px;top:4px;border:0;border-radius:99px;background:rgba(255,253,247,.92);font-size:12px;padding:3px 9px;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+.gfoot{display:flex;align-items:center;justify-content:space-between;gap:8px}.gfoot small{flex:1;min-width:0}
+.ghedit{flex-shrink:0;border:1.5px solid var(--line);border-radius:99px;background:#FFFDF7;font-size:12px;padding:3px 10px;min-height:30px;color:var(--ink)}
 .guide.ghome.hop .gchar{animation:none}
 @keyframes gbob{0%,100%{transform:none}50%{transform:translateY(-2px) rotate(1.5deg)}}
 @media (prefers-reduced-motion:reduce){.gchar .chr,.guide.hop .gchar,.guide.hop .gbub{animation:none}}

@@ -1,7 +1,7 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.10.11-1';
+const VERSION = '2026.10.11-2';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './movie.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './movie.js', './wanted.js', './look.js', './capsule.js', './paper.js', './explore.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
 
 self.addEventListener('install', e => {
@@ -87,7 +87,7 @@ self.addEventListener('fetch', e => {
       const c = await caches.open(PHOTO), hit = await c.match(req.url);
       if (hit) return hit;
       try {
-        const res = await fetch(req.url, { mode: 'cors' });
+        const res = await fetch(req.url, { mode: 'cors', cache: 'reload', credentials: 'omit' });   // 브라우저 사본(일반 img로 받아 읽기 허용 표시가 없을 수 있음)은 건너뛰고 새로
         if (res.ok) { c.put(req.url, res.clone()); trim(PHOTO, 600); }
         return res;
       } catch (x) { return fetch(req); }

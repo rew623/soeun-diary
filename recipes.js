@@ -188,7 +188,7 @@ document.addEventListener('click', async e => {
     case 'meal': closeSheet(); openMeal(null); setTimeout(() => { const el = document.getElementById('ml-menu'); if (el) el.value = v; }, 0); break;
     case 'del': {
       const ym = curMenuMonth();
-      if (confirm(`${ym.replace('-', '년 ')}월 표준레시피를 지울까요? 가족 모두에게서 지워져요.`) && await write('deleteRecipe', ym)) toast('레시피를 지웠어요');
+      if (await ask(`${ym.replace('-', '년 ')}월 표준레시피를 지울까요? 가족 모두에게서 지워져요.`) && await write('deleteRecipe', ym)) toast('레시피를 지웠어요');
       break;
     }
   }
@@ -213,8 +213,8 @@ async function uploadRecipe(file) {
   toast('엑셀 읽는 중…');
   const p = await parseXlsx(file), month = pickMonth(p.monthNo, curMenuMonth()), [yy, mm] = month.split('-');
   const cnt = p.stages.map(s => `${s.stage} ${grouped(s).length}가지`).join(', ');
-  if (monthDoc(month) && !confirm(`${yy}년 ${+mm}월 레시피가 이미 있어요. 새 파일로 바꿀까요?`)) return;
-  if (!confirm(`${yy}년 ${+mm}월 표준레시피로 저장할게요.\n${cnt}`)) return;
+  if (monthDoc(month) && !await ask(`${yy}년 ${+mm}월 레시피가 이미 있어요. 새 파일로 바꿀까요?`)) return;
+  if (!await ask(`${yy}년 ${+mm}월 표준레시피로 저장할게요.\n${cnt}`)) return;
   if (await write('saveRecipe', toDoc(p, month, file))) { S.menuMonth = month; S.tab = 'food'; S.view = 'recipe'; R.stage = ''; render(); window.scrollTo(0, 0); toast('레시피를 정리해서 저장했어요'); }
 }
 
@@ -254,7 +254,7 @@ async function uploadPdf(file) {
   // 같은 제목이 여러 쪽이면 (1/2)처럼 번호를 붙여요
   const seen = {}; pages.forEach(p => { seen[p.title] = (seen[p.title] || 0) + 1; });
   const idx = {}; pages.forEach(p => { if (seen[p.title] > 1) { idx[p.title] = (idx[p.title] || 0) + 1; p.title += ` (${idx[p.title]}/${seen[p.title]})`; } });
-  if (!confirm(`${yy}년 ${+mm}월 식단으로 ${pages.length}쪽을 올릴게요.\n${pages.map(p => p.title).join(', ')}`)) return;
+  if (!await ask(`${yy}년 ${+mm}월 식단으로 ${pages.length}쪽을 올릴게요.\n${pages.map(p => p.title).join(', ')}`)) return;
   let ok = 0;
   for (const p of pages) {
     const res = await write('saveItem', 'menu', { month, title: p.title, photo: p.photo });

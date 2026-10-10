@@ -329,7 +329,7 @@ function render_() {
     ${fcLine(code)}</section>` : '';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${CHARS.guide('town')}
     <div class="treg"><span>탐문 지역</span>${sel}</div>
-    ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}`;
+    ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}${window.EXPLORE ? EXPLORE.townCard() : ''}`;
 }
 function fcLine(code) {
   const f = T.town.air.fc || {}, side = (T.town.air.east || []).includes(code) ? 'e' : 'w', d0 = today(), d1 = addDays(d0, 1);

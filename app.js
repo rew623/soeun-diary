@@ -3,7 +3,7 @@ import { FIREBASE_CONFIG } from './config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion, runTransaction } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, getBlob } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 
 const fb = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(fb);
@@ -24,9 +24,13 @@ const TBL = {
   menu: ['month', 'title', 'photo'],
   people: ['name', 'rel', 'photo', 'by'],   // 가족 앨범의 가족 (할머니·이모…)
   dev: ['at', 'by'],                        // 발달 체크 (문서 id = 항목 id, at = 확인한 날)
-  guess: ['role', 'value', 'at', 'base', 'by']   // 몸무게 예측 대결 (예측한 날 at, kg value, base = 그때 마지막 측정 기록 id)
+  guess: ['role', 'value', 'at', 'base', 'by'],  // 몸무게 예측 대결 (예측한 날 at, kg value, base = 그때 마지막 측정 기록 id)
+  look: ['date', 'pick', 'parts', 'by'],          // 닮은꼴 판정단 (문서 id = 날짜_mom|dad, pick: mom·dad·both, parts: 닮은 곳 쉼표로)
+  capsule: ['title', 'body', 'open', 'occ', 'sealed', 'photo', 'by']   // 봉인된 증거물 (open: 열리는 날, occ: 첫 돌 같은 이름, sealed: 봉인한 날)
 };
-const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses' };
+const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules' };
+const LIM = { body: 5000 };       // 칸별 글자 수 (나머지는 300)
+const OPT = { mom: ['geo', 'tm'] };   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각은 고쳐 저장해도 안 지워지게)
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
 const SCHEDULE = [
   ['출생', 0, [['B형간염 1차', '']]],
@@ -58,7 +62,7 @@ const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const fref = () => doc(db, 'families', M.fid);
-const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'regrant'];
+const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'regrant', 'wanted'];
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
 const list = c => [...M.col[c].values()].sort((a, b) => ((a._o ?? 0) - (b._o ?? 0)) || String(a.id).localeCompare(String(b.id)));
 const app = () => window.__app;
@@ -77,13 +81,14 @@ function build() {
   const item = k => list(k).map(o => {
     const c = { id: o.id };
     TBL[k].forEach(key => { c[key] = key === 'photo' ? !!o.photoUrl : (o[key] == null ? '' : String(o[key])); });
-    if (k === 'mom') c.board = !!o.board;          // 수사 보드에 붙인 사진
+    if (k === 'mom') { c.board = !!o.board; c.geo = o.geo ? String(o.geo) : ''; c.tm = o.tm ? String(o.tm) : ''; }   // 수사 보드에 붙인 사진, 찍은 곳 "위도,경도", 찍은 시각 HH:MM
+    c.t = +o._o > 1e12 ? +o._o : 0;                 // 남긴 때 (이번 주 수배범 계산용, 예전에 옮겨 온 기록은 0)
     return c;
   });
   const d = {
     profile: { name: f.name || '', birth: f.birth || '', sex: f.sex === 'M' ? 'M' : 'F', photo: !!f.photoUrl, mom: f.mom || '', dad: f.dad || '', momPhoto: !!f.momPhotoUrl, dadPhoto: !!f.dadPhotoUrl },
     me: { role: myRole(), hasEmail: true, viewer: isViewer() },
-    records: list('records').filter(r => r.date).map(r => ({ id: r.id, date: r.date, weight: numOrNull(r.weight), height: numOrNull(r.height), head: numOrNull(r.head), memo: r.memo || '', photo: !!r.photoUrl, by: r.by || '' })),
+    records: list('records').filter(r => r.date).map(r => ({ id: r.id, date: r.date, weight: numOrNull(r.weight), height: numOrNull(r.height), head: numOrNull(r.head), memo: r.memo || '', photo: !!r.photoUrl, by: r.by || '', t: +r._o > 1e12 ? +r._o : 0 })),
     periods: list('periods').map(p => ({ id: p.id, name: String(p.name || ''), month: p.month === '' || p.month == null ? '' : Number(p.month), confirmed: p.confirmed || '', hospital: p.hospital || '' })),
     vaccines: list('vaccines').map(v => ({ id: v.id, period: String(v.period || ''), name: String(v.name || ''), sub: v.sub || '', done: v.done || '', memo: v.memo || '', by: v.by || '' }))
   };
@@ -127,6 +132,12 @@ async function uploadBlob(key, blob, type, ext) {
   await uploadBytes(r, blob, { contentType: type, cacheControl: 'public,max-age=31536000' });
   return { photoUrl: await getDownloadURL(r), photoPath: path };
 }
+// 사진관·영상·신문이 canvas에 그릴 사진을 로그인 경로로 받기 (브라우저 사본 문제로 일반 주소가 막힐 때 마지막 방법)
+window.__photoBlob = async url => {
+  const m = /\/o\/([^?]+)/.exec(String(url || '')); if (!m) throw new Error('사진 주소가 올바르지 않아요');
+  const path = decodeURIComponent(m[1]); if (!path.startsWith(`families/${M.fid}/`)) throw new Error('우리 가족 사진이 아니에요');
+  return getBlob(ref(storage, path));
+};
 function dropPhoto(path) { if (path) deleteObject(ref(storage, path)).catch(() => {}); }
 // 사진 바꾸기: 새 사진을 먼저 올리고 옛 사진은 지움
 async function photoFields(key, dataUrl, oldPath, prefix = 'photo') {
@@ -138,7 +149,7 @@ function photoUrlOf(id) {
   const f = M.family || {};
   if (id === 'profile') return f.photoUrl || '';
   if (id === 'mom' || id === 'dad') return f[id + 'PhotoUrl'] || '';
-  for (const c of ['records', 'mom', 'meal', 'menu', 'people']) { const o = M.col[c].get(String(id)); if (o && o.photoUrl) return o.photoUrl; }
+  for (const c of ['records', 'mom', 'meal', 'menu', 'people', 'capsule']) { const o = M.col[c].get(String(id)); if (o && o.photoUrl) return o.photoUrl; }
   return '';
 }
 
@@ -240,8 +251,9 @@ const H = {
     keys.forEach(key => {
       if (key === 'photo') return;
       if (key === 'by') { row.by = role_(obj.by) || myRole(); return; }
-      row[key] = txt(obj[key], 300);
+      row[key] = txt(obj[key], LIM[key] || 300);
     });
+    (OPT[k] || []).forEach(key => { if (key in obj) row[key] = txt(obj[key], 40); });
     if (keys.includes('photo') && 'photo' in obj) Object.assign(row, await photoFields(id, obj.photo, ex && ex.photoPath));
     localSet(k, id, row);
     await commit(setDoc(dref(k, id), row, { merge: true }));
@@ -264,6 +276,15 @@ const H = {
     return { data: data() };
   },
 
+  // 사진 찍은 곳 (탐험 지도에서 직접 꽂기): 앨범 문서에 geo 칸만 "위도,경도"로
+  async setGeo(id, geo) {
+    id = String(id); if (!M.col.mom.has(id)) throw new Error('없는 사진이에요');
+    geo = String(geo || ''); if (geo && !/^-?\d{1,2}\.\d{1,6},-?\d{1,3}\.\d{1,6}$/.test(geo)) throw new Error('위치 형식이 올바르지 않아요');
+    localSet('mom', id, { geo });
+    await commit(setDoc(dref('mom', id), { geo }, { merge: true }));
+    return { data: data() };
+  },
+
   // 놀이 저장 (families/{fid}/game/shared): 도토리는 늘고 준 만큼만(increment) 보내 두 폰이 동시에 모아도 안 사라져요
   async saveGame(obj, acornDelta, union, once) {
     const row = {};
@@ -276,11 +297,14 @@ const H = {
     const ref = dref('game', 'shared'), data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row);
     // 도토리를 쓸 때는 서버의 진짜 잔액을 다시 읽고 모자라면 안 사요 (다른 폰이 먼저 써서 화면 숫자가 옛날 것일 때 마이너스가 되지 않게)
     // 한 번만 주는 보상(once): 서버의 그 칸(예: regrant)을 다시 읽고 이미 받았으면 안 줘요 (두 폰이 동시에 받지 않게)
+    // once가 { key, val }이면 그 칸에 val(예: 수배범 주 '2026-10-05')보다 같거나 늦은 값이 있을 때 이미 받은 걸로 (주마다 한 번)
     if (once) {
+      const key = typeof once === 'string' ? once : String(once.key || ''), val = typeof once === 'string' ? null : String(once.val || '');
+      if (!GAME_KEYS.includes(key) || key === 'acorn' || (val !== null && !val)) throw new Error('보상 칸이 올바르지 않아요');
       await runTransaction(db, async tx => {
         const cur = (await tx.get(ref)).data() || {};
-        if (cur[once]) throw Object.assign(new Error('이미 받은 보상이에요'), { code: 'already' });
-        data[once] = (obj && obj[once]) || true; data.acorn = (+cur.acorn || 0) + Math.round(+acornDelta || 0);
+        if (val === null ? cur[key] : (cur[key] && String(cur[key]) >= val)) throw Object.assign(new Error('이미 받은 보상이에요'), { code: 'already' });
+        data[key] = val === null ? ((obj && obj[key]) || true) : val; data.acorn = (+cur.acorn || 0) + Math.round(+acornDelta || 0);
         tx.set(ref, data, { mergeFields: Object.keys(data) });
       });
       return { ok: true };
@@ -527,7 +551,7 @@ gate.addEventListener('click', async e => {
   try {
     if (b.dataset.g === 'login') await login();
     if (b.dataset.g === 'logout') await logout();
-    if (b.dataset.g === 'create') { if (confirm('새 가족 공간을 만들까요?\n배우자는 만든 뒤에 초대 코드로 들어오면 돼요.')) { showGate('wait'); await createFamily(); } }
+    if (b.dataset.g === 'create') { if (await ask('새 가족 공간을 만들까요?\n배우자는 만든 뒤에 초대 코드로 들어오면 돼요.')) { showGate('wait'); await createFamily(); } }
     if (b.dataset.g === 'join') { err(''); await joinFamily(gate.querySelector('#g-code').value); showGate('wait'); }
   } catch (x) { console.error(x); if (gate.querySelector('#g-err')) err(x.message || String(x)); else showGate('choose', x.message || String(x)); }
   finally { b.disabled = false; }
@@ -569,7 +593,7 @@ const openSheet = h => app().openSheet(h);
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-fam]'); if (!b) return;
   const act = b.dataset.fam;
-  if (act === 'logout') { if (confirm('이 폰에서 로그아웃할까요?')) await logout(); return; }
+  if (act === 'logout') { if (await ask('이 폰에서 로그아웃할까요?')) await logout(); return; }
   if (act === 'invite') {
     if (isViewer()) { app().toast('보기 전용으로 들어와서 초대 코드는 엄마·아빠만 만들 수 있어요'); return; }
     // 지금은 엄마·아빠 둘만 써서 바로 함께 기록 코드를 만들어요 (보기 전용 초대는 아래 invite2 data-v="1"로 남겨 둠)
@@ -654,7 +678,7 @@ async function importZips(files, prog) {
   if (!pack || !pack.data) throw new Error('data.json이 든 첫 번째 파일(이사짐_1.zip)도 같이 골라 주세요');
   const D = pack.data, need = (pack.photoIds || []).length, ids = Object.keys(photos);
   const nRec = (D.records || []).length + Object.values(OUT).reduce((s, k) => s + (D[k] || []).length, 0);
-  if (!confirm(`기록 ${nRec}건, 사진 ${ids.length}/${need}장을 가져올게요.\n지금 공간의 기록은 지우고 예전 기록으로 바꿔요. 계속할까요?`)) { prog(''); return; }
+  if (!await ask(`기록 ${nRec}건, 사진 ${ids.length}/${need}장을 가져올게요.\n지금 공간의 기록은 지우고 예전 기록으로 바꿔요. 계속할까요?`)) { prog(''); return; }
 
   // 1) 사진 올리기 (4장씩 동시에)
   const urls = {}; let done = 0;

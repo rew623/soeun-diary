@@ -1,0 +1,28 @@
+# 사진 저장소 CORS 설정: 기념 사진관·성장 영상·소은일보가 사진을 그림으로 만들 수 있게 (한 번만, 스크립트를 바꾸거나 직접 실행할 때)
+name: 사진 저장소 설정
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/scripts/storage-cors.mjs', '.github/workflows/storage-cors.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: storage-cors
+  cancel-in-progress: false
+
+jobs:
+  cors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: firebase-admin 설치
+        run: npm install --no-save --no-package-lock firebase-admin@12
+      - name: 사진 읽기(CORS) 허용
+        run: node .github/scripts/storage-cors.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

@@ -5,8 +5,15 @@
 // ---------- 같이 쓰는 그림 도구 ----------
 const CV = {};
 const load1 = src => new Promise((res, rej) => { const im = new Image(); if (!/^(data|blob):/.test(src)) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => rej(new Error('사진을 불러오지 못했어요')); im.src = src; });
-// 예전에 일반 <img>로 받아 둔 사진이 canvas용으로 안 열리면 주소를 살짝 바꿔 한 번 더
-CV.img = async src => { try { return await load1(src); } catch (e) { if (/^(data|blob):/.test(src)) throw e; return load1(src + (src.includes('?') ? '&' : '?') + 'cv=' + Date.now()); } };
+// 폰에 예전에 일반 <img>로 받아 둔 사본은 "다른 주소에서 읽어도 됨" 표시가 없어 canvas가 막혀요 → 사본을 건너뛰고 새로 받아(blob) 열고,
+// 그래도 안 되면 Firebase 로그인 경로(Storage SDK getBlob, app.js의 __photoBlob)로 받아요
+const fromBlob = async b => { const u = URL.createObjectURL(b); try { const im = await load1(u); im.__blob = u; return im; } catch (e) { URL.revokeObjectURL(u); throw e; } };
+CV.img = async src => {
+  try { return await load1(src); } catch (e) { if (/^(data|blob):/.test(src)) throw e; }
+  try { const r = await fetch(src, { mode: 'cors', cache: 'reload', credentials: 'omit' }); if (r.ok) return await fromBlob(await r.blob()); } catch (e) {}
+  if (window.__photoBlob) return fromBlob(await window.__photoBlob(src));
+  throw new Error('사진을 불러오지 못했어요');
+};
 // 사진을 칸에 꽉 차게 (z: 확대, fx·fy: 0~1 어느 쪽을 보여 줄지)
 CV.cover = (ctx, im, x, y, w, h, z = 1, fx = .5, fy = .5) => {
   const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw || !ih) return;
@@ -191,7 +198,7 @@ async function redraw() {
   if (ST.src && (!ST.img || ST.img.__src !== ST.src)) {
     // 불러오는 중이면 끝난 뒤 한 번 더 그림 (그사이 화면을 다시 그려 canvas가 바뀌어도 새 canvas에)
     if (ST.loading) { ST.again = true; return; } ST.loading = true; const want = ST.src;
-    try { const im = await CV.img(want); im.__src = want; if (ST.src === want) ST.img = im; } catch (e) { toast('사진을 불러오지 못했어요. 인터넷을 확인해 주세요'); ST.img = null; }
+    try { const im = await CV.img(want); im.__src = want; if (ST.src === want) ST.img = im; } catch (e) { toast("이 사진은 꾸미기용으로 못 열었어요. '📱 폰에서'로 같은 사진을 골라 주세요"); ST.img = null; }
     ST.loading = false; if (ST.again) { ST.again = false; if (ST.src && ST.img && ST.img.__src !== ST.src) return redraw(); }
   }
   const n = ++drawing; await CV.fonts(ST.title, ST.sub, ST.bubble); if (n !== drawing) return;
