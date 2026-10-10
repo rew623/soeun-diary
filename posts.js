@@ -1,8 +1,8 @@
 // 육아 글 모음(예전 이름 육아 자료실) — 네이버 블로그·카페에서 월령별·주제별·우리 동네 육아 글을 모아 보여 줘요 (S.view='posts')
 // 어느 화면에서나 오른쪽 위에 "📚 육아 글" 버튼이 떠 있고, 0.6초 길게 누른 채 끌면 옮길 수 있어요 (위치는 이 폰에 기억)
-// 데이터: Actions(town.yml)가 하루 한 번 만드는 data/posts.json. 글은 원래 사이트(네이버)에서 열려요
+// 데이터: Actions(town.yml)가 하루 한 번 만드는 data/posts.json(글 모음 열 때만) + posts-meta.json(바뀐 날, 빨간 점). 글은 원래 사이트(네이버)에서 열려요
 (function () {
-const P = { data: null, at: 0, loading: false, tab: 'month', topic: '', month: null, read: {}, seed: Math.random() * 1e9 | 0, more: false };
+const P = { data: null, at: 0, loading: false, meta: null, mAt: 0, mLoading: false, tab: 'month', topic: '', month: null, read: {}, seed: Math.random() * 1e9 | 0, more: false };
 const READK = 'soeun-posts-read';
 try { P.read = JSON.parse(localStorage.getItem(READK) || '{}') || {}; } catch (e) {}
 const NAMES = { chuncheon: '춘천시', wonju: '원주시', gangneung: '강릉시', donghae: '동해시', taebaek: '태백시', sokcho: '속초시', samcheok: '삼척시', hongcheon: '홍천군', hoengseong: '횡성군', yeongwol: '영월군', pyeongchang: '평창군', jeongseon: '정선군', cheorwon: '철원군', hwacheon: '화천군', yanggu: '양구군', inje: '인제군', goseong: '고성군', yangyang: '양양군' };
@@ -17,8 +17,18 @@ async function load(force) {
   if (S.mode === 'ok') render();
 }
 
+// 빨간 점·우편함용: 글이 바뀐 날만 담긴 아주 작은 파일 (글 전체 posts.json은 글 모음을 열 때만 받아요)
+async function loadMeta() {
+  if (P.mLoading || (P.mAt && Date.now() - P.mAt < 60 * 60e3)) return;
+  P.mLoading = true;
+  P.meta = await fetch('data/posts-meta.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  P.mAt = Date.now(); P.mLoading = false; sync();
+}
+const updatedOf = () => (P.data && P.data.updated) || (P.meta && P.meta.updated) || '';
+const seenOf = () => { try { return localStorage.getItem(SEENK) || ''; } catch (e) { return ''; } };
+
 // ---------- 떠 있는 동그라미 ----------
-const POSK = 'soeun-posts-pos', SEENK = 'soeun-posts-seen', BW = 92, BH = 44;
+const POSK = 'soeun-posts-pos', SEENK = 'soeun-posts-seen', BW = 48, BH = 48;   // 동그란 📚 단추 (글씨 붙은 92px 단추는 화면 글을 많이 가려서 줄였어요)
 const bub = document.createElement('button');
 bub.type = 'button'; bub.className = 'pbub'; bub.hidden = true; bub.setAttribute('aria-label', '육아 글 모음 열기 (길게 누른 채 끌면 옮기기)');
 bub.innerHTML = '<span aria-hidden="true">📚</span><b>육아 글</b><i hidden></i>';
@@ -62,12 +72,13 @@ bub.addEventListener('pointercancel', () => { clearTimeout(pressT); if (dragged)
 bub.addEventListener('click', e => { if (e.detail === 0) openPosts(); });   // 키보드(엔터)로 누를 때만
 // 화면을 그릴 때마다: 보일지, 새 글 점(오늘 새로 모은 글을 아직 안 봤으면)
 function sync() {
-  const show = S.mode === 'ok' && S.profile && S.profile.birth && S.view !== 'posts';
+  // 아래 탭 화면에서만 떠 있어요 (놀이터·책 같은 안쪽 화면에선 단추·탭을 가려서 숨겨요)
+  const show = S.mode === 'ok' && S.profile && S.profile.birth && !S.view;
   if (!show) { bub.hidden = true; return; }
   if (bub.hidden) { bub.hidden = false; home(); }
-  if (!P.at) load();
-  let seen = ''; try { seen = localStorage.getItem(SEENK) || ''; } catch (e) {}
-  bub.querySelector('i').hidden = !(P.data && P.data.updated && P.data.updated !== seen);
+  if (!P.mAt) loadMeta();
+  const up = updatedOf();
+  bub.querySelector('i').hidden = !(up && up !== seenOf());
 }
 
 // 앱을 열 때마다(seed)·'다른 글 보기'마다 순서를 섞어 8개씩: 안 읽은 글 먼저
@@ -88,7 +99,7 @@ function list(L0) {
 
 function render_() {
   if (!P.at) load();
-  if (P.data && P.data.updated) try { localStorage.setItem(SEENK, P.data.updated); } catch (e) {}
+  { const up = updatedOf(); if (up) try { localStorage.setItem(SEENK, up); } catch (e) {} }
   const D = P.data || {}, m = P.month == null ? myMonth() : P.month, code = reg();
   const topics = D.topicNames || ['수면', '이유식', '발달', '아플 때', '육아템', '외출', '예방접종', '엄마·아빠'];
   const tp = P.topic || topics[0];
@@ -124,9 +135,9 @@ document.addEventListener('click', e => {
 const css = document.createElement('style');
 css.textContent = `
 .pbub[hidden]{display:none}
-.pbub{position:fixed;left:0;top:0;z-index:8;width:92px;height:44px;border-radius:99px;border:2px solid #fff;background:var(--butter);box-shadow:0 4px 0 #E0C590,0 8px 18px rgba(31,42,68,.25);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .2s;user-select:none}
-.pbub span{font-size:19px;line-height:1}
-.pbub b{font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy);white-space:nowrap}
+.pbub{position:fixed;left:0;top:0;z-index:8;width:48px;height:48px;border-radius:50%;border:2px solid #fff;background:var(--butter);box-shadow:0 4px 0 #E0C590,0 8px 18px rgba(31,42,68,.25);display:flex;align-items:center;justify-content:center;gap:0;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .2s;user-select:none}
+.pbub span{font-size:23px;line-height:1}
+.pbub b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .pbub i{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid #fff}
 .pbub i[hidden]{display:none}
 .pbub.drag{transition:none;box-shadow:0 10px 24px rgba(31,42,68,.35);scale:1.12}
@@ -151,5 +162,5 @@ css.textContent = `
 .post.read b{color:var(--muted);font-weight:400}`;
 document.head.appendChild(css);
 
-window.POSTS = { render: render_, load, sync, fresh: () => { let seen = ''; try { seen = localStorage.getItem(SEENK) || ''; } catch (e) {} return !!(P.data && P.data.updated && P.data.updated !== seen); } };
+window.POSTS = { render: render_, load, sync, fresh: () => { if (!P.mAt) loadMeta(); const up = updatedOf(); return !!(up && up !== seenOf()); } };
 })();

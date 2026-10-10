@@ -390,7 +390,7 @@ css.textContent = `
 .rshop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
 .rit{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:12px;padding:6px 3px;font-size:11.5px;min-width:0}
 .rit b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.rit small{font-size:10px;color:var(--muted)}
+.rit small{font-size:11px;color:var(--muted)}
 .rit.cur{border:2px solid var(--red);background:#FFF3EF}.rit.cur small{color:var(--red);font-weight:700}
 .rit.lock .rpv,.rit.lock .rsw{opacity:.55;filter:grayscale(.3)}
 .rpv{width:100%;height:42px;display:block;background:#FFF7EC;border-radius:8px}

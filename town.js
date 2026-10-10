@@ -11,7 +11,8 @@ async function load(force) {
   if (T.loading || (!force && T.at && Date.now() - T.at < 30 * 60e3)) return;
   T.loading = true;
   const get = n => fetch('data/' + n, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const [a, b, c, d] = await Promise.all([get('town.json'), get('events.json'), get('disease.json'), get('posts.json')]);
+  // 동네 소식은 작은 news.json에서 (예전엔 650KB짜리 posts.json을 통째로 받았어요). 아직 없으면 예전 파일로
+  const [a, b, c, d] = await Promise.all([get('town.json'), get('events.json'), get('disease.json'), get('news.json').then(x => x || get('posts.json'))]);
   T.town = a; T.events = b; T.dis = c; T.news = d && d.news; T.at = Date.now(); T.loading = false;
   if (S.mode === 'ok') render();
 }
@@ -372,9 +373,9 @@ css.textContent = `
 .wdp{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;border-radius:12px;background:var(--card2);text-align:center}
 .wdp small{font-size:11px;color:var(--muted)}.wdp em{font-style:normal;font-size:20px}.wdp b{font-size:12.5px;color:var(--navy);word-break:keep-all}.wdp i{font-style:normal;font-size:11px;color:#3C6E9E}
 .wstrip{display:flex;gap:4px;overflow-x:auto;margin:8px 0 2px;padding-bottom:2px}
-.wstrip span{flex:0 0 auto;min-width:40px;display:flex;flex-direction:column;align-items:center;font-size:11px}.wstrip small{color:var(--muted)}.wstrip em{font-style:normal;font-size:16px}.wstrip i{font-style:normal;color:#3C6E9E;font-size:10px;min-height:12px}
+.wstrip span{flex:0 0 auto;min-width:40px;display:flex;flex-direction:column;align-items:center;font-size:11px}.wstrip small{color:var(--muted)}.wstrip em{font-style:normal;font-size:16px}.wstrip i{font-style:normal;color:#3C6E9E;font-size:11px;min-height:12px}
 .wd small{font-size:11px;color:var(--muted)}.wd em{font-style:normal;font-size:18px}.wd b{font-family:var(--display);font-weight:400;font-size:17px}
-.wd i{font-style:normal;font-size:10.5px;color:var(--ink)}.wd i u{text-decoration:none;color:var(--muted);margin-left:2px}
+.wd i{font-style:normal;font-size:11px;color:var(--ink)}.wd i u{text-decoration:none;color:var(--muted);margin-left:2px}
 .wd.ok{background:#EEF7EA;border-color:#B9D7A8}.wd.ok b{color:#2E7D5B}.wd.ok2 b{color:#5E9E57}.wd.mid{background:#FFF6E8}.wd.mid b{color:#C8551E}.wd.no{background:#FDEEEB}.wd.no b{color:var(--red)}.wd.na b{color:var(--muted)}
 .plc{display:flex;flex-direction:column;margin-top:8px}
 .plr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);color:inherit;text-decoration:none}
@@ -396,8 +397,8 @@ css.textContent = `
 .whb{position:relative;flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0}
 .whb i{display:block;width:100%;border-radius:8px 8px 3px 3px;background:#9CC9A8}
 .whb.ok2 i{background:#C7DFA0}.whb.mid i{background:#F2C98B}.whb.no i{background:#EBA79C}
-.whb b{position:absolute;top:0;font-size:10px;font-weight:400;color:var(--muted)}
-.whb small{font-size:10px;color:var(--muted);margin-top:2px}
+.whb b{position:absolute;top:0;font-size:11px;font-weight:400;color:var(--muted)}
+.whb small{font-size:11px;color:var(--muted);margin-top:2px}
 .whb em{position:absolute;top:13px;font-style:normal;font-size:11px}
 .wtips p{margin:6px 0 0;font-size:13px;line-height:1.55}.wtips b{color:var(--red);margin-right:4px}
 .dust{display:grid;grid-template-columns:1fr 1fr;gap:8px}

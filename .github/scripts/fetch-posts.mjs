@@ -1,4 +1,4 @@
-// 육아 인기글 모음: 네이버 검색 API(블로그·카페글)로 월령별·주제별·시·군별 글 목록 → data/posts.json
+// 육아 인기글 모음: 네이버 검색 API(블로그·카페글·뉴스)로 월령별·주제별·시·군별 글 목록 → data/posts.json, 시·군 아이 행사 소식 → data/news.json, 바뀐 날 → data/posts-meta.json
 // 키: NAVER API HUB(네이버 클라우드, 2026.8~ 새 방식)에서 앱을 만들고 받은 Client ID/Secret → 시크릿 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 // 예전 개발자센터(openapi.naver.com) 키도 2027년 6월까지는 받아 줘요 (HUB 먼저 시도, 안 되면 예전 주소)
 import { readFile, writeFile } from 'node:fs/promises';
@@ -9,7 +9,11 @@ if (!ID || !SECRET) { console.log('NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 시크�
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
-const clean = s => String(s || '').replace(/<[^>]+>/g, '').replace(/&(#\d+|\w+);/g, (m, e) => e[0] === '#' ? String.fromCharCode(+e.slice(1)) : (ENT[e] ?? m)).replace(/\s+/g, ' ').trim();
+// &#128512; 같은 이모지 글자 번호는 fromCodePoint로 (fromCharCode는 반쪽짜리 깨진 글자가 돼요), 짝 없는 반쪽 글자는 지우기
+const clean = s => String(s || '').replace(/<[^>]+>/g, '').replace(/&(#\d+|\w+);/g, (m, e) => { if (e[0] !== '#') return ENT[e] ?? m; const n = +e.slice(1); return n > 0 && n <= 0x10FFFF ? String.fromCodePoint(n) : ''; })
+  .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1').replace(/\s+/g, ' ').trim();
+// 글자 수로 자르되 이모지(두 칸짜리)를 반으로 자르지 않게
+const cut = (s, n) => { const a = Array.from(s); return a.length > n ? a.slice(0, n).join('') : s; };
 // 광고·체험단 글은 빼요
 const AD = /아고다|트립닷컴|야놀자|여기어때|협찬|원고료|체험단|제공받아|제공 받아|업체로부터|광고|공구|공동구매|최저가|할인코드|쿠폰|분양|대출|보험설계/;
 // 반려동물·관계없는 글 빼기, 육아 글인지 확인
@@ -44,7 +48,7 @@ async function search(kind, query, sort, n, ok) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(`HTTP ${res.status} ${j.errorMessage || ''}`);
       return (j.items || []).map(x => ({
-        t: clean(x.title), d: clean(x.description).slice(0, 90), u: kind === 'news' ? (x.originallink || x.link) : x.link,
+        t: clean(x.title), d: cut(clean(x.description), 90), u: kind === 'news' ? (x.originallink || x.link) : x.link,
         s: kind === 'blog' ? clean(x.bloggername) : kind === 'news' ? (String(x.originallink || x.link).replace(/^https?:\/\/(www\.|m\.)?/, '').split('/')[0]) : clean(x.cafename), k: kind === 'blog' ? 'b' : kind === 'news' ? 'n' : 'c',
         dt: x.postdate ? `${x.postdate.slice(0, 4)}-${x.postdate.slice(4, 6)}-${x.postdate.slice(6, 8)}` : x.pubDate ? new Date(Date.parse(x.pubDate) + 9 * 3600e3).toISOString().slice(0, 10) : ''
       })).filter(x => x.t && x.u && !AD.test(x.t + ' ' + x.d) && !PET.test(x.t + ' ' + x.d) && (!x.dt || x.dt >= RECENT) && (!ok || ok(x))).slice(0, n);
@@ -111,9 +115,14 @@ for (const r of REGIONS) {
 console.log(`호출 ${calls}번, 실패 ${fails}번`);
 if (fails > calls / 2) { console.error('절반 넘게 실패했어요 (키·사용 API 설정을 확인해 주세요)'); process.exit(1); }
 
-const file = dataFile('posts.json');
-let old = null; try { old = JSON.parse(await readFile(file, 'utf8')); } catch (e) {}
-const body = { topicNames: TOPICS.map(([k]) => k), ...out };
-if (old && JSON.stringify({ ...old, updated: 0 }) === JSON.stringify({ updated: 0, ...body })) { console.log('바뀐 게 없어요'); process.exit(0); }
-await writeFile(file, JSON.stringify({ updated: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), ...body }) + '\n');
-console.log('posts.json 저장');
+// 나눠 저장: 육아 글 모음(posts.json, 글 모음 화면에서만), 동네 소식(news.json, 동네 탐문), 바뀐 날(posts-meta.json, 떠 있는 버튼 빨간 점용 — 아주 작아요)
+const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+async function save(name, data) {
+  const f = dataFile(name); let old = null; try { old = JSON.parse(await readFile(f, 'utf8')); } catch (e) {}
+  if (old && JSON.stringify({ ...old, updated: 0 }) === JSON.stringify({ updated: 0, ...data })) { console.log(`${name}: 바뀐 게 없어요`); return old.updated; }
+  await writeFile(f, JSON.stringify({ updated: day, ...data }) + '\n'); console.log(`${name} 저장`); return day;
+}
+const { news, ...rest } = out;
+const pu = await save('posts.json', { topicNames: TOPICS.map(([k]) => k), ...rest });
+await save('news.json', { news });
+await writeFile(dataFile('posts-meta.json'), JSON.stringify({ updated: pu }) + '\n');

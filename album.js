@@ -50,7 +50,7 @@ function sectionHtml() {
   });
   const head = ym => { const [y, mo] = ym.split('-').map(Number), [age] = monthsDays(p.birth, ym + '-' + String(Math.min(28, +p.birth.slice(8))).padStart(2, '0')); return `${y}.${mo}${ym >= p.birth.slice(0, 7) ? ` · 생후 ${age}개월` : ''}`; };
   const dayHead = d => { const [y, mo, dd] = d.split('-').map(Number); return `<b>${mo}월 ${dd}일 (${WDK[new Date(Date.UTC(y, mo - 1, dd)).getUTCDay()]})</b><span>생후 ${daysBetween(p.birth, d) + 1}일</span>`; };
-  const cell = m => { const ph = safeImg(PHOTOS[m.id]); return `<button class="acell" data-view="${m.id}" aria-label="${esc(m.title || '사진')} 크게 보기">${ph ? `<img src="${ph}" alt="" loading="lazy">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}${m.title ? `<small>${esc(m.title)}</small>` : ''}</button>`; };
+  const cell = m => { const ph = safeImg(PHOTOS[m.id]); return `<button class="acell" data-view="${m.id}" aria-label="${esc(m.title || '사진')} 크게 보기">${ph ? `<img src="${ph}" alt="" loading="lazy" decoding="async">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}${m.title ? `<small>${esc(m.title)}</small>` : ''}</button>`; };
   // 달별 묶음: 가장 최근 달만 펼쳐 두고 그 전 달은 접어 둬요 (누르면 펼쳐지고, 이 폰에 기억). 펼친 달 맨 아래에도 접기 단추
   const cnt = ym => L.filter(m => m.date.slice(0, 7) === ym).length;
   // 앱을 열 때마다 가장 최근 달은 펼쳐 둬요 (그 뒤에 접은 건 이번에 쓰는 동안 기억)
@@ -181,7 +181,7 @@ const extras = id => S.moments.filter(m => m.type === 'extra' && m.of === id).so
 function exStrip(m) {
   const L = extras(m.id); if (!L.length) return '';
   const show = L.slice(0, 4);
-  return `<span class="exstrip">${show.map((x, i) => { const ph = safeImg(PHOTOS[x.id]); return `<span class="exth" data-view="${x.id}">${ph ? `<img src="${ph}" alt="" loading="lazy">` : ''}${i === 3 && L.length > 4 ? `<b>+${L.length - 4}</b>` : ''}</span>`; }).join('')}</span>`;
+  return `<span class="exstrip">${show.map((x, i) => { const ph = safeImg(PHOTOS[x.id]); return `<span class="exth" data-view="${x.id}">${ph ? `<img src="${ph}" alt="" loading="lazy" decoding="async">` : ''}${i === 3 && L.length > 4 ? `<b>+${L.length - 4}</b>` : ''}</span>`; }).join('')}</span>`;
 }
 // 편집창 안: 추가 사진 목록 + 더 올리기
 function exField(id) {
@@ -368,11 +368,11 @@ css.textContent = `
 .exgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .exg{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--card2)}
 .exg img{width:100%;height:100%;object-fit:cover;display:block}
-.exg i{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;color:var(--muted);font-style:normal}
+.exg i{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;color:var(--muted);font-style:normal}
 .exdel{position:absolute;top:3px;right:3px;min-width:26px;height:26px;border:0;border-radius:99px;background:rgba(31,42,68,.75);color:#fff;font-size:15px;line-height:1;padding:0 6px}
 .exdel.sure{background:var(--red);font-size:12px}
 .afold{display:block;width:100%;margin:10px 0 2px;border:1.5px dashed var(--line);background:#FFFDF7;border-radius:99px;min-height:40px;font-size:13px;color:var(--navy)}
-.acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:10px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
+.acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:11px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
 window.ALBUM = { shared, sectionHtml, openFree, isFree, photoDate, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };

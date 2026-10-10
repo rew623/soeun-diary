@@ -12,7 +12,7 @@ function render_() {
   const L = famPhotos(), shown = L.slice(0, F.more);
   const groups = []; shown.forEach(m => { const ym = m.date.slice(0, 7); let g = groups[groups.length - 1]; if (!g || g.ym !== ym) groups.push(g = { ym, items: [] }); g.items.push(m); });
   const cell = m => { const ph = safeImg(PHOTOS[m.id]);
-    return `<button class="acell" data-view="${m.id}">${ph ? `<img src="${ph}" alt="" loading="lazy">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}</button>`; };
+    return `<button class="acell" data-view="${m.id}">${ph ? `<img src="${ph}" alt="" loading="lazy" decoding="async">` : '<span class="mph">불러오는 중</span>'}${m.board ? '<span class="onboard">보드</span>' : ''}</button>`; };
   const P = S.profile || {}, face = (k, who) => safeImg(PHOTOS[k]) ? `<img src="${safeImg(PHOTOS[k])}" alt="">` : CHARS.svg(who, '', { face: true, size: 58 });
   return `<section class="fteam"><div class="fduo">
       <span class="fface">${face('mom', 'mom')}<b>엄마</b></span><span class="fplus">+</span>
@@ -76,7 +76,7 @@ css.textContent = `
 .fplus{font-family:var(--display);font-size:20px;color:var(--red);margin-bottom:18px}
 .fcount{display:flex;align-items:baseline;margin-left:8px;margin-bottom:18px}.fcount b{font-family:var(--display);font-weight:400;font-size:30px;color:var(--red)}.fcount small{font-size:12px;color:var(--muted)}
 .fwho{position:absolute;left:4px;bottom:4px;display:flex;gap:2px}
-.fwho i{font-style:normal;font-size:10px;font-weight:700;color:var(--navy);background:rgba(255,253,247,.92);border-radius:99px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px}
+.fwho i{font-style:normal;font-size:11px;font-weight:700;color:var(--navy);background:rgba(255,253,247,.92);border-radius:99px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px}
 .fteam .chip.on,.fchips .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}`;
 document.head.appendChild(css);
 

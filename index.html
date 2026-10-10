@@ -273,7 +273,7 @@ body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,bod
 .linkbtn{flex:1;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--navy);color:var(--navy);text-decoration:none;border-radius:4px;min-height:44px;font-size:14px;background:none}
 .bigimg{width:100%;display:block;border:1px solid var(--line);margin-bottom:12px}
 .pola,.mcell{position:relative}
-.onboard{position:absolute;top:-6px;right:-4px;z-index:1;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:3px;transform:rotate(6deg);box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.onboard{position:absolute;top:-6px;right:-4px;z-index:1;background:var(--red);color:#fff;font-size:11px;padding:1px 6px;border-radius:3px;transform:rotate(6deg);box-shadow:0 2px 4px rgba(0,0,0,.25)}
 </style>
 <style id="cute">
 /* 아기자기 꾸미기 (탐정 수첩 테마 위에: 둥근 카드, 바느질 선, 깅엄 체크, 마스킹 테이프) */
@@ -508,7 +508,7 @@ function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pu
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;
-function saveCache(d){if(DEMO)return;try{localStorage.setItem(CK,JSON.stringify(d))}catch(e){}}
+let cacheT,cacheD;function saveCache(d){if(DEMO)return;cacheD=d;clearTimeout(cacheT);cacheT=setTimeout(()=>{try{localStorage.setItem(CK,JSON.stringify(cacheD))}catch(e){}},2000)}   // 바뀔 때마다 통째로 쓰지 않고 2초 모아서
 function savePhCache(){if(DEMO)return;try{const first=['profile','mom','dad'],keep={};let size=0;
   const keys=first.concat(Object.keys(PHOTOS).filter(k=>!first.includes(k)).reverse());
   for(const k of keys){const v=PHOTOS[k];if(!v)continue;if(size+v.length>2500000)continue;keep[k]=v;size+=v.length}
@@ -528,8 +528,8 @@ async function loadPhotos(){
   S.meals.slice().sort(desc).slice(0,20).forEach(m=>{if(m.photo)add(m.id)});
   S.menus.filter(m=>m.month===curMenuMonth()).forEach(m=>{if(m.photo)add(m.id)});
   if(!want.length)return;want.forEach(id=>LOADING.add(id));
-  const groups=[];for(let i=0;i<want.length;i+=4)groups.push(want.slice(i,i+4));
-  await Promise.all(groups.map(async ids=>{try{const got=await run('getPhotos',ids)||{};ids.forEach(id=>{if(got[id])PHOTOS[id]=got[id];STALE.delete(id)});render()}catch(e){}finally{ids.forEach(id=>LOADING.delete(id))}}));
+  // 사진 주소는 Firebase 기록에 이미 있어서 한 번에 받아요. 예전엔 4장마다 화면을 다시 그려서, 사진이 많으면 열 때 몇 초씩 버벅였어요 → 다 받은 뒤 한 번만 그려요
+  try{const got=await run('getPhotos',want)||{};let ch=false;want.forEach(id=>{if(got[id]&&PHOTOS[id]!==got[id]){PHOTOS[id]=got[id];ch=true}STALE.delete(id)});if(ch)render()}catch(e){}finally{want.forEach(id=>LOADING.delete(id))}
   cachePhSoon();
 }
 async function write(fn,...args){
@@ -856,7 +856,7 @@ const MILES=[['첫 사회적 미소','1~2개월'],['소리 내어 웃기','3~4�
 const firsts=()=>S.moments.filter(m=>m.type!=='month'&&m.type!=='free'&&m.type!=='report'&&m.type!=='extra'&&m.type!=='fam').sort((a,b)=>a.date<b.date?1:-1);
 const dayNo=d=>daysBetween(S.profile.birth,d)+1;
 function polaroid(m,big,rot){const ph=safeImg(PHOTOS[m.id]);
-  return `<button class="pola ${big?'big':''}" style="transform:rotate(${rot}deg)" ${ph?`data-view="${m.id}"`:`data-act="editmom" data-id="${m.id}"`}>${m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${esc(m.title)} 사진">`:m.photo?'<span class="noph">사진 불러오는 중</span>':'<span class="noph">사진 없음</span>'}<span class="pt"><b>${esc(m.title)}</b><small>생후 ${dayNo(m.date)}일</small></span><small class="pw">${fmtK(m.date,true)}${m.by?`, ${m.by} 수사관 최초 목격`:''}</small>${ALBUM.exStrip(m)}</button>`}
+  return `<button class="pola ${big?'big':''}" style="transform:rotate(${rot}deg)" ${ph?`data-view="${m.id}"`:`data-act="editmom" data-id="${m.id}"`}>${m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${esc(m.title)} 사진" loading="lazy" decoding="async">`:m.photo?'<span class="noph">사진 불러오는 중</span>':'<span class="noph">사진 없음</span>'}<span class="pt"><b>${esc(m.title)}</b><small>생후 ${dayNo(m.date)}일</small></span><small class="pw">${fmtK(m.date,true)}${m.by?`, ${m.by} 수사관 최초 목격`:''}</small>${ALBUM.exStrip(m)}</button>`}
 // 접기: 앨범 칸·사진첩 달별로 접고 펴기 (이 폰에만 기억)
 const FOLDK='soeun-fold';let FOLD={};try{FOLD=JSON.parse(localStorage.getItem(FOLDK)||'{}')||{}}catch(e){}
 function isFold(k,def){return k in FOLD?FOLD[k]:!!def}
@@ -868,7 +868,7 @@ function renderAlbum(){
   const rots=[-2,2,-1.5,1.5,-1,1];
   const months=[];const [mo]=monthsDays(p.birth,today());for(let i=1;i<=Math.min(mo+1,24);i++)months.push(i);
   const mm=months.map(i=>{const m=S.moments.find(x=>x.type==='month'&&x.title===i+'개월'),ph=m&&safeImg(PHOTOS[m.id]);
-    return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
+    return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진" loading="lazy" decoding="async">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
   const av=S.albumView==='board'||S.albumView==='family'?S.albumView:'album';
   const aseg=`<div class="seg aview">${[['album','앨범'],['family','가족'],['board','수사 보드']].map(([k,l])=>`<button class="${av===k?'on':''}" data-act="aview" data-v="${k}">${l}</button>`).join('')}</div>`;
   if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1><p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${aseg}${FAMILY.render()}
@@ -967,7 +967,7 @@ function renderFood(){
       <span class="cnt"><button data-act="cubestep" data-id="${c.id}" data-v="-1" aria-label="하나 사용">−</button><b>${n}</b><button data-act="cubestep" data-id="${c.id}" data-v="1" aria-label="하나 추가">+</button></span></div>`}).join('');
   // 센터 식단
   const ym=curMenuMonth(),[yy,mm]=ym.split('-').map(Number),mn=S.menus.filter(m=>m.month===ym);
-  const menus=mn.length?`<div class="menus">${mn.map(m=>{const ph=safeImg(PHOTOS[m.id]);return `<button data-act="viewmenu" data-id="${m.id}">${ph?`<img src="${ph}" alt="${esc(m.title)}">`:`<span class="noph">${m.photo?'불러오는 중':'사진 없음'}</span>`}${esc(m.title||'식단표')}</button>`}).join('')}</div>`:'<p class="vempty">센터 식단표(PDF·사진)나 표준레시피 엑셀을 올려두면 두 수사관이 같이 볼 수 있어요.</p>';
+  const menus=mn.length?`<div class="menus">${mn.map(m=>{const ph=safeImg(PHOTOS[m.id]);return `<button data-act="viewmenu" data-id="${m.id}">${ph?`<img src="${ph}" alt="${esc(m.title)}" loading="lazy" decoding="async">`:`<span class="noph">${m.photo?'불러오는 중':'사진 없음'}</span>`}${esc(m.title||'식단표')}</button>`}).join('')}</div>`:'<p class="vempty">센터 식단표(PDF·사진)나 표준레시피 엑셀을 올려두면 두 수사관이 같이 볼 수 있어요.</p>';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>급식 수사대</h1><p>이유식 기록, 새 식재료 심문, 냉동 큐브 보관</p></header>${CHARS.guide('food')}
   ${head}${band}
   <p class="foot" style="margin-top:8px">돌 전에는 꿀, 간(소금·설탕), 음료로 주는 생우유는 피해요. 새 재료는 한 번에 하나씩, 오전에 먹여 반응을 봐요.</p>
@@ -1278,13 +1278,16 @@ function stayAfterRender(){
   if(S.mode!=='ok')return;
   // 내용이 늦게 채워지는 탭(동네 탐문 등)은 그 위치까지 실제로 내려갈 수 있을 때까지 다시 시도해요 (최대 5초)
   if(stayY!=null){const y=stayY;stayT0=stayT0||Date.now();if(Date.now()-stayT0>5000)stayY=null;else{stayY=null;requestAnimationFrame(()=>{window.scrollTo(0,y);if(Math.abs(window.scrollY-y)>8&&Date.now()-stayT0<5000)stayY=y})}}
-  staySave();
+  clearTimeout(stayT);stayT=setTimeout(staySave,300);   // 바로 읽으면 화면 전체 배치를 억지로 다시 계산해서 느려져요
 }
 try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
   if(st&&['grow','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
 }catch(e){}
 window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
 window.addEventListener('pagehide',staySave);
+// 폰에 저장해 두는 사본(saveCache)은 2초 모아 쓰니까, 앱을 내리거나 닫을 땐 바로 써요
+const flushCache=()=>{if(cacheD&&!DEMO){clearTimeout(cacheT);try{localStorage.setItem(CK,JSON.stringify(cacheD))}catch(e){}}};
+window.addEventListener('pagehide',flushCache);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushCache()});
 window.addEventListener('touchstart',()=>{stayY=null},{passive:true,once:true});   // 손으로 움직이기 시작하면 위치 되돌리기는 그만
 loadCache();
 refresh();
@@ -1301,6 +1304,8 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
     sw=null;
     if(e.touches.length!==1||S.mode!=='ok'||S.view||!S.profile||$sheet.classList.contains('open'))return;
     if(e.target.closest('input,textarea,select,.hmap,.hmapwrap,#bwrap,.board,[data-noswipe]'))return;
+    // 옆으로 스크롤되는 줄(동네 탐문 시간별 날씨 등)에서 밀면 그 줄을 넘기고, 탭은 안 바꿔요
+    for(let el=e.target;el&&el!==$app;el=el.parentElement){if(el.scrollWidth>el.clientWidth+4){const ox=getComputedStyle(el).overflowX;if(ox==='auto'||ox==='scroll')return}}
     if(document.querySelector('.agrid.selmode'))return;
     const t=e.touches[0];sw={x:t.clientX,y:t.clientY,t:Date.now(),lock:0,dx:0};
   },{passive:true});

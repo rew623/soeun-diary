@@ -204,7 +204,7 @@ css.textContent = `
 .bpin{fill:#B3261E;stroke:#6E1712;stroke-width:1}
 .bcard{position:absolute;z-index:1;display:flex;flex-direction:column;gap:3px;padding:16px 8px 9px;font-family:var(--body);font-size:11px;line-height:1.35;color:var(--ink);box-shadow:0 4px 9px rgba(60,35,10,.35);border-radius:4px;transform-origin:50% 7px;cursor:pointer;text-align:left}
 .bcard .bt{font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy);line-height:1.15;word-break:keep-all}
-.bcard small{font-size:10px;color:var(--muted)}
+.bcard small{font-size:11px;color:var(--muted)}
 .bcard p{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;border-top:1px dashed rgba(107,95,82,.45);padding-top:3px}
 .bcard p span{color:var(--muted)}.bcard p b{font-size:13px}
 .bcard p.done{opacity:.55}.bcard p.done b{color:var(--red)}
@@ -213,7 +213,7 @@ css.textContent = `
 .bcard.note{background:#EAD9B2}
 .bcard .bbig{font-family:var(--display);font-size:26px;color:var(--red);line-height:1.1}
 .bcard.pola{background:#FFFDF7;padding:14px 7px 9px}
-.bcard.pola img,.bcard .bnoph{width:100%;aspect-ratio:1;object-fit:cover;object-position:center 30%;display:grid;place-items:center;background:var(--card2);color:var(--muted);font-size:10px;margin-bottom:3px}
+.bcard.pola img,.bcard .bnoph{width:100%;aspect-ratio:1;object-fit:cover;object-position:center 30%;display:grid;place-items:center;background:var(--card2);color:var(--muted);font-size:11px;margin-bottom:3px}
 .bcard.pola.center{padding:16px 9px 10px;z-index:3}
 .bcard.center .bt{font-size:18px;text-align:center}
 .bcard .bday{font-family:var(--display);text-align:center;color:var(--ink);font-size:13px}
