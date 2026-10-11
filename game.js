@@ -295,13 +295,13 @@ const clL = ids => ids.map(id => [id, (CLN[id] || ['', '기본'])[1], (CLN[id] |
 const KIT = {
   baby: { hat: hatL(['det', 'none', 'bunny', 'bear', 'flower', 'beanie', 'party', 'antler', 'elfhat', 'santa', 'crown'], [0, 0, 6, 6, 5, 7, 8, 8, 9, 12, 15]),
     cloth: clL(['', 'conan', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'rudolph', 'elf', 'santa', 'hanbok']),
-    prop: [['lens', '돋보기', 0], ['rattle', '딸랑이', 3], ['bottle', '젖병', 3], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
+    prop: [['lens', '돋보기', 0], ['skate', '스케이트보드 (코난)', 0], ['rattle', '딸랑이', 3], ['bottle', '젖병', 3], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
   mom: { hat: [['', '빨간 리본', 0], ...hatL(['bowler', 'flower', 'beret', 'bunny', 'beanie', 'straw', 'antler', 'santa', 'tiara'], [0, 5, 7, 6, 7, 9, 8, 12, 14])],
     cloth: clL(['', 'watson', 'stripe', 'pajama', 'apron', 'cardigan', 'knit', 'rain', 'dress', 'trench', 'elf', 'santaDress', 'hanbok']),
-    prop: [['heart', '하트', 0], ['note', '수첩', 0], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6], ['candy', '지팡이 사탕', 4], ['gift', '선물 상자', 6]] },
+    prop: [['heart', '하트', 0], ['note', '수첩', 0], ['bag', '왕진 가방 (왓슨)', 0], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6], ['candy', '지팡이 사탕', 4], ['gift', '선물 상자', 6]] },
   dad: { hat: [['', '중절모', 0], ...hatL(['deer', 'det', 'cap', 'beanie', 'straw', 'chef', 'antler', 'elfhat', 'santa', 'crown'], [0, 6, 8, 7, 9, 10, 8, 9, 12, 15])],
     cloth: clL(['', 'sherlock', 'stripe', 'pajama', 'hoodie', 'knit', 'soccer', 'apron', 'trench', 'suit', 'rudolph', 'santa', 'hanbokB']),
-    prop: [['camera', '카메라', 0], ['lens', '돋보기', 0], ['note', '수첩', 2], ['coffee', '커피', 4], ['wrench', '공구', 5], ['balloon', '풍선', 5], ['bell', '방울', 4], ['gift', '선물 상자', 6]] }
+    prop: [['camera', '카메라', 0], ['lens', '돋보기', 0], ['violin', '바이올린 (셜록)', 0], ['note', '수첩', 2], ['coffee', '커피', 4], ['wrench', '공구', 5], ['balloon', '풍선', 5], ['bell', '방울', 4], ['gift', '선물 상자', 6]] }
 };
 const KINDS = [['hat', '🎩 모자', 'hats'], ['cloth', '👕 옷', 'clothes'], ['prop', '🧸 손에 든 소품', 'props']];
 const PROP0 = { baby: 'lens', mom: 'heart', dad: 'camera' };
@@ -401,14 +401,14 @@ function eventHat() {
 function skin() { const s = st(), h = s.hat || 'det'; if (h !== 'det' && h !== 'none') return h; const e = S.profile ? eventHat() : null; return e ? e[0] : h; }   // 기본 모자(탐정·코난 모자 없음)일 때만 명절·생일 모자
 
 // 2026.10.11 컨셉(사용자 요청): 소은=코난, 아빠=셜록 홈즈, 엄마=왓슨 — 처음 한 번 두 폰 같이 그 옷으로 갈아입혀요 (game/shared look 칸, 산 물건은 그대로, 꾸미기에서 언제든 바꿔요)
-let looking = false;
+let looking = false; const LOOK = 'holmes2';   // 2: 소품도 (소은 스케이트보드·아빠 바이올린·엄마 왕진 가방)
 function lookOnce() {
-  const g = S.game; if (!g || !g.srv || g.look || looking || !canWrite() || !local().synced) return;   // 이 폰 것을 가족 저장에 합친 뒤에 (합치기와 겹치지 않게)
+  const g = S.game; if (!g || !g.srv || String(g.look || '') >= LOOK || looking || !canWrite() || !local().synced) return;   // 이 폰 것을 가족 저장에 합친 뒤에 (합치기와 겹치지 않게)
   const s = st();
   looking = true;
-  const o = { look: 'holmes', hat: 'none', hatOf: Object.assign({}, s.hatOf || {}, { mom: 'bowler', dad: 'deer' }), wear: Object.assign({}, s.wear || {}, { baby: 'conan', mom: 'watson', dad: 'sherlock' }), propOf: Object.assign({}, s.propOf || {}, { baby: 'lens', mom: 'note', dad: 'lens' }) };
+  const o = { look: LOOK, hat: 'none', hatOf: Object.assign({}, s.hatOf || {}, { mom: 'bowler', dad: 'deer' }), wear: Object.assign({}, s.wear || {}, { baby: 'conan', mom: 'watson', dad: 'sherlock' }), propOf: Object.assign({}, s.propOf || {}, { baby: 'skate', mom: 'bag', dad: 'violin' }) };
   Object.assign(g, clone(o));
-  run('saveGame', o, 0, undefined, 'look').then(() => { setTimeout(() => toast('🕵️ 소은=코난, 아빠=셜록, 엄마=왓슨으로 갈아입었어요!\n꾸미기에서 언제든 바꿀 수 있어요'), 800); render(); })
+  run('saveGame', o, 0, undefined, { key: 'look', val: LOOK }).then(() => { setTimeout(() => toast('🕵️ 소은=코난, 아빠=셜록, 엄마=왓슨으로 갈아입었어요!\n꾸미기에서 언제든 바꿀 수 있어요'), 800); render(); })
     .catch(() => { if (window.__app && __app.refresh) __app.refresh(); }).finally(() => { looking = false; });   // 다른 폰이 먼저 했으면 그쪽 모습으로
 }
 // ---------- 방 꾸미기는 room.js (ROOMS) ----------
