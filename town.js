@@ -8,7 +8,7 @@ const reg = () => { try { const r = localStorage.getItem(REGK); return NAMES[r] 
 const setReg = r => { try { localStorage.setItem(REGK, r); } catch (e) {} };
 
 async function load(force) {
-  if (T.loading || (!force && T.at && Date.now() - T.at < 30 * 60e3)) return;
+  if (T.loading || (!force && T.at && Date.now() - T.at < 10 * 60e3)) return;
   T.loading = true;
   const get = n => fetch('data/' + n, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
   // 동네 소식은 작은 news.json에서 (예전엔 650KB짜리 posts.json을 통째로 받았어요). 아직 없으면 예전 파일로
@@ -16,7 +16,7 @@ async function load(force) {
   T.town = a; T.events = b; T.dis = c; T.news = d && d.news; T.at = Date.now(); T.loading = false;
   if (S.mode === 'ok') render();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && T.at && Date.now() - T.at > 30 * 60e3) load(true); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && T.at && Date.now() - T.at > 10 * 60e3) load(true); });
 
 // ---------- 산책 지수 ----------
 const GN = ['좋음', '보통', '나쁨', '매우나쁨'], GC = ['#2E7D5B', '#B8860B', '#C8551E', '#B3261E'];

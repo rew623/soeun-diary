@@ -810,17 +810,37 @@ if ('serviceWorker' in navigator) {
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloading) return; reloading = true; location.reload(); });
   navigator.serviceWorker.register('sw.js').then(reg => {
-    const show = () => {
-      if (!reg.waiting || !navigator.serviceWorker.controller || document.getElementById('updbar')) return;
-      const bar = document.createElement('div'); bar.id = 'updbar';
-      bar.innerHTML = '<span>새 버전이 있어요</span><button>업데이트</button>';
-      bar.querySelector('button').onclick = () => { bar.querySelector('button').disabled = true; reg.waiting && reg.waiting.postMessage('skip'); };
-      document.body.appendChild(bar);
+    const upd = () => reg.update().catch(() => {});
+    // 새 버전 띠: 서비스 워커가 받아 둔 새 버전이 있으면 그걸로, 없으면(브라우저가 확인을 늦출 때) 통째로 다시 불러와요
+    const bar = () => {
+      if (document.getElementById('updbar') || !navigator.serviceWorker.controller) return;
+      const el = document.createElement('div'); el.id = 'updbar';
+      el.innerHTML = '<span>새 버전이 있어요</span><button>업데이트</button>';
+      el.querySelector('button').onclick = async () => {
+        el.querySelector('button').disabled = true;
+        if (reg.waiting) { reg.waiting.postMessage('skip'); return; }
+        try { await reg.unregister(); (await caches.keys()).filter(k => k.startsWith('shell-')).forEach(k => caches.delete(k)); } catch (e) {}
+        location.reload();
+      };
+      document.body.appendChild(el);
     };
+    const show = () => { if (reg.waiting) bar(); };
     show();
     reg.addEventListener('updatefound', () => { const w = reg.installing; w && w.addEventListener('statechange', () => { if (w.state === 'installed') show(); }); });
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
-    setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);   // 새 버전은 5분마다·앱으로 돌아올 때마다 확인
-    window.addEventListener('focus', () => reg.update().catch(() => {}));
+    // 서버의 sw.js 버전을 1분마다(앱을 보고 있을 때)·앱으로 돌아올 때 직접 확인 → 다르면 바로 새로 받고, 20초 안에 못 받으면 띠를 먼저 보여 줘요 (예전처럼 거의 실시간)
+    const running = () => new Promise(res => { const c = navigator.serviceWorker.controller; if (!c) return res(''); const ch = new MessageChannel(), t = setTimeout(() => res(''), 800); ch.port1.onmessage = e => { clearTimeout(t); res(String(e.data || '')); }; c.postMessage('ver', [ch.port2]); });
+    let polling = false;
+    const poll = async () => {
+      if (polling || document.visibilityState !== 'visible' || document.getElementById('updbar')) return; polling = true;
+      try {
+        const r = await fetch('sw.js?v=' + Date.now(), { cache: 'no-store' }), v = (/const VERSION = '([^']+)'/.exec(await r.text()) || [])[1], cur = await running();
+        if (v && cur && v !== cur) { upd(); setTimeout(() => { if (!reg.waiting) bar(); else show(); }, 20000); }
+      } catch (e) {}
+      polling = false;
+    };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { upd(); poll(); } });
+    window.addEventListener('focus', () => { upd(); poll(); });
+    setInterval(() => { upd(); poll(); }, 60 * 1000);
+    setTimeout(poll, 4000);
   }).catch(e => console.warn('SW', e));
 }
