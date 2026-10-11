@@ -9,7 +9,7 @@ lb.innerHTML = `<div class="lb-stage">
     <div class="lb-track">${'<div class="lb-slide"><img class="lb-img" alt="" draggable="false"></div>'.repeat(3)}</div>
     <div class="lb-card" hidden></div>
     <button class="lb-nav prev" data-lb="prev" aria-label="이전 사진" hidden>‹</button><button class="lb-nav next" data-lb="next" aria-label="다음 사진" hidden>›</button></div>
-  <div class="lb-top"><span class="lb-cap"></span><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
+  <div class="lb-top"><span class="lb-cap"></span><button class="lb-x lb-share" data-lb="share" aria-label="카톡 등으로 보내기" hidden>📤</button><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
   <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn" data-lb="focus" hidden><i>🎯</i><span>보여 줄 곳</span></button><button class="lb-btn deco" data-lb="deco"><i>🎨</i><span>꾸미기</span></button><button class="lb-btn edit" data-lb="edit"><i>✏️</i><span>편집</span></button></div>`;
 document.body.appendChild(lb);
 const $stage = lb.querySelector('.lb-stage'), $track = lb.querySelector('.lb-track'), $card = lb.querySelector('.lb-card');
@@ -85,6 +85,7 @@ function header() {
   if (pctx && cur && cur.key) { e.innerHTML = '<i>📍</i><span>핀 위치</span>'; e.hidden = !!(S.me && S.me.viewer); }
   else { e.innerHTML = `<i>${cur && cur.editLabel ? '👉' : '✏️'}</i><span>${esc((cur && cur.editLabel) || '편집')}</span>`; e.hidden = !(cur && cur.edit); }
   lb.querySelector('[data-lb=deco]').hidden = !(cur && cur.key && window.STUDIO);
+  lb.querySelector('[data-lb=share]').hidden = !(cur && cur.key && safeImg(PHOTOS[cur.key]));   // 📤 사진 그대로 카톡 등으로 보내기
   lb.querySelector('[data-lb=focus]').hidden = !(cur && cur.key && window.FOCUS && !(S.me && S.me.viewer) && (S.moments || []).some(m => m.id === cur.key && m.photo));   // 🎯 사진에서 보여 줄 곳(얼굴) 정하기
   boardBtn();
 }
@@ -154,6 +155,21 @@ lb.addEventListener('click', async e => {
   if (b.dataset.lb === 'edit') {
     if (pctx && cur && cur.key) { const k = cur.key, c = pctx; close(); if (c === 'walk' && window.WALK) WALK.pinPhoto([k]); else if (window.EXPLORE) EXPLORE.pinPhoto(k); return; }   // 원본은 그대로, 지도 핀 자리만
     const f = cur && cur.edit; close(); if (f) f();
+  }
+  if (b.dataset.lb === 'share' && cur && cur.key) {   // 원본 사진을 그대로 보내요 (공유가 안 되는 폰이면 저장)
+    const k = cur.key, u = safeImg(PHOTOS[k]); if (!u) return; b.disabled = true;
+    (async () => {
+      try {
+        let bl = null; try { const r = await fetch(u, { mode: 'cors', credentials: 'omit' }); if (r.ok) bl = await r.blob(); } catch (x) {}
+        if (!bl && window.__photoBlob) bl = await window.__photoBlob(u);
+        if (!bl) throw new Error('사진을 받지 못했어요');
+        const m = (S.moments || []).find(x => x.id === k), d = (m && m.date) || today(), nm = (window.CV && CV.nick ? CV.nick() : '사진').replace(/\s+/g, '');
+        const r = window.CV && CV.share ? await CV.share(bl.type ? bl : new Blob([bl], { type: 'image/jpeg' }), `${nm}_${d}.jpg`, `${fmtK(d, true)} 생후 ${dayNo(d)}일`) : 'saved';
+        if (r === 'saved') toast('공유가 안 되는 폰이라 사진을 저장했어요');
+      } catch (x) { toast((x && x.message) || '보내지 못했어요'); }
+      b.disabled = false;
+    })();
+    return;
   }
   if (b.dataset.lb === 'deco') { const k = cur && cur.key; close(); closeSheet(); if (k && window.STUDIO) STUDIO.open(k); }
   if (b.dataset.lb === 'focus') { const k = cur && cur.key; close(); if (k && window.FOCUS) FOCUS.pick(k); }   // 기념 사진관으로 이 사진 꾸미기 (지도 핀 창 같은 아래 창은 닫고)
@@ -284,6 +300,7 @@ html.lb-open,html.lb-open body{overflow:hidden}
 .lb-img:not([hidden]){transition:opacity .15s}
 .lb-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px 18px;background:linear-gradient(rgba(15,20,32,.85),transparent);color:var(--paper);pointer-events:none;z-index:3}
 .lb-cap{flex:1;font-size:14px;line-height:1.4}
+.lb-share{font-size:18px}.lb-x[hidden]{display:none}
 .lb-x{pointer-events:auto;width:44px;height:44px;border:0;border-radius:50%;background:rgba(233,220,195,.15);color:var(--paper);font-size:20px}
 .lb-bar{display:flex;gap:10px;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));justify-content:center}
 .lb-btn{flex:1;max-width:220px;min-height:56px;border-radius:4px;border:1.5px solid var(--paper);background:none;color:var(--paper);font-family:var(--display);font-size:clamp(13px,3.8vw,15px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 6px;line-height:1.2;white-space:nowrap;word-break:keep-all}

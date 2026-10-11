@@ -335,7 +335,7 @@ document.addEventListener('click', e => {
     // 바로 사지 않고 구매 확인 창 (거기서 '사기'를 누르면 data-ok=1로 다시 와요)
     if (b.dataset.ok !== '1') { { const fxk = c[4] === 'PIC' ? 'PIC' : FX[c[4]] ? c[4] : ''; GAME.confirmBuy(c[2], c[3], preview(c), `data-room="${slot}" data-id="${id}"`, fxk ? `✨ 특수 소품: ${FXDESC[fxk]}` : ''); } return; }
     if (s.acorn < c[3]) { toast(`도토리가 ${c[3] - s.acorn}개 더 필요해요`); return; }
-    s.acorn -= c[3]; s.room.push(id); closeSheet(); GAME.confetti(); toast(`${c[2]}을(를) 샀어요! 방에 놓았어요`);
+    s.acorn -= c[3]; s.room.push(id); closeSheet(); GAME.confetti(); toast(`${c[2]}${jo(c[2],'을','를')} 샀어요! 방에 놓았어요`);
   }
   s.slot[slot] = id; save(s); render();
 });

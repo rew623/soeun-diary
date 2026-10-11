@@ -16,11 +16,16 @@ const issueNo = ym => { const b = S.profile.birth; return (+ym.slice(0, 4) - +b.
 function months() { const L = []; for (let ym = S.profile.birth.slice(0, 7); ym <= today().slice(0, 7); ym = nextYm(ym)) L.push(ym); return L.reverse(); }
 const regionCode = () => { try { return localStorage.getItem('soeun-hosp-region') || 'wonju'; } catch (e) { return 'wonju'; } };
 const SKY = { 1: '맑음', 3: '구름 많음', 4: '흐림' };
-// 내가 고친 것 (이 폰만, localStorage soeun-paper-edit): { 'YYYY-MM': { no:[뺀 사진], main:대표 사진, strip:[사진 줄 4칸], seed:다시 만들기 횟수 } }
+// 고친 것 (두 폰 같이: game/shared paper, 최근 18달만): { 'YYYY-MM': { no:[뺀 사진], main:대표 사진, strip:[사진 줄 4칸], seed:다시 만들기 횟수 } }
+// 예전에 이 폰에만 기억하던 것(localStorage soeun-paper-edit)은 처음 고칠 때 같이 쓰는 곳으로 옮겨요
 const EK = 'soeun-paper-edit';
-const edits = () => { try { return JSON.parse(localStorage.getItem(EK) || '{}') || {}; } catch (e) { return {}; } };
+const edits = () => { const g = window.GAME && GAME.store ? GAME.store.get() : null; if (g && g.paper && typeof g.paper === 'object') return g.paper; try { return JSON.parse(localStorage.getItem(EK) || '{}') || {}; } catch (e) { return {}; } };
 const ed = ym => Object.assign({ no: [], main: '', strip: [], seed: 0 }, edits()[ym] || {});
-const edPut = (ym, e) => { const all = edits(); all[ym] = e; try { localStorage.setItem(EK, JSON.stringify(all)); } catch (x) {} };
+const edPut = (ym, e) => {
+  const all = Object.assign({}, edits()); all[ym] = e; const o = {}; Object.keys(all).sort().reverse().slice(0, 18).forEach(k => { o[k] = all[k]; });
+  if (window.GAME && GAME.store && !(S.me && S.me.viewer)) { const g = GAME.store.get(); g.paper = o; GAME.store.set(g); try { localStorage.removeItem(EK); } catch (x) {} }
+  else { try { localStorage.setItem(EK, JSON.stringify(o)); } catch (x) {} }
+};
 // seed로 섞기 (다시 만들 때마다 다른 사진·다른 큰 제목)
 const shuf = (L, seed) => { if (!seed) return L.slice(); let x = seed * 9301 + 49297; const r = () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; const a = L.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
@@ -88,7 +93,7 @@ function articles(I) {
   if (I.firsts.length) A.push(['👀 사건·사고', I.firsts.map(f => `${fmtK(f.date, true)} ${f.title}${f.by ? ` (목격: ${f.by} 수사관)` : ''}`).join('. ') + '.']);
   if (I.vacs.length || I.chks.length) A.push(['💉 보건 면', [I.vacs.length ? `예방접종 ${I.vacs.length}건 완료: ${I.vacs.map(v => v.name).join(', ')}. 울음은 증거 불충분.` : '', I.chks.map(c => `${c.id[0] === 'o' ? '구강검진' : '영유아 건강검진'} ${c.id.slice(1)}차를 받았다${c.hospital ? ` (${c.hospital})` : ''}.`).join(' ')].filter(Boolean).join(' ')]);
   const caught = I.wanted.filter(s => s.caught), gone = I.wanted.filter(s => s.over && !s.caught);
-  if (I.wanted.length) A.push(['🎩 괴도 깍정이 소식', caught.length ? `이달 괴도 깍정이를 ${caught.length}번 따라잡았다(변장: ${caught.map(s => s.v[3]).join(', ')}). 번번이 아슬아슬하게 달아났지만 노리던 것은 모두 지켜 냈다.${gone.length ? ` ${gone.length}번은 놓쳐 ${gone.map(s => WANTED.target(s.v)).join(', ')}을(를) 도둑맞았다.` : ''}` : `괴도 깍정이가 ${I.wanted.map(s => s.v[3]).join(', ')}(으)로 변장해 활동 중. 수사관들의 분발이 요구된다.`]);
+  if (I.wanted.length) A.push(['🎩 괴도 깍정이 소식', caught.length ? `이달 괴도 깍정이를 ${caught.length}번 따라잡았다(변장: ${caught.map(s => s.v[3]).join(', ')}). 번번이 아슬아슬하게 달아났지만 노리던 것은 모두 지켜 냈다.${gone.length ? ` ${gone.length}번은 놓쳐 ${(t => t + jo(t, '을', '를'))(gone.map(s => WANTED.target(s.v)).join(', '))} 도둑맞았다.` : ''}` : `괴도 깍정이가 ${(t => t + joRo(t))(I.wanted.map(s => s.v[3]).join(', '))} 변장해 활동 중. 수사관들의 분발이 요구된다.`]);
   if (I.look && I.look.n) A.push(['🔍 닮은꼴 판결', `${I.look.n}표 중 엄마 닮음 ${I.look.pm}%, 아빠 닮음 ${I.look.pd}%, 반반 ${I.look.pb}%.${I.verdict ? ` 판결: '${I.verdict.title}'.` : ''}`]);
   if (I.walks.length && window.WALK) { const m = I.walks.reduce((t, w) => t + WALK.km(w), 0), top = I.walks.slice().sort((x, y) => WALK.km(y) - WALK.km(x))[0]; A.push(['🐾 탐문 소식', `이달 산책·나들이 ${I.walks.length}번${m >= 100 ? `, 걸은 거리 ${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'}` : ''}. ${top && WALK.km(top) >= 100 ? `가장 멀리 간 날은 ${fmtK(top.date, true)}${top.place ? ` (${top.place})` : ''}.` : ''} 탐정은 유모차에서 동네를 샅샅이 살폈다.`]); }
   if (I.places.length) A.push(['🗺️ 탐험 소식', `처음 가 본 곳 ${I.places.length}곳: ${I.places.slice(0, 4).map(p => EXPLORE.label(p)).join(', ')}${I.places.length > 4 ? ' 등' : ''}.`]);

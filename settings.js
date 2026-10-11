@@ -1,6 +1,6 @@
 // 앱 설정 (S.view='settings', 성장 수사 맨 위 ⚙️ 단추)
 // 버전·업데이트 · 아래 메뉴 탭 보이기/숨기기(성장 수사는 늘 보임) · 첫 화면 카드 · 사진 올리기 기본 창 · 떠 있는 📚 단추 · 가족·알림(FAM) · 이 폰 저장 공간 · 기록 통계
-// 설정은 이 폰에만 기억해요 (localStorage soeun-tabs-off, soeun-home-off, soeun-posts-hide) — 엄마·아빠 폰마다 따로
+// 설정은 이 폰에만 기억해요 (localStorage soeun-tabs-off, soeun-home-off, soeun-guide-off, soeun-posts-hide) — 엄마·아빠 폰마다 따로
 (function () {
 const get = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
 const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -52,6 +52,8 @@ function render_() {
     <div class="stlist">${CARDS.map(([k, l]) => sw2(!home.includes(k), `data-stg="card" data-v="${k}"`, l, '')).join('')}</div></section>
   ${(() => { const h = window.WALK && WALK.home ? WALK.home() : null; return `<section class="stsec"><h2 class="sh"><span>🏠 본부 (우리 집)</span><span>탐문 기본 출발지 · 두 폰 같이</span></h2>
     <p class="foot" style="margin:0">${h ? `🏠 <b>${esc(h.n || `${h.lat.toFixed(3)}, ${h.lng.toFixed(3)}`)}</b> — 탐험 지도의 본부이고, 다녀온 곳을 기록하면 출발지로 저절로 들어가요. <button class="ghost" data-stg="whome" style="min-height:34px;margin-left:4px">지우기</button>` : '아직 안 정했어요. 동네 탐문 탭의 「본부 (우리 집)」이나 탐문 기록의 출발지에서 정해요.'}</p></section>`; })()}
+  <section class="stsec"><h2 class="sh"><span>탭 안내 말풍선</span><span>화면 줄이기</span></h2>
+    <div class="stlist">${sw2(!get('soeun-guide-off', false), 'data-stg="guide"', '🐿️ 탭마다 캐릭터 안내 말풍선 보이기', '익숙해지면 꺼서 화면을 짧게 써요 (성장 수사의 방은 그대로)')}</div></section>
   <section class="stsec"><h2 class="sh"><span>떠 있는 단추</span><span>📚 육아 글</span></h2>
     <div class="stlist">${sw2(fab, 'data-stg="fab"', '📚 육아 글 단추 보이기', '숨겨도 방의 우편함이나 아래 단추로 열 수 있어요')}</div>
     <div class="st2"><button class="ghost" data-stg="fabreset">단추 자리 처음대로</button><button class="ghost" data-stg="posts">📚 육아 글 열기</button></div></section>
@@ -79,6 +81,7 @@ document.addEventListener('click', async e => {
   if (a === 'tab') { const off = hiddenTabs(); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-tabs-off', off); toast(i >= 0 ? `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 다시 보여요` : `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 숨겼어요`); render(); return; }
   if (a === 'card') { const off = get('soeun-home-off', []); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-home-off', off); render(); return; }
   if (a === 'whome') { if (!(await ask('본부(탐문 기본 출발지)를 지울까요?', { ok: '지우기', danger: true }))) return; WALK.setHome(null); render(); toast('기본 출발지를 지웠어요'); return; }
+  if (a === 'guide') { put('soeun-guide-off', !get('soeun-guide-off', false)); render(); toast(get('soeun-guide-off', false) ? '탭 안내 말풍선을 숨겼어요' : '탭 안내 말풍선을 다시 보여요'); return; }
   if (a === 'fab') { put('soeun-posts-hide', !get('soeun-posts-hide', false)); render(); return; }
   if (a === 'fabreset') { if (window.POSTS && POSTS.resetPos) POSTS.resetPos(); toast('📚 단추를 처음 자리로 돌렸어요'); return; }
   if (a === 'posts') { S.view = 'posts'; render(); window.scrollTo(0, 0); if (window.POSTS) POSTS.load(); return; }

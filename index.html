@@ -511,6 +511,9 @@ function readPhoto(file,big){const LIM=big?380000:180000;return new Promise((res
 let EXTRA_FILES=[],PGEO=null;   // PGEO: 편집창에서 고른 사진의 찍은 곳·시각 (탐험 지도)
 function photoField(src,label,big,multi){EXTRA_FILES=[];return `<div class="field"><span>${label||'사진 (선택)'}</span><label class="pbox"><img id="pv" class="pv" alt="" ${src?`src="${src}"`:'hidden'}><span class="pbox-in">${I_CAM}<b>여기를 눌러 사진 고르기</b><small>찍은 날짜도 알아서 읽어요</small></span><span class="pbox-ch">사진 바꾸기</span><input type="file" accept="image/*,application/octet-stream" id="f-photo" ${big?'data-big="1"':''} ${multi?'multiple':''} hidden></label><button class="danger prm" data-act="rmphoto" ${src?'':'hidden'}>사진 빼기</button></div>`}
 document.addEventListener('change',async e=>{if(e.target.id!=='f-photo'||!e.target.files[0])return;const f0=e.target.files[0];if(!/^image\//.test(f0.type)){toast('사진 파일만 고를 수 있어요');e.target.value='';return}EXTRA_FILES=[...e.target.files].slice(1).filter(f=>/^image\//.test(f.type));const exh=document.getElementById('exfield');if(exh){const o=exh.querySelector('.exnew');if(o)o.remove();if(EXTRA_FILES.length)exh.insertAdjacentHTML('beforeend',`<p class="hint exnew" style="margin:6px 0 0;color:var(--red)">+ ${EXTRA_FILES.length}장은 저장하면 '사진 더'에 붙어요</p>`)}const dEl=document.getElementById('m-date')||document.getElementById('af-date');try{const mt=await ALBUM.photoMeta(f0),tk=dEl?mt.date:'';PGEO=mt.geo?{geo:mt.geo,tm:mt.tm||''}:null;pending=await readPhoto(f0,e.target.dataset.big==='1');if(tk&&tk>=S.profile.birth&&tk<=today()&&dEl.value!==tk){dEl.value=tk;toast('사진 찍은 날짜('+fmtK(tk,true)+')로 맞췄어요')}const pv=document.getElementById('pv');pv.src=pending;pv.hidden=false;const rm=document.querySelector('[data-act=rmphoto]');if(rm)rm.hidden=false}catch(err){toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요')}});
+// 받침에 맞춰 조사 고르기: jo('소은','은','는') → '은' · joRo('경정') → '으로' (ㄹ 받침·받침 없음은 '로')
+const jo=(w,a,b)=>{const t=String(w??''),c=t.charCodeAt(t.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28?a:b};
+const joRo=w=>{const t=String(w??''),c=t.charCodeAt(t.length-1),j=(c-0xAC00)%28;return c>=0xAC00&&c<=0xD7A3&&j&&j!==8?'으로':'로'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 
@@ -938,6 +941,9 @@ function viewEp(id){
 }
 
 // ---------- 사건 앨범 ----------
+// 미확인 사건 목록: 최초 목격 제목이 조금 달라도(예: '뒤집기 시도', '까르르 웃음') 그 사건을 목격한 걸로 봐요
+const MILEK={'첫 사회적 미소':/사회적\s*미소|첫\s*미소|웃어\s*줬/,'소리 내어 웃기':/소리\s*(내어|내서|내며)?\s*웃|까르르|깔깔/,'목 가누기':/목\s*(을\s*)?가누/,'뒤집기':/뒤집/,'혼자 앉기':/혼자\s*앉|앉기|앉았/,'첫 이':/첫\s*이(\s|$)|이가?\s*(났|나왔|올라)|첫\s*치아/,'기기':/^기기|배밀이|기어(가|다)|네발\s*기기|기기\s*성공/,'잡고 서기':/잡고\s*(일어)?서/,'첫 걸음':/걸음|걸었|걷기|걸음마/,'첫 단어':/첫\s*(단어|말)|말(을)?\s*했/};
+const mileSeen=(t,F)=>F.some(m=>m.title===t||(MILEK[t]&&MILEK[t].test(m.title||'')));
 const MILES=[['첫 사회적 미소','1~2개월'],['소리 내어 웃기','3~4개월'],['목 가누기','3~4개월'],['뒤집기','4~6개월'],['혼자 앉기','6~8개월'],['첫 이','6~10개월'],['기기','7~10개월'],['잡고 서기','9~12개월'],['첫 걸음','12개월 전후'],['첫 단어','12개월 전후']];
 const firsts=()=>S.moments.filter(m=>m.type!=='month'&&m.type!=='free'&&m.type!=='report'&&m.type!=='extra'&&m.type!=='fam').sort((a,b)=>a.date<b.date?1:-1);
 const dayNo=d=>daysBetween(S.profile.birth,d)+1;
@@ -950,7 +956,7 @@ function setFold(k,v){FOLD[k]=v;try{localStorage.setItem(FOLDK,JSON.stringify(FO
 const fsec=k=>isFold(k)?' class="folded"':'';
 function renderAlbum(){
   const p=S.profile,d=daysBetween(p.birth,today())+1,d100=addDays(p.birth,99);
-  const F=firsts(),seen=new Set(F.map(m=>m.title));
+  const F=firsts(),seen={has:t=>mileSeen(t,F)};
   const rots=[-2,2,-1.5,1.5,-1,1];
   const months=[];const [mo]=monthsDays(p.birth,today());for(let i=1;i<=Math.min(mo+1,24);i++)months.push(i);
   const mm=months.map(i=>{const m=S.moments.find(x=>x.type==='month'&&x.title===i+'개월'),ph=m&&safeImg(PHOTOS[m.id]);
@@ -1001,7 +1007,7 @@ function renderReport(){
     <div class="rhead"><span class="no">사건 파일 No.${fileNo()}, ${done?'기밀 해제':'작성 중'}</span><h1>100일 사건 보고서</h1></div>
     <div class="rphoto" ${rph?`data-view="${rp.id}" role="button"`:''}>${ph?`<img src="${ph}" alt="">`:'<span class="noph">사진 없음</span>'}<span class="cap">${fmtDate(d100)}, 생후 100일</span><span class="stamp">${done?'100일 달성':'D-'+daysBetween(today(),d100)}</span></div>
     <button class="ghost rpick" data-al="report">📷 ${rp?'보고서 사진 바꾸기':done?'보고서 사진 고르기':'보고서 사진 미리 올리기'}</button>
-    <p class="rtext">명탐정 ${esc(p.name)}은(는) ${fmtK(p.birth,true)} ${first('weight')?fmt('weight',first('weight').weight)+'kg로 ':''}탐정 사무소의 문을 열었다. 100일간 엄마, 아빠 수사관과 함께한 수사 결과 아래와 같은 성장이 확인되었다.</p>
+    <p class="rtext">명탐정 ${esc(p.name)}${jo(p.name,'은','는')} ${fmtK(p.birth,true)} ${first('weight')?fmt('weight',first('weight').weight)+'kg로 ':''}탐정 사무소의 문을 열었다. 100일간 엄마, 아빠 수사관과 함께한 수사 결과 아래와 같은 성장이 확인되었다.</p>
     <div class="rstats">${row('weight')}${row('height')}${row('head')}</div>
     <div class="rnums"><div><b>${vDone}</b><small>해결한 접종</small></div><div><b>${F.length}</b><small>최초 목격</small></div><div><b>${recs.length}</b><small>증거 기록</small></div></div>
     ${events.length?`<div class="revents"><small class="no">주요 사건</small>${events.join('')}</div>`:''}

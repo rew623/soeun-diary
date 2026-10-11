@@ -1,5 +1,5 @@
 // 중복 사진 찾기 — 사건 앨범 '🔍 중복 사진 찾기'(DUPES.open)
-// ① 찍은 날짜·시각이 초까지 같은 사진 ② 그림이 거의 같은 사진(작게 줄인 9×8 밝기 차이 해시 dHash, 다른 비트 6개 이하 + 평균 색이 비슷)을 한 묶음으로
+// 같은 칸(현장 사진첩끼리, 가족 사진끼리…)에서만: ① 찍은 날짜·시각이 초까지 같은 사진 ② 그림이 거의 같은 사진(작게 줄인 9×8 밝기 차이 해시 dHash, 다른 비트 6개 이하 + 평균 색이 비슷)을 한 묶음으로
 // 해시는 이 폰에 기억(localStorage soeun-dhash2, '해시16자|평균색6자'). 지울 수 있는 건 현장 사진첩·가족·최초 목격 추가 사진만(기록 사진은 남겨요)
 // 올릴 때 미리 거르기는 album.js queue (찍은 시각이 초까지 같은 사진이 이미 있으면 물어봐요)
 (function () {
@@ -32,6 +32,7 @@ async function scan() {
   const P = L.map((m, k) => k), find = k => P[k] === k ? k : (P[k] = find(P[k])), join = (a, b) => { a = find(a); b = find(b); if (a !== b) P[b] = a; };
   for (let a = 0; a < L.length; a++) for (let b = a + 1; b < L.length; b++) {
     const A = L[a], B = L[b];
+    if ((A.type || 'first') !== (B.type || 'first')) continue;   // 다른 칸끼리(현장 사진 → 최초 목격·가족 사진으로 가져온 복사본)는 일부러 둔 것이라 안 묶어요
     if (A.tm && A.tm.length === 8 && A.date === B.date && A.tm === B.tm) { join(a, b); continue; }
     const ha = H[A.id], hb = H[B.id]; if (ha && hb && ha !== 'x' && hb !== 'x' && dist(ha, hb) <= 6 && cdist(ha, hb) <= 36) join(a, b);
   }

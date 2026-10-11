@@ -293,6 +293,7 @@ const seen = {};
 const hash = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
 function guide(tab) {
   const L = lines(tab); if (!L.length) return '';
+  if (tab !== 'grow') { try { if (JSON.parse(localStorage.getItem('soeun-guide-off') || 'false')) return ''; } catch (e) {} }   // 설정: 탭 안내 말풍선 숨기기 (성장 수사의 방은 그대로)
   if (seen[tab] == null) seen[tab] = 0;
   const i = seen[tab] % L.length, [w, prop, text] = L[i], [who, name] = WHO[w];
   // 성장 수사(첫 화면)는 소은 탐정의 방 (도토리 놀이터 > 꾸미기에서 도토리로 산 가구·벽지가 보여요)

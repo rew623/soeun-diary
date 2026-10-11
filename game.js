@@ -3,7 +3,7 @@
 // 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'bpos', 'whome'];   // bpos: 수사 보드 카드 옮긴 자리
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'bpos', 'whome', 'paper'];   // paper: 소은일보 고친 것   // bpos: 수사 보드 카드 옮긴 자리
 const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -225,7 +225,7 @@ function check() {
       const pr = paid.rank || {};
       for (const r of ['엄마', '아빠']) {
         const from = pr[r] || 1; let add = 0; for (let lv = from + 1; lv <= now[r]; lv++) add += rankReward(lv);
-        if (add) { s.acorn += add; if (paid.rank) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}(으)로 승진! 도토리 🌰 +${add}`); else { back += add; backN++; } }
+        if (add) { s.acorn += add; if (paid.rank) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}${joRo(rank(r).name)} 승진! 도토리 🌰 +${add}`); else { back += add; backN++; } }
         pr[r] = Math.max(from, now[r]);
       }
       paid.rank = pr;
@@ -252,7 +252,7 @@ function check() {
         }
       }
     } else {
-      if (s.seenRank) for (const r of ['엄마', '아빠']) if (now[r] > (s.seenRank[r] || 1)) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}(으)로 승진!`);
+      if (s.seenRank) for (const r of ['엄마', '아빠']) if (now[r] > (s.seenRank[r] || 1)) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}${joRo(rank(r).name)} 승진!`);
       if (s.seenMedals) on.filter(id => !s.seenMedals.includes(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id); msgs.push(`${m[1]} 훈장 획득: ${m[2]}`); });
     }
     s.seenRank = now; s.seenMedals = on;
@@ -558,7 +558,7 @@ document.addEventListener('click', async e => {
         const nm = WHO.find(w => w[0] === who)[1];
         if (b.dataset.ok !== '1') { confirmBuy(`${nm}의 ${it[1]}`, it[2], kpv(who, kind, id, kind === 'hat' ? 110 : 130), `data-game="kit" data-k="${kind}" data-id="${id}"`, `${nm} 몫이에요. 엄마·아빠 폰 모두에서 보여요.`); return; }
         if (s.acorn < it[2]) { toast(`도토리가 ${it[2] - s.acorn}개 더 필요해요`); return; }
-        const key = KINDS.find(k => k[0] === kind)[2]; s.acorn -= it[2]; s[key] = (s[key] || []).concat(who + '.' + id); closeSheet(); toast(`${nm}의 ${it[1]}을(를) 샀어요!`); confetti();
+        const key = KINDS.find(k => k[0] === kind)[2]; s.acorn -= it[2]; s[key] = (s[key] || []).concat(who + '.' + id); closeSheet(); toast(`${nm}의 ${it[1]}${jo(it[1],'을','를')} 샀어요!`); confetti();
       }
       if (kind === 'hat') { if (who === 'baby') s.hat = id || 'det'; else s.hatOf = Object.assign({}, s.hatOf || {}, { [who]: id }); }
       else if (kind === 'cloth') s.wear = Object.assign({}, s.wear || {}, { [who]: id });

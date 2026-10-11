@@ -163,11 +163,11 @@ async function queue(list, more, fill) {
   if (!files.length) return [];
   const F = fill || {};
   const by = myRole(), base = Date.now(), rows = [];
-  for (let i = 0; i < files.length; i++) { const meta = await photoMeta(files[i]); rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: meta.date || F.date || '', geo: meta.geo || F.geo || '', tm: meta.tm || (meta.date ? '' : F.tm || ''), lm: files[i].lastModified || 0, by }, more || {})); }
+  for (let i = 0; i < files.length; i++) { const meta = files[i].__meta || await photoMeta(files[i]); /* __meta: 현장 사진에서 복사한 것 (찍은 날짜·시각·위치 그대로) */ rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: meta.date || F.date || '', geo: meta.geo || F.geo || '', tm: meta.tm || (meta.date ? '' : F.tm || ''), lm: files[i].lastModified || 0, by }, more || {})); }
   // 중복 거르기: 같이 고른 똑같은 파일(이름·크기·수정 시각), 이미 올린 사진과 찍은 시각이 초까지 같은 사진
   const seen = new Set(), same = new Map(), dupIn = [];
   rows.forEach(r => { const k = r.file.name + '|' + r.file.size + '|' + r.lm; if (seen.has(k)) dupIn.push(r); else seen.add(k); });
-  rows.forEach(r => { if (r.tm && r.tm.length === 8 && !dupIn.includes(r)) { const m = (S.moments || []).find(x => x.photo && x.date === r.date && x.tm === r.tm); if (m) same.set(r.id, m.id); } });
+  rows.forEach(r => { if (r.tm && r.tm.length === 8 && !dupIn.includes(r) && !r.file.__meta) { const m = (S.moments || []).find(x => x.photo && x.date === r.date && x.tm === r.tm); if (m) same.set(r.id, m.id); } });
   let skip = new Set(dupIn.map(r => r.id));
   if (same.size && await ask(`이미 올린 사진과 찍은 시각이 초까지 같은 사진이 ${same.size}장 있어요.\n같은 사진 같아요. 빼고 올릴까요?`, { ok: '빼고 올리기', no: '다 올리기' })) same.forEach((v, k) => skip.add(k));
   const out = rows.map(r => same.has(r.id) && skip.has(r.id) ? same.get(r.id) : r.id).filter((id, i) => !dupIn.includes(rows[i]));
@@ -340,7 +340,7 @@ document.addEventListener('click', async e => {
     }
     case 'shx': closeSheet(); shDone(); break;
     case 'shwalk': { if (!SH) return; const files = SH.files; closeSheet(); S.tab = 'town'; S.view = ''; S.townView = ''; render(); window.scrollTo(0, 0); WALK.formWith(files); shDone(); break; }
-    case 'extra': exFor = b.dataset.id; if (pkList().length) { PK.inp = exPicker; PK.multi = true; PK.sel = []; PK.n = 60; PK.mode = 'extra'; pkOpen('ask'); } else exPicker.click(); break;
+    case 'extra': exFor = b.dataset.id; pickInto('extra', b.dataset.id); break;
     case 'exdel': {
       if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '빼기'; b.classList.add('sure'); return; }
       const id = b.dataset.id, x = S.moments.find(m => m.id === id);
@@ -380,75 +380,110 @@ document.addEventListener('click', async e => {
 });
 
 
-// ---------- 편집창 사진 칸: 현장 사진에서 고를지, 갤러리 앱에서 올릴지 먼저 물어요 (사용자 요청: 사진은 거의 다 현장 사진첩에 올려 두니까) ----------
-// 100일 보고서·최초 목격·월별 사진·프로필 등 photoField 칸 모두. 현장 사진에서 고르면 그 사진을 복사해 이 칸에 넣어요(원본 사진은 그대로)
-const PK = { mode: '', inp: null, multi: false, sel: [], n: 60, box: null };
+// ---------- 사진 가져오기: 먼저 '현장 사진에서 고르기 / 갤러리 앱에서 올리기'를 물어요 (사용자 요청: 사진은 거의 다 현장 사진첩에 올려 두니까) ----------
+// choose(opt) → { ids } 현장 사진에서 고른 것 · 'gallery' 갤러리 앱 · null 취소
+//   opt: { multi, date(그날 사진 먼저), have(이미 붙은 사진 Set — 표시만), title }
+// 쓰는 곳: 편집창 사진 칸(photoField: 100일 보고서·최초 목격·월별 사진·프로필·봉인 사진 → 복사본), 최초 목격 '사진 더'·가족 사진(복사본, 찍은 날짜·시각 그대로),
+//          탐문 기록 사진(복사 없이 그 사진을 기록에 붙이기 — walk.js)
+const PK = { opt: {}, sel: [], n: 60, box: null, res: null, step: 'ask' };
 const pkList = () => (S.moments || []).filter(m => m.type !== 'report' && safeImg(PHOTOS[m.id])).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.tm || '').localeCompare(a.tm || '') || String(b.id).localeCompare(String(a.id)));
-document.addEventListener('click', e => {
-  const lab = e.target.closest('#sheet .pbox'); if (!lab || !e.isTrusted) return;
-  const inp = lab.querySelector('input[type=file]'); if (!inp || !pkList().length) return;   // 현장 사진이 없으면 바로 갤러리
-  e.preventDefault(); PK.mode = ''; PK.inp = inp; PK.multi = inp.multiple; PK.sel = []; PK.n = 60; pkOpen('ask');
-}, true);
+function choose(opt) {
+  if (PK.res) { const r = PK.res; PK.res = null; r(null); }
+  PK.opt = opt || {}; PK.sel = []; PK.n = 60;
+  if (!pkList().length) return Promise.resolve('gallery');   // 현장 사진이 아직 없으면 바로 갤러리
+  return new Promise(res => { PK.res = res; pkOpen(PK.opt.direct ? 'grid' : 'ask'); });
+}
+const done = v => { const r = PK.res; PK.res = null; pkHide(); if (r) r(v); };
 function pkOpen(step) {
+  PK.step = step;
   if (!PK.box) {
     PK.box = document.createElement('div'); PK.box.className = 'pkbox'; PK.box.setAttribute('role', 'dialog'); document.body.appendChild(PK.box);
     PK.box.addEventListener('click', pkClick);
   }
-  const L = pkList();
-  if (step === 'ask') PK.box.innerHTML = `<div class="pkcard"><b class="pkt">사진을 어디서 가져올까요?</b>
-    <button class="pkbig" data-pk="mine">📷 현장 사진에서 고르기<small>이미 올린 사진 ${L.length}장 중에서</small></button>
-    <button class="pkbig" data-pk="gal">📁 갤러리 앱에서 올리기<small>폰에 있는 새 사진</small></button>
+  const L = pkList(), o = PK.opt, have = o.have || new Set();
+  if (step === 'ask') {
+    const nd = o.date ? L.filter(m => m.date === o.date).length : 0;
+    PK.box.innerHTML = `<div class="pkcard"><b class="pkt">${esc(o.title || '사진을 어디서 가져올까요?')}</b>
+    <button class="pkbig" data-pk="mine">📷 현장 사진에서 고르기<small>${nd ? `${fmtK(o.date, true)}에 찍은 사진 ${nd}장 먼저 · ` : ''}이미 올린 사진 ${L.length}장 중에서</small></button>
+    <button class="pkbig" data-pk="gal">📁 갤러리 앱에서 올리기<small>${esc(o.gnote || '폰에 있는 새 사진')}</small></button>
     <button class="pkx" data-pk="x">취소</button></div>`;
-  else {
-    let lastYm = '', h = '';
-    L.slice(0, PK.n).forEach(m => { const ym = (m.date || '').slice(0, 7); if (ym !== lastYm) { lastYm = ym; h += `<div class="pkym">${ym ? `${ym.slice(0, 4)}년 ${+ym.slice(5)}월` : '날짜 없음'}</div>`; }
-      const i = PK.sel.indexOf(m.id); h += `<button class="pkc${i >= 0 ? ' on' : ''}" data-pk="c" data-id="${m.id}"><img src="${safeImg(PHOTOS[m.id])}" alt="" loading="lazy" decoding="async">${i >= 0 ? `<i>${PK.multi ? i + 1 : '✓'}</i>` : ''}</button>`; });
-    PK.box.innerHTML = `<div class="pkfull"><div class="pktop"><button data-pk="ask">‹</button><b>현장 사진에서 고르기</b><small>${PK.multi ? '여러 장 고를 수 있어요 (첫 장이 대표)' : '한 장을 골라요'}</small></div>
-      <div class="pkgrid">${h}${L.length > PK.n ? '<button class="pkmore" data-pk="more">사진 더 보기</button>' : ''}</div>
-      <div class="pkact"><button data-pk="x">취소</button><button class="go" data-pk="ok" ${PK.sel.length ? '' : 'disabled'}>${PK.sel.length ? `${PK.sel.length}장 넣기` : '사진을 골라요'}</button></div></div>`;
+  } else {
+    const cell = m => { const i = PK.sel.indexOf(m.id), on = i >= 0, had = have.has(m.id);
+      return `<button class="pkc${on ? ' on' : ''}${had ? ' had' : ''}" data-pk="c" data-id="${m.id}"${had ? ' disabled' : ''}><img src="${safeImg(PHOTOS[m.id])}" alt="" loading="lazy" decoding="async">${on ? `<i>${o.multi ? i + 1 : '✓'}</i>` : ''}${had ? '<em>붙어 있음</em>' : m.tm && o.date ? `<s>${m.tm.slice(0, 5)}</s>` : ''}</button>`; };
+    let h = '';
+    const day = o.date ? L.filter(m => m.date === o.date).sort((a, b) => (a.tm || '').localeCompare(b.tm || '')) : [];
+    if (day.length) h += `<div class="pkym day">📅 ${fmtK(o.date, true)}에 찍은 사진 ${day.length}장</div>` + day.map(cell).join('');
+    let lastYm = ''; const rest = L.filter(m => !day.includes(m));
+    if (day.length && rest.length) h += '<div class="pkym">다른 날 사진</div>';
+    rest.slice(0, PK.n).forEach(m => { const ym = (m.date || '').slice(0, 7); if (ym !== lastYm) { lastYm = ym; h += `<div class="pkym">${ym ? `${ym.slice(0, 4)}년 ${+ym.slice(5)}월` : '날짜 없음'}</div>`; } h += cell(m); });
+    PK.box.innerHTML = `<div class="pkfull"><div class="pktop"><button data-pk="${o.direct ? 'x' : 'ask'}" aria-label="뒤로">‹</button><b>현장 사진에서 고르기</b><small>${o.multi ? '여러 장 고를 수 있어요' + (o.copy ? ' (첫 장이 대표)' : '') : '한 장을 골라요'}</small></div>
+      <div class="pkgrid">${h}${rest.length > PK.n ? '<button class="pkmore" data-pk="more">사진 더 보기</button>' : ''}</div>
+      <div class="pkact"><button data-pk="x">취소</button><button class="go" data-pk="ok" ${PK.sel.length ? '' : 'disabled'}>${PK.sel.length ? `${PK.sel.length}장 ${esc(o.okLabel || '넣기')}` : '사진을 골라요'}</button></div></div>`;
     if (window.FOCUS) FOCUS.apply(PK.box);
   }
   PK.box.hidden = false; document.documentElement.classList.add('pk-open');
 }
-function pkClose() { if (!PK.box || PK.box.hidden) return false; PK.box.hidden = true; PK.box.innerHTML = ''; document.documentElement.classList.remove('pk-open'); return true; }
+function pkHide() { if (!PK.box || PK.box.hidden) return false; PK.box.hidden = true; PK.box.innerHTML = ''; document.documentElement.classList.remove('pk-open'); return true; }
+function pkClose() { if (!PK.box || PK.box.hidden) return false; done(null); return true; }   // 뒤로가기·취소
 async function pkClick(e) {
   const b = e.target.closest('[data-pk]'); if (!b) { if (e.target === PK.box) pkClose(); return; }
   const a = b.dataset.pk;
   if (a === 'x') return pkClose();
   if (a === 'ask') return pkOpen('ask');
-  if (a === 'gal') { pkClose(); const inp = PK.inp; if (inp && inp.isConnected) inp.click(); return; }
+  if (a === 'gal') return done('gallery');
   if (a === 'mine') return pkOpen('grid');
-  if (a === 'more') { PK.n += 60; const y = PK.box.querySelector('.pkgrid').scrollTop; pkOpen('grid'); PK.box.querySelector('.pkgrid').scrollTop = y; return; }
-  if (a === 'c') { const id = b.dataset.id, i = PK.sel.indexOf(id); if (i >= 0) PK.sel.splice(i, 1); else if (PK.multi) PK.sel.push(id); else PK.sel = [id];
-    const y = PK.box.querySelector('.pkgrid').scrollTop; pkOpen('grid'); PK.box.querySelector('.pkgrid').scrollTop = y; if (!PK.multi && PK.sel.length) pkUse(); return; }
-  if (a === 'ok') return pkUse();
+  const keep = fn => { const g = PK.box.querySelector('.pkgrid'), y = g ? g.scrollTop : 0; fn(); pkOpen('grid'); const g2 = PK.box.querySelector('.pkgrid'); if (g2) g2.scrollTop = y; };
+  if (a === 'more') return keep(() => { PK.n += 60; });
+  if (a === 'c') { const id = b.dataset.id; keep(() => { const i = PK.sel.indexOf(id); if (i >= 0) PK.sel.splice(i, 1); else if (PK.opt.multi) PK.sel.push(id); else PK.sel = [id]; }); if (!PK.opt.multi && PK.sel.length) done({ ids: PK.sel.slice() }); return; }
+  if (a === 'ok' && PK.sel.length) return done({ ids: PK.sel.slice() });
 }
-// 고른 앨범 사진을 그림으로 다시 그려 이 칸 사진으로 (원본은 그대로 두고 복사본을 저장)
-async function pkUse() {
-  const ids = PK.sel.slice(), inp = PK.inp; if (!ids.length || !inp || !inp.isConnected) return pkClose();
-  const big = PK.mode === 'extra' || inp.dataset.big === '1', ok = PK.box.querySelector('[data-pk=ok]'); if (ok) { ok.disabled = true; ok.textContent = '불러오는 중…'; }
-  const draw = async id => { const im = await CV.img(safeImg(PHOTOS[id])), max = big ? 1600 : 900, sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
-    c.width = Math.round(im.naturalWidth * sc); c.height = Math.round(im.naturalHeight * sc); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); if (im.__blob) URL.revokeObjectURL(im.__blob);
-    let q = .85, d = c.toDataURL('image/jpeg', q); const LIM = big ? 380000 : 180000; while (d.length > LIM && q > .4) { q -= .08; d = c.toDataURL('image/jpeg', q); } return d; };
-  if (PK.mode === 'extra') {   // 최초 목격 '사진 더': 고른 사진들을 그 기록에 붙여요
-    const m = S.moments.find(x => x.id === exFor), files = [];
-    for (const id of ids) { try { const bl = await (await fetch(await draw(id))).blob(); files.push(new File([bl], id + '.jpg', { type: 'image/jpeg', lastModified: Date.now() })); } catch (x) {} }
-    pkClose(); if (m && files.length) queue(files, { type: 'extra', of: m.id, fb: m.date }); else if (!files.length) toast('사진을 불러오지 못했어요. 갤러리 앱에서 골라 주세요');
-    return;
-  }
+// 고른 사진을 그림으로 다시 그려 복사본 파일로 (찍은 날짜·시각·위치는 원본 그대로 __meta에)
+async function copyFile(id, big) {
+  const im = await CV.img(safeImg(PHOTOS[id])), max = big ? 1600 : 900, sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+  c.width = Math.round(im.naturalWidth * sc); c.height = Math.round(im.naturalHeight * sc); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); if (im.__blob) URL.revokeObjectURL(im.__blob);
+  let q = .85, d = c.toDataURL('image/jpeg', q); const LIM = big ? 380000 : 180000; while (d.length > LIM && q > .4) { q -= .08; d = c.toDataURL('image/jpeg', q); }
+  const m = S.moments.find(x => x.id === id) || {}, bl = await (await fetch(d)).blob();
+  return Object.assign(new File([bl], id + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }), { __data: d, __meta: { date: m.date || '', tm: m.tm || '', geo: m.geo && m.geo !== '-' ? m.geo : '' } });
+}
+async function copyFiles(ids, big) {
+  const out = []; let n = 0; toast(`사진 ${ids.length}장을 가져오는 중…`);
+  for (const id of ids) { try { out.push(await copyFile(id, big)); } catch (x) { n++; } }
+  if (n) toast(`${n}장은 불러오지 못했어요`);
+  return out;
+}
+// ① 편집창 사진 칸 (photoField): 현장 사진이면 복사해서 이 칸 사진으로, 여러 장이면 나머지는 '사진 더'로
+document.addEventListener('click', async e => {
+  const lab = e.target.closest('#sheet .pbox'); if (!lab || !e.isTrusted) return;
+  const inp = lab.querySelector('input[type=file]'); if (!inp || !pkList().length) return;
+  e.preventDefault();
+  const dEl = document.getElementById('m-date') || document.getElementById('af-date');
+  const r = await choose({ multi: inp.multiple, copy: true, date: dEl && dEl.value || '' });
+  if (!r) return;
+  if (r === 'gallery') { if (inp.isConnected) inp.click(); return; }
+  if (!inp.isConnected) return;
   try {
-    const d0 = await draw(ids[0]), m0 = S.moments.find(m => m.id === ids[0]);
-    pending = d0; EXTRA_FILES = [];
-    for (const id of ids.slice(1)) { try { const d = await draw(id), bl = await (await fetch(d)).blob(), m = S.moments.find(x => x.id === id); EXTRA_FILES.push(Object.assign(new File([bl], id + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }), { __date: m && m.date })); } catch (x) {} }
-    PGEO = m0 && m0.geo && m0.geo !== '-' ? { geo: m0.geo, tm: m0.tm || '' } : null;
-    const pv = document.getElementById('pv'); if (pv) { pv.src = d0; pv.hidden = false; } const rm = document.querySelector('[data-act=rmphoto]'); if (rm) rm.hidden = false;
-    const dEl = document.getElementById('m-date') || document.getElementById('af-date');
-    if (dEl && m0 && m0.date && m0.date >= S.profile.birth && m0.date <= today() && dEl.value !== m0.date) { dEl.value = m0.date; toast('사진 날짜(' + fmtK(m0.date, true) + ')로 맞췄어요'); }
+    const F = await copyFiles(r.ids, inp.dataset.big === '1'); if (!F.length) return;
+    const f0 = F[0], m0 = f0.__meta; pending = f0.__data; EXTRA_FILES = F.slice(1);
+    PGEO = m0.geo ? { geo: m0.geo, tm: m0.tm || '' } : null;
+    const pv = document.getElementById('pv'); if (pv) { pv.src = pending; pv.hidden = false; } const rm = document.querySelector('[data-act=rmphoto]'); if (rm) rm.hidden = false;
+    if (dEl && m0.date && m0.date >= S.profile.birth && m0.date <= today() && dEl.value !== m0.date) { dEl.value = m0.date; toast('사진 날짜(' + fmtK(m0.date, true) + ')로 맞췄어요'); }
     const exh = document.getElementById('exfield'); if (exh) { const o = exh.querySelector('.exnew'); if (o) o.remove(); if (EXTRA_FILES.length) exh.insertAdjacentHTML('beforeend', `<p class="hint exnew" style="margin:6px 0 0;color:var(--red)">+ ${EXTRA_FILES.length}장은 저장하면 '사진 더'에 붙어요</p>`); }
     if (window.__app && __app.sheetDirty) __app.sheetDirty();
-    pkClose();
-  } catch (x) { toast('사진을 불러오지 못했어요. 갤러리 앱에서 골라 주세요'); if (ok) { ok.disabled = false; ok.textContent = '다시 넣기'; } }
+  } catch (x) { toast('사진을 불러오지 못했어요. 갤러리 앱에서 골라 주세요'); }
+}, true);
+// ② 최초 목격 '사진 더' · 가족 사진: 현장 사진이면 복사본으로 (찍은 날짜·시각 그대로)
+async function pickInto(kind, of) {
+  const r = await choose({ multi: true, copy: true, okLabel: kind === 'fam' ? '가족 사진으로' : '붙이기', date: kind === 'extra' ? ((S.moments.find(x => x.id === of) || {}).date || '') : '' });
+  if (!r) return;
+  if (r === 'gallery') { if (kind === 'fam') famPicker.click(); else { exFor = of; exPicker.click(); } return; }
+  const F = await copyFiles(r.ids, true); if (!F.length) return;
+  if (kind === 'fam') queue(F, { type: 'fam', who: '' });
+  else { const m = S.moments.find(x => x.id === of); if (m) queue(F, { type: 'extra', of: m.id, fb: m.date }); }
 }
+const famPicker = document.createElement('input');
+famPicker.type = 'file'; famPicker.accept = 'image/*,application/octet-stream'; famPicker.multiple = true; famPicker.hidden = true;
+document.body.appendChild(famPicker);
+famPicker.addEventListener('change', () => { const files = [...famPicker.files].filter(f => /^image\//.test(f.type)); famPicker.value = ''; if (files.length) queue(files, { type: 'fam', who: '' }); });
 
 const css = document.createElement('style');
 css.textContent = `
@@ -469,6 +504,9 @@ css.textContent = `
 .pkc{position:relative;display:block;width:100%;height:0;min-height:0;padding:0 0 100%;border:0;border-radius:8px;overflow:hidden;background:#ddd}   /* 정사각 칸: 폰 크롬에서 aspect-ratio 단추가 줄 높이를 못 잡아 겹치던 것 */
 .pkc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pkc.on{outline:3px solid var(--red);outline-offset:-3px}
+.pkc.had{opacity:.55}.pkc em{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:11px;background:rgba(31,42,68,.8);color:#fff;text-align:center;padding:2px 0}
+.pkc s{position:absolute;left:4px;bottom:3px;text-decoration:none;font-size:11px;color:#fff;text-shadow:0 1px 2px #000}
+.pkym.day{color:var(--red)}
 .pkc i{position:absolute;right:5px;top:5px;min-width:24px;height:24px;border-radius:12px;background:var(--red);color:#fff;font-style:normal;font-size:13px;display:grid;place-items:center;padding:0 5px}
 .pkmore{grid-column:1/-1;min-height:44px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);margin:8px 0}
 .pkact{display:flex;gap:8px;padding:10px 12px max(12px,env(safe-area-inset-bottom));border-top:1.5px dashed rgba(31,42,68,.25)}
@@ -517,5 +555,5 @@ css.textContent = `
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:11px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
-window.ALBUM = { pkClose, pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
+window.ALBUM = { choose, pickInto, pkClose, pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
 })();

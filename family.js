@@ -50,7 +50,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-fa]'); if (!b) return;
   const id = b.dataset.id;
   switch (b.dataset.fa) {
-    case 'up': picker.click(); break;
+    case 'up': if (window.ALBUM && ALBUM.pickInto) ALBUM.pickInto('fam'); else picker.click(); break;   // 현장 사진에서 고르기(복사) / 갤러리 앱
     case 'more': F.more += 30; render(); break;
     case 'folds': {
       const box = b.closest('section'); if (!box) return;

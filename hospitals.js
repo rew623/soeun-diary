@@ -265,7 +265,7 @@ function renderHosp(inline) {
   else if (err) notice = `<p class="notice">인터넷에 연결되지 않아 ${has ? `마지막으로 받은 관심 ${W.n}만` : `${W.n} 정보를`} 보여 줘요.</p>`;
   const flts = [['now', `지금 ${W.t} 중`], ['sat', '토요일'], ['sun', '일요일'], ['hol', '공휴일'], ['night', ph ? '야간 21시 이후' : '야간 18시 이후']].concat(ph ? [] : [['er', '응급실']]);
   const filters = `<div class="hfilters">
-    ${ph ? '' : `<button class="herbtn${H.preset === 'ernight' ? ' on' : ''}" data-h="preset" aria-pressed="${H.preset === 'ernight'}">🚑 <b>응급실·야간 진료 병원만 보기</b><small>${H.preset === 'ernight' ? '지금 응급실 또는 18시 이후 진료하는 곳만 보는 중 · 누르면 모두 보기' : '밤이나 주말에 아플 때 바로 찾기'}</small></button>`}
+    ${ph ? '' : `<button class="herbtn${H.preset === 'ernight' ? ' on' : ''}" data-h="preset" aria-pressed="${H.preset === 'ernight'}"><span class="herh">🚑 <b>응급실·야간 진료 병원만 보기</b></span><small>${H.preset === 'ernight' ? '지금 응급실 또는 18시 이후 진료하는 곳만 보는 중 · 누르면 모두 보기' : '밤이나 주말에 아플 때 바로 찾기'}</small></button>`}
     ${ph ? '' : `<div class="chips">${chip(!H.dept, 'data-h="dept" data-v=""', '전체 과목')}${DEPTS.map(d => chip(H.dept === d, `data-h="dept" data-v="${d}"`, d)).join('')}</div>`}
     <div class="chips">${flts.map(([k, l]) => chip(!!H.f[k], `data-h="flt" data-v="${k}"`, l)).join('')}</div>
   </div>`;
@@ -377,7 +377,7 @@ css.textContent = `
 .hfilters .chips{margin-top:10px;gap:6px}
 .chip.on{background:var(--navy);color:var(--paper)}
 .herbtn{width:100%;margin-top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:2px solid var(--red);background:#FFF6F3;color:var(--red);border-radius:14px;padding:10px 14px;min-height:56px}
-.herbtn b{font-family:var(--display);font-weight:400;font-size:17px}.herbtn small{font-size:12px;color:var(--ink);opacity:.8}
+.herbtn b{font-family:var(--display);font-weight:400;font-size:17px}.herh{display:flex;align-items:center;gap:6px;font-size:18px}.herbtn small{font-size:12px;color:var(--ink);opacity:.8}
 .herbtn.on{background:var(--red);color:#fff}.herbtn.on small{color:#fff;opacity:.9}
 .hpreset{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 0;border:1px dashed var(--red);color:var(--red);padding:6px 10px;font-size:13px}
 .hmapwrap{position:relative;margin-top:10px}
