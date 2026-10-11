@@ -410,6 +410,11 @@ picker.addEventListener('change', async () => {
   const files = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = ''; picker.accept = 'image/*';
   if (!files.length) return;
   if (W.pickMode === 'add') return addPhotos(W.addFor, files);
+  formFiles(files);
+});
+// 갤러리 공유로 받은 사진으로 바로 다녀온 곳 기록 (album.js 공유 창 '🐾 탐문 기록으로')
+function formWith(files) { if (!canWrite()) return; openForm(''); formFiles(files.filter(f => /^image\//.test(f.type))); }
+async function formFiles(files) {
   if (!W.form) return;
   for (const file of files) { let meta = { date: '', tm: '', geo: '' }; try { meta = await ALBUM.photoMeta(file); } catch (e) {} W.files.push({ file, meta, url: URL.createObjectURL(file) }); }
   // 새 기록이면 사진 찍은 날짜·시각으로 날짜·시간을 채워요 (직접 고친 칸은 그대로)
@@ -420,7 +425,7 @@ picker.addEventListener('change', async () => {
     const g = W.files.map(x => parse(x.meta.geo)).find(Boolean); if (g && !parse(f.geo)) setGeo(g);
   }
   const box = $('wf-ph'); if (box) box.innerHTML = formPhotos();
-});
+}
 async function addPhotos(id, files) {
   const w = byId(id); if (!w) return;
   const g = parse(w.geo), ids = await ALBUM.queue(files, undefined, g ? { geo: w.geo } : null);
@@ -873,5 +878,5 @@ html.wk-open,html.wk-open body{overflow:hidden}
 .wkpill{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:6px;border:0;border-radius:99px;background:var(--navy);color:#fff;padding:7px 14px;font-size:13.5px;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .wkpill[hidden],#sheet.open~.wkpill{display:none}.wkpill.done{background:var(--red)}.wkpill i{font-style:normal}`;
 document.head.appendChild(css);
-window.WALK = { courses, courseSheet, render: render_, mount, heroHtml, sectionHtml, afterRender, close, photoPos, photos, routes, track, all, open, start, openAdd, routeSvg, kindOf, stats, km: distM };
+window.WALK = { formWith, courses, courseSheet, render: render_, mount, heroHtml, sectionHtml, afterRender, close, photoPos, photos, routes, track, all, open, start, openAdd, routeSvg, kindOf, stats, km: distM };
 })();

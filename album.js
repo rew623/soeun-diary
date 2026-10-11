@@ -184,8 +184,12 @@ async function shared() {
   SH = { files, c, ks };
   if (!files.length) return shDone();
   pending = undefined;
-  openSheet(`<h3>사진 ${files.length}장을 받았어요</h3><p class="hint" style="margin:-6px 0 12px">어디에 올릴까요? 찍은 날짜는 사진에서 알아서 읽어요.</p>
+  // 사진 안의 찍은 시각·위치가 살아 왔는지 바로 보여 줘요
+  let nt = 0, ng = 0; for (const f of files) { try { const m = await photoMeta(f); if (m.tm) nt++; if (m.geo) ng++; } catch (e) {} }
+  openSheet(`<h3>사진 ${files.length}장을 받았어요</h3><p class="hint" style="margin:-6px 0 8px">어디에 올릴까요? 찍은 날짜는 사진에서 알아서 읽어요.</p>
+    <p class="shmeta">🕒 찍은 시각 있는 사진 ${nt}장 · ${ng ? `📍 위치 있는 사진 <b>${ng}장</b> — 지도에 저절로 꽂혀요` : '📍 위치는 안 왔어요'}</p>
     <div class="shpick"><button class="primary" data-al="shfree">📷 현장 사진첩</button><button class="primary" data-al="shfam">👨‍👩‍👧 가족 사진</button></div>
+    ${window.WALK ? '<button class="ghost" data-al="shwalk" style="width:100%;margin-top:8px;min-height:46px">🐾 탐문 기록으로 (산책·나들이 사진)</button>' : ''}
     <div class="actions"><button class="secondary" data-al="shx">올리지 않기</button></div>`);
 }
 async function shDone() { const h = SH; SH = null; if (h) for (const k of h.ks) { try { await h.c.delete(k); } catch (e) {} } }
@@ -326,6 +330,7 @@ document.addEventListener('click', async e => {
       await queue(files, fam ? { type: 'fam', who: '' } : undefined); shDone(); break;
     }
     case 'shx': closeSheet(); shDone(); break;
+    case 'shwalk': { if (!SH) return; const files = SH.files; closeSheet(); S.tab = 'town'; S.view = ''; S.townView = ''; render(); window.scrollTo(0, 0); WALK.formWith(files); shDone(); break; }
     case 'extra': exFor = b.dataset.id; exPicker.click(); break;
     case 'exdel': {
       if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '빼기'; b.classList.add('sure'); return; }
@@ -378,6 +383,7 @@ css.textContent = `
 .agd{display:flex;align-items:baseline;gap:8px;margin:12px 0 6px;font-size:13px}
 .agd b{font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy)}
 .agd span{font-size:11px;color:var(--muted)}.agd em{margin-left:auto;font-style:normal;font-size:11px;color:var(--muted)}
+.shmeta{margin:0 0 12px;font-size:13px;background:#FFFDF7;border:1px dashed var(--line);border-radius:12px;padding:6px 10px}.shmeta b{color:#2E7D5B}
 .apick2{display:block;width:100%;margin-top:6px;min-height:42px;border-radius:99px;white-space:normal;line-height:1.3}.apick2 small{color:var(--muted);font-size:11.5px}
 .aprog{margin-top:10px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px}
 .aprog div{display:flex;justify-content:space-between;font-size:13px}.aprog b{color:var(--navy)}
