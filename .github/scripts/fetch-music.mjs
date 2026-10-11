@@ -12,18 +12,19 @@ const MAXSEC = 150;
 // 곡 목록: id, 이름(앱에 보이는 것), 설명, 찾을 말, 제목에 꼭 있어야 할 말(엉뚱한 파일 거르기)
 const WANT = [
   { id: 'r-brahms', name: '🌙 브람스 자장가', desc: '실제 연주 · 포근하게 잠드는 노래', q: ['Brahms Wiegenlied', 'Brahms Lullaby', 'Guten Abend gut Nacht Brahms'], must: /brahms|wiegenlied|guten abend|lullaby|ninna nanna|berceuse/i },
-  { id: 'r-twinkle', name: '⭐ 반짝반짝 작은 별 변주곡', desc: '실제 연주 · 모차르트', q: ['Mozart Ah vous dirai-je Maman', 'Mozart K. 265 variations', 'Twinkle Twinkle Little Star'], must: /vous dirai|k\.? ?265|twinkle/i },
+  { id: 'r-twinkle', name: '⭐ 반짝반짝 작은 별 변주곡', desc: '실제 연주 · 모차르트', q: ['Mozart Ah vous dirai-je Maman', 'Mozart K. 265 variations', 'Twinkle Twinkle Little Star'], must: /vous dirai|k\.? ?265|twinkle/i, pref: /mozart|k\.? ?265|vous dirai/i },
   { id: 'r-gymno', name: '☁️ 짐노페디 1번', desc: '실제 연주 · 사티, 잔잔한 피아노', q: ['Satie Gymnopedie 1', 'Gymnopédie No. 1', 'Gymnopedie'], must: /gymnop/i },
   { id: 'r-clair', name: '🌕 달빛 (클레르 드 륀)', desc: '실제 연주 · 드뷔시', q: ['Debussy Clair de lune', 'Suite bergamasque Clair de lune'], must: /clair de lune/i },
-  { id: 'r-canon', name: '🎻 캐논', desc: '실제 연주 · 파헬벨', q: ['Pachelbel Canon in D', 'Pachelbel Canon'], must: /pachelbel|canon/i },
-  { id: 'r-trau', name: '💭 트로이메라이 (꿈)', desc: '실제 연주 · 슈만 어린이 정경', q: ['Schumann Träumerei', 'Schumann Traumerei Kinderszenen'], must: /tr(ä|a|ae)umerei|kinderszenen/i },
-  { id: 'r-noct', name: '🌌 녹턴 Op.9-2', desc: '실제 연주 · 쇼팽', q: ['Chopin Nocturne Op. 9 No. 2', 'Chopin Nocturne E flat major Op 9'], must: /nocturne/i },
+  { id: 'r-canon', name: '🎻 캐논', desc: '실제 연주 · 파헬벨', q: ['Pachelbel Canon in D', 'Pachelbel Canon'], must: /pachelbel/i },
+  { id: 'r-trau', name: '💭 트로이메라이 (꿈)', desc: '실제 연주 · 슈만 어린이 정경', q: ['Schumann Träumerei', 'Schumann Traumerei Kinderszenen'], must: /tr(ä|a|ae)umerei/i },
+  { id: 'r-noct', name: '🌌 쇼팽 녹턴', desc: '실제 연주 · 쇼팽, 밤처럼 고요하게', q: ['Chopin Nocturne Op. 9 No. 2', 'Chopin Nocturne E flat major Op 9'], must: /chopin.*nocturne|nocturne.*chopin/i, pref: /op\.? ?9,? (no\.? ?)?2|op\.? ?9 n\.? ?2/i },
   { id: 'r-bach', name: '🎹 프렐류드 C장조', desc: '실제 연주 · 바흐 평균율 1번', q: ['Bach Prelude C major BWV 846', 'Well-Tempered Clavier Prelude 1 C major'], must: /846|prelude|präludium|praeludium/i },
-  { id: 'r-nacht', name: '🎺 아이네 클라이네 나흐트무지크', desc: '실제 연주 · 모차르트, 신나게', q: ['Eine kleine Nachtmusik Allegro', 'Mozart Serenade K. 525'], must: /nachtmusik|k\.? ?525/i },
+  { id: 'r-nacht', name: '🎺 아이네 클라이네 나흐트무지크', desc: '실제 연주 · 모차르트, 신나게', q: ['Eine kleine Nachtmusik Allegro', 'Mozart Serenade K. 525'], must: /nachtmusik|k\.? ?525/i, pref: /allegro|i\.|1\.|first/i, avoid: /romanz|menuet|minuet|rondo/i },
   { id: 'r-elise', name: '🌸 엘리제를 위하여', desc: '실제 연주 · 베토벤', q: ['Beethoven Für Elise', 'Fur Elise'], must: /elise/i },
-  { id: 'r-spring', name: '🌱 사계 중 봄', desc: '실제 연주 · 비발디, 산뜻하게', q: ['Vivaldi Spring Allegro', 'Vivaldi Four Seasons Spring La primavera'], must: /spring|primavera|printemps|frühling/i },
-  { id: 'r-swan', name: '🦢 백조', desc: '실제 연주 · 생상스 동물의 사육제', q: ['Saint-Saëns The Swan', 'Le cygne Saint-Saens'], must: /swan|cygne|schwan/i },
+  { id: 'r-spring', name: '🌱 사계 중 봄', desc: '실제 연주 · 비발디, 산뜻하게', q: ['Vivaldi Spring Allegro', 'Vivaldi Four Seasons Spring La primavera'], must: /vivaldi.*(spring|primavera|printemps|frühling)|(spring|primavera|printemps|frühling).*vivaldi/i, pref: /allegro/i },
+  { id: 'r-swan', name: '🦢 백조', desc: '실제 연주 · 생상스 동물의 사육제', q: ['Saint-Saëns The Swan', 'Le cygne Saint-Saens'], must: /cygne|the swan|der schwan|\bswan\b.*saint|saint.*\bswan\b/i, avoid: /swan lake|lac des cygnes|schwanensee|tchaikovsky/i },
 ];
+const NOT = /podcast|hwhap|episode|\bep\d|interview|speech|lecture|radio|news|pronunciation/i;
 const OKLIC = /^(public domain|pd\b|pd-|cc0|cc-zero)/i;
 const OKMIME = /^(audio\/(ogg|x-flac|flac|wav|x-wav|mpeg|mp3|webm|opus)|application\/ogg|video\/webm)$/i;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -45,12 +46,13 @@ async function candidates(w) {
     for (const p of (j.query && j.query.pages) || []) {
       const ii = (p.imageinfo || [])[0]; if (!ii || seen.has(p.title)) continue;
       const em = ii.extmetadata || {}, lic = strip((em.LicenseShortName || {}).value), title = p.title.replace(/^File:/, '');
-      const text = [title, strip((em.ObjectName || {}).value), strip((em.ImageDescription || {}).value)].join(' ');
-      if (!w.must.test(text)) continue;
+      const text = [title, strip((em.ObjectName || {}).value)].join(' ');   // 제목에서만 (설명에 곡 이름이 스쳐 지나가는 엉뚱한 파일 거르기)
+      if (!w.must.test(text) || NOT.test(text) || (w.avoid && w.avoid.test(text))) continue;
       if (!OKLIC.test(lic)) { console.log(`  건너뜀(라이선스 ${lic || '없음'}): ${title}`); continue; }
       if (!OKMIME.test(ii.mime) || ii.size < 250e3 || ii.size > 120e6) continue;
       let score = Math.min(ii.size, 40e6) / 1e6;
       if (/musopen/i.test(text + strip((em.Credit || {}).value) + strip((em.Artist || {}).value))) score += 30;
+      if (w.pref && w.pref.test(text)) score += 20;
       if (/midi|synth|ringtone|music box|carillon|whistl/i.test(text)) score -= 25;
       seen.set(p.title, { title, url: ii.url, page: ii.descriptionurl, mime: ii.mime, size: ii.size, lic, artist: strip((em.Artist || {}).value).slice(0, 120), credit: strip((em.Credit || {}).value).slice(0, 160), score });
     }
