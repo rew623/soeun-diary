@@ -564,6 +564,7 @@ const MOCK={
   setGeo:(id,geo)=>{[].concat(id).forEach(i=>{const m=DB.moments.find(x=>x.id===i);if(m)m.geo=geo});return{data:MOCK.getData()}},
   setFocus:(id,fp)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.fp=fp;return{data:MOCK.getData()}},
   careSave:(date,it,old)=>{const id=it.id||('c'+Date.now().toString(36)+(dseq++));DB.cares=DB.cares.filter(x=>x.id!==id);DB.cares.push(Object.assign({k:'memo',t:'00:00',e:'',ml:0,l:0,r:0,dur:0,pee:0,poo:0,amt:'',st:'',memo:'',live:0,side:'',seg:0,by:DB.me.role,at:Date.now()},it,{id,date}));return{id,data:MOCK.getData()}},
+  careImport:(L)=>{L.forEach(x=>MOCK.careSave(x.date,x.it,''));return{n:L.length,data:MOCK.getData()}},
   careDelete:(date,id)=>{DB.cares=DB.cares.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={}),k=typeof once==='string'?once:once.key,v=typeof once==='string'?null:once.val;if(v===null?g0[k]:(g0[k]&&String(g0[k])>=v))throw new Error('이미 받은 보상이에요');Object.keys(o||{}).forEach(x=>{if(x!=='acornSet'&&x!=='acorn')g0[x]=o[x]});g0[k]=v===null?((o||{})[k]||true):v;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},

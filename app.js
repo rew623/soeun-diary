@@ -357,6 +357,17 @@ const H = {
     await commit(b.commit());
     return { id: row.id, data: data() };
   },
+  // 다른 앱 기록 한꺼번에 넣기 (하루 수사 '📥 붙여넣기'): [{date, it}] → 날짜 문서마다 merge, 450개씩 나눠서
+  async careImport(list) {
+    const rows = (list || []).filter(x => x && /^\d{4}-\d{2}-\d{2}$/.test(x.date || '')).map(x => ({ date: x.date, row: careRow(x.it) }));
+    for (let i = 0; i < rows.length; i += 450) {
+      const b = writeBatch(db), by = {};
+      rows.slice(i, i + 450).forEach(({ date, row }) => { (by[date] = by[date] || {})[row.id] = row; M.care.set(date, Object.assign({}, M.care.get(date) || {}, { [row.id]: row })); });
+      Object.keys(by).forEach(d => b.set(dref('care', d), { items: by[d], updatedAt: serverTimestamp() }, { merge: true }));
+      await commit(b.commit());
+    }
+    return { n: rows.length, data: data() };
+  },
   async careDelete(date, id) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('날짜 형식이 올바르지 않아요');
     id = String(id); const o = Object.assign({}, M.care.get(date) || {}); delete o[id]; M.care.set(date, o);

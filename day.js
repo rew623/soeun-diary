@@ -191,7 +191,8 @@ function dayLog() {
     [st.pee.n, `💧 소변 ${st.pee.n}`], [st.poo.n, `💩 대변 ${st.poo.n}`], [st.sleep.min, `😴 ${durTxt(st.sleep.min)}`], [st.bath.n, `🛁 목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span>${x[1]}</span>`).join('');
   return `${liveCards()}${isT ? feedBar() : ''}${quickRow()}
     <section class="dysum">${last}${chips ? `<div class="dychips">${chips}</div>` : `<p class="vempty" style="margin:4px 0">${isT ? '아직 오늘 기록이 없어요. 위 동그란 단추로 남겨요.' : '이날 기록이 없어요.'}</p>`}</section>
-    ${L.length ? `<section class="dylist">${L.map(line).join('')}</section>` : ''}`;
+    ${L.length ? `<section class="dylist">${L.map(line).join('')}</section>` : ''}
+    ${canWrite() ? '<button class="ghost dyimp" data-dy="imp">📥 다른 앱 기록 붙여넣기</button>' : ''}`;
 }
 
 // ---------- 일간 패턴: 24시간 시계 ----------
@@ -411,6 +412,53 @@ async function quickAdd(k, btn) {
   const det = k === 'formula' || k === 'pump' ? ` ${it.ml}ml` : k === 'breast' ? ` 왼쪽 ${Math.round(it.l || 0)}분·오른쪽 ${Math.round(it.r || 0)}분` : k === 'diaper' ? ` ${[it.pee ? '소변' : '', it.poo ? '대변' : ''].filter(Boolean).join('·')}` : k === 'bath' ? ` ${it.dur || 0}분` : '';
   toast(`${k === 'diaper' ? '🧷' : (K[k] || K.memo).i} ${hmOf(now)}${det} 바로 남겼어요\n다르면 목록에서 눌러 고쳐요`);
 }
+// ---------- 다른 앱(베이비빌리 등) 기록 붙여넣기: 한 줄에 기록 하나 ----------
+// 형식: 2026-10-05 08:30 분유 160 [~08:50] [# 메모] · 모유 왼10 오8 · 유축 80 · 소변 · 대변 [많이] [묽음] · 소변대변 · 수면 ~10:40 · 목욕 15분 · 메모 내용
+const IMPK = [['소변대변', 'diaper'], ['분유', 'formula'], ['유축', 'pump'], ['모유', 'breast'], ['소변', 'diaper'], ['대변', 'diaper'], ['수면', 'sleep'], ['잠', 'sleep'], ['목욕', 'bath'], ['메모', 'memo']];
+function parseImp(txt) {
+  const out = [], bad = [];
+  String(txt || '').split(/\r?\n/).forEach((ln, i) => {
+    const raw = ln.trim(); if (!raw || raw.startsWith('//')) return;
+    const m = /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})\s+(\d{1,2}):(\d{2})\s+(\S+)\s*(.*)$/.exec(raw); if (!m) { bad.push(i + 1); return; }
+    const date = `${m[1]}-${p2(m[2])}-${p2(m[3])}`, t = `${p2(m[4])}:${m[5]}`, w = m[6]; let rest = m[7] || '', memo = '';
+    const hi = rest.indexOf('#'); if (hi >= 0) { memo = rest.slice(hi + 1).trim(); rest = rest.slice(0, hi); }
+    const kk = IMPK.find(([n]) => w.startsWith(n)); if (!kk) { bad.push(i + 1); return; }
+    const k = kk[1], e = (/~\s*(\d{1,2}):(\d{2})/.exec(rest) || []), it = { id: 'c' + (date + t + k + w).replace(/\D/g, '').slice(2) + k.slice(0, 2) + i.toString(36), k, t, e: e[1] ? `${p2(e[1])}:${e[2]}` : '', memo, live: 0, at: Date.now() };
+    rest = rest.replace(/~\s*\d{1,2}:\d{2}/, '');
+    if (k === 'formula' || k === 'pump') it.ml = num((/(\d+)/.exec(rest) || [])[1]);
+    if (k === 'breast') { it.l = num((/왼\D*(\d+)/.exec(rest) || [])[1]); it.r = num((/오\D*(\d+)/.exec(rest) || [])[1]); if (!it.l && !it.r) { const n = num((/(\d+)/.exec(rest) || [])[1]); if (n) it.e = it.e || hmOf(new Date(msOf(date, t) + n * 60000)); } }
+    if (k === 'diaper') { it.pee = w.includes('소변') ? 1 : 0; it.poo = w.includes('대변') ? 1 : 0; it.amt = (/조금|보통|많이/.exec(rest) || [''])[0]; it.st = (/묽음|단단|설사/.exec(rest) || [''])[0] || (it.poo && /보통/.test(rest.replace(it.amt, '')) ? '보통' : ''); }
+    if (k === 'bath') it.dur = num((/(\d+)/.exec(rest) || [])[1]);
+    if (k === 'memo') it.memo = (rest.trim() + (memo ? ' ' + memo : '')).trim();
+    out.push({ date, it });
+  });
+  return { out, bad };
+}
+function impSheet() {
+  openSheet(`<h3>📥 다른 앱 기록 붙여넣기</h3>
+    <p class="hint">베이비빌리 등 다른 앱 기록을 한 줄에 하나씩 붙여 넣어요. (Claude가 캡처를 읽어 이 형식으로 만들어 드려요)</p>
+    <pre class="dyimpex">2026-10-05 08:30 분유 160
+2026-10-05 09:10 소변
+2026-10-05 11:20 대변 많이 묽음
+2026-10-05 12:00 모유 왼10 오8
+2026-10-05 13:00 수면 ~14:30
+2026-10-05 19:00 목욕 15분
+2026-10-05 20:00 메모 오늘 많이 웃음</pre>
+    <label class="field"><span>붙여 넣을 기록</span><textarea id="dy-imp" rows="8" placeholder="여기에 붙여 넣어요"></textarea></label>
+    <p class="hint" id="dy-impn"></p><p class="err" id="dy-err"></p>
+    <div class="actions"><button class="secondary" data-act="close">닫기</button><button class="primary" data-dy="impgo">가져오기</button></div>`);
+}
+document.addEventListener('input', e => { if (e.target.id !== 'dy-imp') return; const r = parseImp(e.target.value), n = $('dy-impn'); if (n) n.textContent = `${r.out.length}개 읽음${r.bad.length ? ` · 못 읽은 줄 ${r.bad.slice(0, 8).join(', ')}번` : ''}`; });
+async function impGo(b) {
+  const r = parseImp(($('dy-imp') || {}).value), er = $('dy-err');
+  if (!r.out.length) { er.textContent = '읽은 기록이 없어요. 형식을 확인해 주세요'; return; }
+  // 이미 같은 날·같은 시각·같은 종류 기록이 있으면 빼요 (두 번 넣어도 겹치지 않게)
+  const have = new Set((S.cares || []).map(c => c.date + c.t + c.k)), L = r.out.filter(x => !have.has(x.date + x.it.t + x.it.k) && x.date >= S.profile.birth && x.date <= today()), skip = r.out.length - L.length;
+  if (!L.length) { er.textContent = '모두 이미 있는 기록이에요'; return; }
+  if (!(await ask(`${L.length}개 기록을 넣을까요?${skip ? `\n(이미 있거나 날짜가 맞지 않는 ${skip}개는 빼요)` : ''}${r.bad.length ? `\n못 읽은 줄 ${r.bad.length}개는 빠져요` : ''}`, { ok: '넣기' }))) return;
+  b.disabled = true; const res = await write('careImport', L); b.disabled = false; if (!res) return;
+  closeSheet(); const last = L.map(x => x.date).sort().pop(); D.mode = 'day'; D.sub.day = 'log'; D.date = last; render(); toast(`📥 ${L.length}개 기록을 넣었어요`);
+}
 // 타이머: 수면(잠든 시각부터) · 모유수유(왼쪽·오른쪽 따로 쌓기) — 두 폰이 같이 봐요
 async function startTimer(k) {
   const now = new Date(), it = { id: newCid(), k, t: hmOf(now), live: 1, at: Date.now() };
@@ -485,6 +533,8 @@ document.addEventListener('click', async e => {
     const box = document.querySelector(`[data-ch="${CSS.escape(key)}"]`); if (box) { const [st, mk] = key.split('.'), M = (METRICS[st] || []).find(x => x[0] === mk); if (M) { const days = [...Array(7)].map((_, i) => addDays(D.wk, i)), vals = days.map(d => M[3](stats(d))), u = st === 'solid' && mk === 'amt' ? (days.map(stats).find(s => s.solid.n) || { solid: { unit: 'g' } }).solid.unit : M[2]; box.innerHTML = bars(key, days, vals, u, st === 'diaper' ? (mk === 'poo' ? K.poo.c : K.pee.c) : K[st].c); } }
     return;
   }
+  if (a === 'imp') { impSheet(); return; }
+  if (a === 'impgo') { impGo(b); return; }
   if (a === 'feedset') { feedSheet(); return; }
   if (a === 'feedsave') { feedSave(); return; }
   if (a === 'tip') { const t = $('dy-tip'); if (t && D.tips) t.textContent = D.tips[+v] || ''; return; }
@@ -559,6 +609,8 @@ css.textContent = `
 .dynext>span{font-size:28px}.dynext>div{flex:1;min-width:0}.dynext small{display:block;font-size:12px;color:var(--muted)}
 .dynext b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--navy);margin-right:8px}.dynext b.sm{font-size:15px;display:block}.dynext em{font-style:normal;font-size:14px;color:var(--ink)}
 .dynext.late{border-color:var(--red)}.dynext.late em{color:var(--red);font-weight:700}.dynext>i{font-style:normal;font-size:20px}
+.dyimp{display:block;width:100%;min-height:42px;margin:6px 0 0;font-size:13.5px}
+.dyimpex{background:#FFFDF7;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.6;white-space:pre-wrap;margin:0 0 10px;font-family:var(--body)}
 .dyrow.flash{animation:dyflash 2.4s ease-out}@keyframes dyflash{0%,40%{background:#FFE7A8}100%{background:transparent}}
 .dyrow.live{background:color-mix(in srgb,#FFF3E2 70%,transparent);border-radius:12px}
 .dyfl{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}   /* 두 줄로 감아서 고른 칸이 늘 보이게 */
