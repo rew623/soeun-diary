@@ -675,8 +675,8 @@ css.textContent = `
 .dyd{position:relative;font-family:var(--display);font-size:clamp(17px,5vw,21px);color:var(--navy);padding:6px 10px;border-radius:12px;text-align:center}
 .dyd input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 .dytoday{display:block;margin:0 auto 6px;min-height:32px;border-radius:99px;border:1.5px solid var(--red);background:#FFF6F3;color:var(--red);font-size:13px;padding:0 14px}
-.dysub{display:flex;gap:18px;border-bottom:1.5px solid var(--line);margin:8px 0 12px;padding:0 4px}
-.dysub button{border:0;background:none;padding:8px 2px;font-family:var(--display);font-size:17px;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1.5px;min-height:44px}
+.dysub{display:flex;gap:0;border-bottom:1.5px solid var(--line);margin:8px 0 12px;padding:0}   /* 두 칸이 가로로 꽉 차게 */
+.dysub button{flex:1 1 0;border:0;background:none;padding:10px 4px;font-family:var(--display);font-size:19px;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1.5px;min-height:52px}
 .dysub button.on{color:var(--navy);border-bottom-color:var(--red)}
 .dyq{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px 2px;padding:2px 0 12px}
 .dyq button{min-width:0;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0}
