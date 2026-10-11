@@ -340,7 +340,7 @@ function openForm(id, preset) {
       <div class="wkplb"><button type="button" class="ghost" data-wf="here">📍 지금 위치</button><button type="button" class="ghost" data-wf="search">🔎 장소 찾기</button><button type="button" class="ghost" data-wf="map">🗺️ 지도에서</button></div>
       <div id="wf-geo">${geoLine()}</div><div id="wf-pick"></div></div>
     <div class="field"><span>사진</span><div id="wf-ph">${formPhotos()}</div>
-      <button type="button" class="ghost" data-wf="photos" style="width:100%">📷 사진 고르기 (여러 장)</button></div>
+      <div class="wkf2"><button type="button" class="ghost" data-wf="photos">📷 사진 고르기</button><button type="button" class="ghost" data-wf="photos2">📁 갤러리 앱에서</button></div></div>
     <label class="check" style="margin:-4px 0 12px"><input type="checkbox" id="wf-fill" checked> 위치 없는 사진엔 이 장소 위치를 붙여요</label>
     <div class="field"><span>${esc(n)} 반응</span><div class="chips">${MOODS.map(x => chip('mood', x[0], f.mood === x[0], `${x[1]} ${x[2]}`)).join('')}</div></div>
     <div class="field"><span>함께한 수사관</span><div class="chips">${['엄마', '아빠'].map(r => chip('who', r, f.who.has(r), r === '엄마' ? '👩 엄마' : '👨 아빠')).join('')}</div></div>
@@ -398,7 +398,7 @@ const picker = document.createElement('input');
 picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true; picker.hidden = true;
 document.body.appendChild(picker);
 picker.addEventListener('change', async () => {
-  const files = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = '';
+  const files = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = ''; picker.accept = 'image/*';
   if (!files.length) return;
   if (W.pickMode === 'add') return addPhotos(W.addFor, files);
   if (!W.form) return;
@@ -741,6 +741,7 @@ document.addEventListener('click', async e => {
   if (a === 'kind' || a === 'mood') { f[a] = a === 'mood' && f.mood === v ? '' : v; b.parentElement.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.v === f[a])); return; }
   if (a === 'who') { if (f.who.has(v)) f.who.delete(v); else f.who.add(v); b.classList.toggle('on', f.who.has(v)); return; }
   if (a === 'photos') { grab(); W.pickMode = 'form'; picker.click(); return; }
+  if (a === 'photos2') { grab(); W.pickMode = 'form'; picker.accept = 'image/*,application/octet-stream'; picker.click(); setTimeout(() => { picker.accept = 'image/*'; }, 500); return; }   // 파일 고르기 창 → 갤러리 앱·앨범 폴더 (위치도 대개 그대로)
   if (a === 'unpic') { f.pics = f.pics.filter(x => x !== v); $('wf-ph').innerHTML = formPhotos(); return; }
   if (a === 'unfile') { const x = W.files.splice(+v, 1)[0]; if (x) try { URL.revokeObjectURL(x.url); } catch (er) {} $('wf-ph').innerHTML = formPhotos(); return; }
   if (a === 'ungeo') { setGeo(null); return; }

@@ -90,6 +90,7 @@
 - 화면 확대(핀치 줌) 막음: viewport에 maximum-scale=1, user-scalable=no — 실수로 확대되면 아래 메뉴가 화면 밖으로 잘렸음(2026.10.11). 사진 확대는 크게 보기(viewer.js)에서
 - 한글 줄바꿈: body에 word-break:keep-all + overflow-wrap:break-word (낱말 사이에서만 줄 바꿈, 사용자 요청). 좁은 단추는 그림 한 줄·글자 한 줄로
 - 알림 띠(toast)는 z-index 100 (탐문 중 화면·촬영기 같은 겹침 창 위에도 보이게)
+- 사진 고르기 칸이 accept='image/*'뿐이면 크롬이 안드로이드 사진 선택 창(사진|컬렉션)을 띄움. 'image/*,application/octet-stream'으로 열면 파일 고르기 창 → 왼쪽 메뉴에서 갤러리 앱(앨범 폴더)·내 파일 (현장 사진첩 '📁 갤러리 앱·파일에서 고르기', 탐문 폼 '📁 갤러리 앱에서', ALBUM.pickFiles), 위치도 대개 그대로. 올리기 시작 알림에 '📍 위치 있는 사진 N장'
 - 안드로이드는 갤러리에서 고른 사진(input type=file, 사진 선택기)의 GPS를 지워서 넘겨줌(개인정보 보호, 웹앱은 ACCESS_MEDIA_LOCATION을 못 받음) → 사진 위치는 EXIF에 기대지 말 것. 찍은 시각은 남으니 탐문 경로(walk.js)로 자리를 찾고, 앱 안 카메라로 찍을 땐 그때 위치를 붙임
 - 속도(2026.10 점검): render()는 #app 전체를 다시 그리므로 연달아 여러 번 부르지 말 것 — 사진 주소 불러오기(loadPhotos)는 다 받은 뒤 한 번만 그림(예전엔 4장마다 그려 사진 400장이면 열 때 8초 버벅임). render 안이나 직후에 scrollY·scrollHeight·getBoundingClientRect 같은 배치 값을 읽으면 화면 전체 배치를 억지로 계산해 느려짐(staySave는 0.3초 뒤). 폰 사본 저장(saveCache)은 2초 모아서, 앱 내릴 때 바로 씀. 사진 칸 img는 loading=lazy decoding=async (수사 보드·성장 앨범 책은 레이아웃·인쇄 때문에 그대로). 글씨는 11px보다 작게 하지 않기
 - canvas로 사진을 그려 저장하는 기능(사진관·영상·신문)은 Firebase 사진을 crossOrigin으로 불러와야 하고, 버킷에 CORS 설정이 있어야 함(storage-cors.yml, 오류 응답에만 붙는 CORS 헤더에 속지 말 것). CV.img: crossOrigin → fetch(cache reload)→blob → Storage SDK getBlob(window.__photoBlob) 순서. sw.js 사진 캐시는 cors + cache:'reload'로 받음. 안 되면 사진관은 '📱 폰에서' 고르기 안내. 사진 주소는 safeImg로 거른 것만

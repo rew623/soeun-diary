@@ -78,6 +78,7 @@ function sectionHtml() {
   return `<section${isFold('a-free') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-free" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">현장 사진첩</span><span>${L.length}장</span></h2>
     <p class="foot" style="margin:0 0 10px">여러 장을 한 번에 올리면 찍은 날짜별로 나눠서 보관해요. 사진을 길게 누르면 여러 장 골라서 지우거나 날짜를 바꿀 수 있어요.</p>
     <button class="solve" data-al="pick" style="width:100%;min-height:50px">+ 사진 올리기 (여러 장 가능)</button>
+    <button class="ghost apick2" data-al="pick2">📁 갤러리 앱·파일에서 고르기 <small>(앨범 폴더째 · 위치 그대로)</small></button>
     ${progHtml()}
     ${groups.map((g, gi) => `<div class="amon${isFold('m-' + g.ym, gi >= 1) ? ' folded' : ''}"><h3 class="agh" data-fold="m-${g.ym}">${head(g.ym)} · ${cnt(g.ym)}장</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}<button class="afold" data-al="foldm" data-k="m-${g.ym}">▴ ${+g.ym.slice(5)}월 사진 접기</button></div>`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
     ${L.length > shown.length ? `<button class="addperiod" data-al="more">더 보기 (${L.length - shown.length}장 남음)</button>` : ''}
@@ -143,6 +144,12 @@ const picker = document.createElement('input');
 picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true; picker.hidden = true;
 document.body.appendChild(picker);
 picker.addEventListener('change', () => { const files = [...picker.files]; picker.value = ''; queue(files); });
+// 크롬은 '사진만' 받는 칸이면 안드로이드 사진 선택 창을 띄워요(위치를 지워서 넘겨줌). 다른 종류도 받는 칸으로 열면
+// 파일 고르기 창이 떠서 왼쪽 메뉴에서 갤러리 앱(앨범 폴더)·내 파일을 고를 수 있고, 위치도 대개 그대로 와요. 사진이 아닌 건 queue에서 걸러요
+const picker2 = document.createElement('input');
+picker2.type = 'file'; picker2.accept = 'image/*,application/octet-stream'; picker2.multiple = true; picker2.hidden = true;
+document.body.appendChild(picker2);
+picker2.addEventListener('change', () => { const files = [...picker2.files]; picker2.value = ''; if (files.length && !files.some(f => /^image\//.test(f.type))) { toast('사진 파일만 올릴 수 있어요'); return; } queue(files); });
 // 최초 목격에 사진 더 올리기 (어느 기록에 붙일지 기억해 두고 고르기)
 const exPicker = document.createElement('input');
 exPicker.type = 'file'; exPicker.accept = 'image/*'; exPicker.multiple = true; exPicker.hidden = true;
@@ -160,7 +167,8 @@ async function queue(list, more, fill) {
   try { await qdo('readwrite', st => { rows.forEach(r => st.put(r)); }); }
   catch (x) { mem.push(...rows); }
   Q.total += rows.length; Q.left += rows.length; showProg();
-  toast(`${rows.length}장을 올리기 시작해요`);
+  const ng = rows.filter(r => r.geo && !(fill && fill.geo === r.geo)).length;
+  toast(`${rows.length}장을 올리기 시작해요${ng ? ` · 📍 위치 있는 사진 ${ng}장` : ''}`);
   if (mem.length) pumpMem(); else pump();
   return rows.map(r => r.id);
 }
@@ -311,6 +319,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-al]'); if (!b) return;
   switch (b.dataset.al) {
     case 'pick': selOff(); picker.click(); break;
+    case 'pick2': selOff(); picker2.click(); break;
     case 'shfree': case 'shfam': {
       if (!SH) return; const fam = b.dataset.al === 'shfam', files = SH.files;
       closeSheet(); S.tab = 'album'; S.view = ''; S.albumView = fam ? 'family' : 'album'; render(); window.scrollTo(0, 0);
@@ -369,6 +378,7 @@ css.textContent = `
 .agd{display:flex;align-items:baseline;gap:8px;margin:12px 0 6px;font-size:13px}
 .agd b{font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy)}
 .agd span{font-size:11px;color:var(--muted)}.agd em{margin-left:auto;font-style:normal;font-size:11px;color:var(--muted)}
+.apick2{display:block;width:100%;margin-top:6px;min-height:42px;border-radius:99px;white-space:normal;line-height:1.3}.apick2 small{color:var(--muted);font-size:11.5px}
 .aprog{margin-top:10px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px}
 .aprog div{display:flex;justify-content:space-between;font-size:13px}.aprog b{color:var(--navy)}
 .aprog i{display:block;height:8px;border-radius:99px;background:var(--card2);margin:6px 0 4px;overflow:hidden}
@@ -399,5 +409,5 @@ css.textContent = `
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:11px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
-window.ALBUM = { shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
+window.ALBUM = { pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
 })();
