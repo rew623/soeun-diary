@@ -15,19 +15,6 @@
    "src": "https://commons.wikimedia.org/wiki/File:Johannes_Brahms_ninna_nanna_op_49_n_4.ogg"
   },
   {
-   "id": "r-twinkle",
-   "name": "⭐ 반짝반짝 작은 별 변주곡",
-   "desc": "실제 연주 · 모차르트",
-   "file": "music/r-twinkle.mp3",
-   "sec": 150,
-   "full": 3629,
-   "title": "HWHAP Ep407 A Place in Space to Call Home- Part 1 (Ep407 A Place in Space to Call Home Part 1).mp3",
-   "artist": "NASA Johnson Space Center",
-   "credit": "This image or video was catalogued by Lyndon B. Johnson Space Center of the United States National Aeronautics and Space Administration (NASA) under Photo ID: E",
-   "license": "Public domain",
-   "src": "https://commons.wikimedia.org/wiki/File:HWHAP_Ep407_A_Place_in_Space_to_Call_Home-_Part_1_(Ep407_A_Place_in_Space_to_Call_Home_Part_1).mp3"
-  },
-  {
    "id": "r-gymno",
    "name": "☁️ 짐노페디 1번",
    "desc": "실제 연주 · 사티, 잔잔한 피아노",
@@ -67,30 +54,17 @@
    "src": "https://commons.wikimedia.org/wiki/File:Pachelbel%27s_Canon_01.wav"
   },
   {
-   "id": "r-trau",
-   "name": "💭 트로이메라이 (꿈)",
-   "desc": "실제 연주 · 슈만 어린이 정경",
-   "file": "music/r-trau.mp3",
-   "sec": 150,
-   "full": 839,
-   "title": "Robert Schumann Kinderszenen op.15 - Noel Mewton-Wood, Klavier 1950.mp3",
-   "artist": "Noel Mewton-Wood",
-   "credit": "YouTube",
-   "license": "Public domain",
-   "src": "https://commons.wikimedia.org/wiki/File:Robert_Schumann_Kinderszenen_op.15_-_Noel_Mewton-Wood,_Klavier_1950.mp3"
-  },
-  {
    "id": "r-noct",
-   "name": "🌌 녹턴 Op.9-2",
-   "desc": "실제 연주 · 쇼팽",
+   "name": "🌌 쇼팽 녹턴",
+   "desc": "실제 연주 · 쇼팽, 밤처럼 고요하게",
    "file": "music/r-noct.mp3",
    "sec": 150,
-   "full": 496,
-   "title": "Chopin - Nocturne No. 14 in F-sharp minor, Op. 48 No. 2 (Luke Faulkner).flac",
-   "artist": "Frédéric Chopin / Luke Faulkner",
+   "full": 271,
+   "title": "Chopin - Nocturne No. 2 in E-flat major, Op. 9 No. 2 (Frank Levy).flac",
+   "artist": "Frédéric Chopin / Frank Lévy",
    "credit": "https://www.kickstarter.com/projects/Musopen/set-chopin-free/posts/1193714",
    "license": "Public domain",
-   "src": "https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne_No._14_in_F-sharp_minor,_Op._48_No._2_(Luke_Faulkner).flac"
+   "src": "https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne_No._2_in_E-flat_major,_Op._9_No._2_(Frank_Levy).flac"
   },
   {
    "id": "r-bach",
@@ -111,12 +85,12 @@
    "desc": "실제 연주 · 모차르트, 신나게",
    "file": "music/r-nacht.mp3",
    "sec": 150,
-   "full": 266,
-   "title": "Mozart - Serenade No. 13 for strings in G major, K. 525 - Romanze.ogg",
-   "artist": "Wolfgang Amadeus Mozart",
-   "credit": "This work comes from the non profit U.S. organization Musopen where it is available at the following link: https://musopen.org/music/1356/wolfgang-amadeus-mozar",
+   "full": 253,
+   "title": "Mozart K525 Serenade in G Major 1 - Allegro.ogg",
+   "artist": "Wolfgang Amadeus Mozart (1756–1791). The website lists the \"performer\" as the European Archive, which does not make sens",
+   "credit": "This work comes from the non profit U.S. organization Musopen where it is available at the following link: https://musopen.org/music/28074-serenade-no-13-a-litt",
    "license": "Public domain",
-   "src": "https://commons.wikimedia.org/wiki/File:Mozart_-_Serenade_No._13_for_strings_in_G_major,_K._525_-_Romanze.ogg"
+   "src": "https://commons.wikimedia.org/wiki/File:Mozart_K525_Serenade_in_G_Major_1_-_Allegro.ogg"
   },
   {
    "id": "r-elise",
@@ -132,30 +106,17 @@
    "src": "https://commons.wikimedia.org/wiki/File:FurElise.ogg"
   },
   {
-   "id": "r-spring",
-   "name": "🌱 사계 중 봄",
-   "desc": "실제 연주 · 비발디, 산뜻하게",
-   "file": "music/r-spring.mp3",
-   "sec": 150,
-   "full": 185,
-   "title": "Free Tim - Vivaldos Spring from the Four Seasons-Allegro.ogg",
-   "artist": "Free Tim",
-   "credit": "Vivaldo's Spring from the Four Seasons-Allegro by Free Tim",
-   "license": "CC0",
-   "src": "https://commons.wikimedia.org/wiki/File:Free_Tim_-_Vivaldos_Spring_from_the_Four_Seasons-Allegro.ogg"
-  },
-  {
    "id": "r-swan",
    "name": "🦢 백조",
    "desc": "실제 연주 · 생상스 동물의 사육제",
    "file": "music/r-swan.mp3",
    "sec": 150,
-   "full": 1432,
-   "title": "Tchaikovsky - Swan Lake Op.20 - Act III Concl, Allegro.ogg",
-   "artist": "European Archive",
-   "credit": "This work comes from the non profit U.S. organization Musopen where it is available at the following link: https://musopen.org/music/1500/pyotr-ilyich-tchaikovs",
+   "full": 154,
+   "title": "Judith Bokor plays Le Cygne by Saint-Saëns.flac",
+   "artist": "Judith Bokor",
+   "credit": "https://archive.org/details/3-judith-bokor-col-d-17144-fx-16-17-kol-nidrei_202309",
    "license": "Public domain",
-   "src": "https://commons.wikimedia.org/wiki/File:Tchaikovsky_-_Swan_Lake_Op.20_-_Act_III_Concl,_Allegro.ogg"
+   "src": "https://commons.wikimedia.org/wiki/File:Judith_Bokor_plays_Le_Cygne_by_Saint-Sa%C3%ABns.flac"
   }
  ]
 }
