@@ -167,7 +167,7 @@ function card() {
   return `<section class="wcard${s.caught ? ' got' : ''}" data-wt="open" role="button" tabindex="0" aria-label="괴도 깍정이 추적 자세히 보기">
     <div class="wpost" aria-hidden="true"><b>예고장</b>${CHARS.svg('thief', 'card', { size: 70 })}<small>🌰 ${s.caught ? s.bounty : BOUNTY}</small></div>
     <div class="wbody">
-      <h2 class="sh"><span>🎩 괴도 깍정이 추적</span><span>${s.caught ? md(s.caught) + ' 따라잡음' : dl > 0 ? `D-${dl} · 일요일 자정` : '오늘 자정까지!'}</span></h2>
+      <div class="wtop"><span class="wtag">🎩 괴도 깍정이 추적</span><span class="wdday">${s.caught ? md(s.caught) + ' 따라잡음' : dl > 0 ? `D-${dl}` : '오늘 자정까지'}</span></div>
       <b class="wname">${esc(t)}${josa(t, '을', '를')} 노린다!</b>
       <small class="wcrime">변장: ${v[4]} ${esc(v[3])}</small>
       ${track(s)}
@@ -242,13 +242,15 @@ css.textContent = `
 .wcard{position:relative;display:flex;gap:12px;align-items:stretch;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .wpost{position:relative;flex:0 0 86px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;background:#FFFDF8;border:1.5px solid #E0B341;border-radius:10px;padding:6px 3px 5px;box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 4px #EFE2B8,0 3px 8px rgba(31,42,68,.16);transform:rotate(-2deg)}
 .wpost .chr{margin:-2px 0 -4px}
-.wpost b{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:2px;color:#8E1E17}
+.wpost b{font-family:var(--display);font-weight:400;font-size:14px;letter-spacing:.5px;color:#8E1E17}
 .wpost small{font-size:11px;color:#8E1E17;font-weight:700}
 .wface{font-size:40px;line-height:1.15;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .wbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.wbody .sh{margin-bottom:2px}
-.wname{font-family:var(--display);font-weight:400;font-size:20px;color:var(--navy);line-height:1.2}
-.wcrime{font-size:12px;color:var(--muted)}
+.wtop{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
+.wtag{font-family:var(--display);font-size:14px;color:#8E1E17;white-space:nowrap}
+.wdday{flex:none;font-family:var(--display);font-size:13px;color:#fff;background:var(--navy);border-radius:99px;padding:2px 9px;white-space:nowrap}
+.wname{font-family:var(--display);font-weight:400;font-size:18px;color:var(--navy);line-height:1.3;word-break:keep-all}
+.wcrime{font-size:12.5px;color:var(--muted);margin-top:1px}
 .wtrack{position:relative;height:34px;margin:6px 34px 0 4px}.wtrack::before{content:'';position:absolute;left:0;right:-24px;top:15px;height:5px;border-radius:99px;background:repeating-linear-gradient(90deg,#E6D7BC 0 8px,transparent 8px 13px)}
 .wtrack i{position:absolute;left:0;top:14px;height:7px;border-radius:99px;background:var(--red);transition:width .6s}
 .wtrack .wtdet,.wtrack .wtthf{position:absolute;top:0;transform:translateX(-50%);line-height:0;transition:left .6s}.wtrack .wtthf{left:auto;right:-38px;transform:none}
@@ -257,7 +259,7 @@ css.textContent = `
 .whp{height:12px;border-radius:99px;background:#F3D3CF;overflow:hidden;margin-top:5px}
 .whp i{display:block;height:100%;min-width:0;border-radius:99px;background:var(--red);transition:width .6s}
 .whp.big{height:18px;margin-top:12px}
-.whpt{font-size:12px;color:var(--ink);margin-top:2px}
+.whpt{font-size:12.5px;color:var(--ink);margin-top:2px}
 .whpt b{color:var(--red)}
 .wcard.got .whp i{background:#C9BFB2}
 .wstamp{position:absolute;right:12px;top:40px;border:3px double var(--red);color:var(--red);font-family:var(--display);font-size:21px;padding:0 10px;border-radius:8px;transform:rotate(-14deg);background:rgba(255,253,247,.75);pointer-events:none;animation:wstamp .5s cubic-bezier(.2,1.6,.4,1) both}
