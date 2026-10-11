@@ -346,6 +346,7 @@ css.textContent = `
 .mfbody>.exmap,.mfbody>.wkmap{position:absolute;inset:0;width:100%;height:100%}
 .mfbody .mfx{position:absolute;right:10px;bottom:10px;z-index:3}
 html.mf-open,html.mf-open body{overflow:hidden}
+html.mf-open #scrim{z-index:56}html.mf-open #sheet{z-index:57}   /* 크게 본 지도에서 핀을 눌러 여는 창은 지도 위로 */
 .exlayer{position:absolute;left:8px;top:8px;right:56px;z-index:3;display:flex;flex-wrap:wrap;gap:4px}
 .exlayer button{border:1.5px solid var(--line);background:rgba(255,253,247,.92);border-radius:99px;padding:4px 10px;font-size:12.5px;min-height:32px;color:var(--muted);box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .exlayer button.on{background:var(--navy);border-color:var(--navy);color:#fff}
