@@ -1,7 +1,7 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.10.11-13';
+const VERSION = '2026.10.11-14';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './music.js', './movie.js', './wanted.js', './look.js', './capsule.js', './paper.js', './explore.js', './walk.js', './dupes.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './music.js', './movie.js', './wanted.js', './look.js', './capsule.js', './paper.js', './explore.js', './walk.js', './dupes.js', './settings.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
 
 self.addEventListener('install', e => {
@@ -11,7 +11,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('shell-') && k !== SHELL_CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
-self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); });
+self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); else if (e.data === 'ver' && e.ports && e.ports[0]) e.ports[0].postMessage(VERSION); });   // 'ver': 설정 화면의 '이 폰' 버전
 
 // 알림 (Actions notify.yml이 Firebase Cloud Messaging으로 보내요: data { title, body, tag })
 self.addEventListener('push', e => {

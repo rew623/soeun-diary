@@ -332,7 +332,7 @@ function openFree(id) {
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-al]'); if (!b) return;
   switch (b.dataset.al) {
-    case 'pick': selOff(); picker.click(); break;
+    case 'pick': selOff(); { let g = 'photo'; try { g = JSON.parse(localStorage.getItem('soeun-picker') || '"photo"'); } catch (x) {} (g === 'gallery' ? picker2 : picker).click(); } break;   // 설정의 '사진 올리기' 기본 창
     case 'pick2': selOff(); picker2.click(); break;
     case 'dupes': selOff(); DUPES.open(); break;
     case 'shfree': case 'shfam': {

@@ -73,7 +73,8 @@ bub.addEventListener('click', e => { if (e.detail === 0) openPosts(); });   // �
 // 화면을 그릴 때마다: 보일지, 새 글 점(오늘 새로 모은 글을 아직 안 봤으면)
 function sync() {
   // 아래 탭 화면에서만 떠 있어요 (놀이터·책 같은 안쪽 화면에선 단추·탭을 가려서 숨겨요)
-  const show = S.mode === 'ok' && S.profile && S.profile.birth && !S.view;
+  let off = false; try { off = JSON.parse(localStorage.getItem('soeun-posts-hide') || 'false'); } catch (e) {}   // 설정에서 숨김
+  const show = S.mode === 'ok' && S.profile && S.profile.birth && !S.view && !off;
   if (!show) { bub.hidden = true; return; }
   if (bub.hidden) { bub.hidden = false; home(); }
   if (!P.mAt) loadMeta();
@@ -162,5 +163,5 @@ css.textContent = `
 .post.read b{color:var(--muted);font-weight:400}`;
 document.head.appendChild(css);
 
-window.POSTS = { render: render_, load, sync, fresh: () => { if (!P.mAt) loadMeta(); const up = updatedOf(); return !!(up && up !== seenOf()); } };
+window.POSTS = { resetPos: () => { pos = null; try { localStorage.removeItem(POSK); } catch (e) {} if (!bub.hidden) home(); }, render: render_, load, sync, fresh: () => { if (!P.mAt) loadMeta(); const up = updatedOf(); return !!(up && up !== seenOf()); } };
 })();

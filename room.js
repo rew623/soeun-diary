@@ -162,7 +162,7 @@ const FX = {
 function season() { const m = +today().slice(5, 7); return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }
 // 창밖에서 엿보는 괴도 깍정이 (이번 주 아직 못 따라잡았을 때) / 따라잡은 주엔 창틀에 꽂고 간 예고장. 누르면 추적 화면
 function thiefPeek() {
-  if (!window.WANTED || !WANTED.stat || !S.profile || !S.profile.birth) return '';
+  if (!window.WANTED || !WANTED.stat || !S.profile || !S.profile.birth || (window.homeOn && !homeOn('thief'))) return '';
   let st = null; try { st = WANTED.stat(WANTED.monday(today())); } catch (e) { return ''; }
   if (st.caught) return '<g data-thief="1" class="rthief card"><rect x="64" y="70" width="16" height="11" rx="1.5" fill="#FFFDF7" stroke="#C9B48E" stroke-width=".8" transform="rotate(-12 72 75)"/><circle cx="74" cy="76" r="2.6" fill="#C6302A"/></g>';
   const face = CHARS.svg('thief', '', { face: true, size: 84 }).replace(/^<svg[^>]*>|<\/svg>$/g, '');
