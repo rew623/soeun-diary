@@ -307,9 +307,29 @@ body{background:radial-gradient(rgba(185,150,105,.22) 1.3px,transparent 1.6px) 0
 .addv,.addperiod,.linkbtn,.quick button{border-radius:99px}
 .addperiod{background:#FFFDF7}
 .sickbtns button,.addrow button{border-radius:99px;box-shadow:0 3px 0 #121a2e}
-.seg{border-radius:99px;overflow:hidden;border-color:var(--navy);background:#FFFDF7}
-.seg button+button{border-left-color:var(--navy)}
-.seg button.on{background:var(--navy);border-radius:99px}
+/* 꾸미기 (2026.10.11): 여는 화면 추격전, 탭 아이콘 톡, 제목 아래 발자국, 탭 맨 아래 탐정 수첩 */
+.lchase{position:relative;width:min(300px,80vw);height:104px;margin:0 auto 10px;overflow:hidden}
+.lchase .lth,.lchase .lbb{position:absolute;bottom:4px;left:-100px;animation:lrun 3.2s linear infinite}.lchase .lbb{animation-delay:.7s}
+.lchase .lth .chr,.lchase .lbb .chr{animation:gbob .5s ease-in-out infinite}
+.lchase .lpaws{position:absolute;left:0;right:0;bottom:0;height:8px;background:radial-gradient(circle,rgba(140,110,70,.35) 2.2px,transparent 2.6px) 0 0/16px 8px}
+@keyframes lrun{from{left:-100px}to{left:110%}}
+.loading small{font-size:12px;color:var(--muted)}
+.tabbar button.pop svg{animation:tpop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes tpop{0%{transform:scale(.6) rotate(-14deg)}60%{transform:scale(1.15) rotate(4deg)}100%{transform:none}}
+.vhead::after{content:"";display:block;height:10px;margin-top:10px;opacity:.55;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='10'%3E%3Cg fill='%23C9A877'%3E%3Cellipse cx='6' cy='6.5' rx='2.6' ry='2.2'/%3E%3Ccircle cx='3.2' cy='3' r='1'/%3E%3Ccircle cx='6' cy='2.2' r='1'/%3E%3Ccircle cx='8.8' cy='3' r='1'/%3E%3Cellipse cx='28' cy='5.5' rx='2.6' ry='2.2'/%3E%3Ccircle cx='25.2' cy='2' r='1'/%3E%3Ccircle cx='28' cy='1.2' r='1'/%3E%3Ccircle cx='30.8' cy='2' r='1'/%3E%3C/g%3E%3C/svg%3E") repeat-x}
+.notefoot{display:flex;flex-direction:column;align-items:center;gap:2px;margin:26px 0 6px;text-align:center;color:var(--muted)}.notefoot span{font-family:var(--display);font-size:14px;color:#A08A6C}.notefoot small{font-size:12px;max-width:300px}
+@media (prefers-reduced-motion:reduce){.lchase .lth,.lchase .lbb,.tabbar button.pop svg{animation:none}.lchase .lth{left:20%}.lchase .lbb{left:55%}}
+/* 소탭(.seg: 예방접종·영유아검진·발달 체크, 앨범·가족·보드, 탐험 지도·날씨…): 크라프트 홈 위에 종이 스티커처럼 뜬 고른 칸 + 분홍 마스킹 테이프 (2026.10.11 사용자 요청) */
+.seg{gap:4px;border:0;border-radius:20px;background:#EBDCC1;padding:5px;box-shadow:inset 0 2px 4px rgba(120,90,50,.2),0 1px 0 #FFF8EC;overflow:visible}
+.seg button{position:relative;min-width:0;border:0!important;border-radius:15px;color:#8A7356;font-family:var(--display);font-weight:400;font-size:15px;line-height:1.2;padding:9px 4px;min-height:46px;transition:background .2s,color .2s,box-shadow .2s,transform .12s;-webkit-tap-highlight-color:transparent}
+.seg button.on{background:#FFFDF7;color:var(--navy);box-shadow:0 2px 0 var(--line),0 5px 12px rgba(120,90,50,.18)}
+.seg button.on::before{content:"";position:absolute;top:-4px;left:6px;width:24px;height:10px;background:rgba(248,196,186,.95);transform:rotate(-24deg);border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+/* 소탭은 제목 바로 밑(캐릭터 말풍선 위) — 탭을 넘겨도 같은 자리에 (사용자 요청). 제목은 좁은 폰에서도 한 줄 */
+.vhead .seg{margin:12px 0 4px}.vhead h1{font-size:clamp(24px,7.4vw,30px)}
+.seg button.on::after{content:"";position:absolute;left:28%;right:28%;bottom:5px;height:3px;border-radius:99px;background:var(--red);opacity:.75}
+.seg button:not(.on):active{transform:scale(.96);background:rgba(255,253,247,.5)}
+.seg button i{display:block;font-style:normal;font-size:18px;line-height:1.15;margin-bottom:1px}   /* 그림 한 줄 + 글자 한 줄 */
+.seg button:has(i){padding:7px 2px 9px}
 .cnt button,.stepper>button{border-radius:16px}
 /* 숫자 칸, 그래프, 목록 */
 .stats{border:0;gap:8px}
@@ -351,7 +371,7 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(40px +
 .field input,.field textarea,.addrow input{border-radius:14px;border-width:1.5px}
 .pick input[hidden]{display:none}
 .pick{display:inline-flex;align-items:center}
-.toast{border-radius:99px;background:#FFFDF7;color:var(--navy);border:2px solid var(--navy);font-family:var(--display);font-size:15px;line-height:1.4;letter-spacing:0;padding:10px 18px;box-shadow:0 4px 0 var(--navy),0 10px 20px rgba(31,42,68,.18);white-space:normal;width:max-content;max-width:min(90vw,500px);text-align:center;word-break:keep-all}
+.toast{border-radius:99px;background:#FFFDF7;color:var(--navy);border:2px solid var(--navy);font-family:var(--display);font-size:15px;line-height:1.4;letter-spacing:0;padding:10px 18px;box-shadow:0 4px 0 var(--navy),0 10px 20px rgba(31,42,68,.18);white-space:pre-line;width:max-content;max-width:min(90vw,500px);text-align:center;word-break:keep-all}
 .askbox{position:fixed;inset:0;z-index:90;background:rgba(31,42,68,.45);display:grid;place-items:center;padding:24px;animation:askin .15s ease-out}
 .askc{width:100%;max-width:340px;background:var(--card);border:1.5px solid var(--line);border-radius:24px;padding:18px 18px 16px;text-align:center;outline:1.5px dashed var(--stitch);outline-offset:-8px;box-shadow:0 6px 0 #E6D2AE,0 16px 30px rgba(31,42,68,.25)}
 .askf{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--butter)}
@@ -618,7 +638,7 @@ function caseNo(p){const i=S.periods.slice().sort(byDate).findIndex(x=>x.id===p.
 function nextPeriod(){return S.periods.filter(p=>!pDone(p)&&vacsOf(p.id).length).sort(byDate)[0]||null}
 const fileNo=()=>S.profile.birth.slice(5).replace('-','');
 // 동네 탐문 탭 위 칸: 탐험 지도(첫 화면) | 날씨·동네 소식
-function townSeg(v){return `<div class="seg tview">${[['','🗺️ 탐험 지도'],['info','☀️ 날씨·동네 소식']].map(([k,l])=>`<button class="${(v||'')===k?'on':''}" data-act="townv" data-v="${k}">${l}</button>`).join('')}</div>`}
+function townSeg(v){return `<div class="seg tview">${[['','<i>🗺️</i>탐험 지도'],['info','<i>☀️</i>날씨·동네 소식']].map(([k,l])=>`<button class="${(v||'')===k?'on':''}" data-act="townv" data-v="${k}">${l}</button>`).join('')}</div>`}
 
 // ---------- rendering ----------
 const $app=document.getElementById('app'),$tab=document.getElementById('tabbar');
@@ -634,14 +654,16 @@ const I_PIN='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke=
 const I_FILE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"></path><path d="M8 14l2.5 2.5L16 11"></path></svg>';
 
 function render(){
-  if(S.mode==='loading'){$app.innerHTML=`<div class="loading">${CHARS.svg('baby','lens',{size:110})}사건 파일을 여는 중…</div>`;$tab.innerHTML='';return}
-  if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
-  if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
-  const HID=hiddenTabs();   // 설정에서 숨긴 탭 (지금 보고 있는 탭은 잠깐 보여요)
-  $tab.innerHTML=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].filter(([k])=>k===S.tab||!HID.includes(k)).map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
+  if(S.mode==='loading'){$app.innerHTML=`<div class="loading"><div class="lchase" aria-hidden="true"><span class="lth">${CHARS.svg('thief','acorn',{size:78})}</span><span class="lbb">${CHARS.svg('baby','lens',{size:88})}</span><i class="lpaws"></i></div>사건 파일을 여는 중…<br><small>괴도 깍정이의 발자국을 쫓는 중</small></div>`;$tab.innerHTML='';$tab.__h='';return}
+  if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';$tab.__h='';return}
+  if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';$tab.__h='';return}
+  const HID=hiddenTabs(),POP=S.tab!==render.lastTab;render.lastTab=S.tab;   // 설정에서 숨긴 탭 (지금 보고 있는 탭은 잠깐 보여요) · 탭을 바꾼 때만 아이콘 톡
+  const TH=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].filter(([k])=>k===S.tab||!HID.includes(k)).map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
+  if($tab.__h!==TH){$tab.innerHTML=TH;$tab.__h=TH}   // 그대로면 다시 안 그려요 (톡 애니메이션이 끊기지 않게)
+  if(POP){const b=$tab.querySelector('button.on');if(b){b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),700)}}   // 탭이 바뀌면 단추도 새로 그려져서 바로 붙여요
   const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='walk'?WALK.render():S.view==='hosp'?HOSP.render():S.view==='settings'?SETTINGS.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?(S.townView==='info'?TOWN.render():EXPLORE.render('tab')):S.tab==='food'?renderFood():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
-  $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body;
+  $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body+(S.view?'':noteFoot());
   if(S.view==='hosp')HOSP.mount();
   if(S.view==='studio')STUDIO.mount();
   if(S.view==='paper')PAPER.mount();
@@ -745,11 +767,11 @@ function renderVac(){
   const up=S.periods.filter(p=>!pDone(p)).sort(byDate),sol=S.periods.filter(pDone).sort((a,b)=>-byDate(a,b));
   const doneN=S.vaccines.filter(v=>v.done).length,left=S.vaccines.length-doneN;
   const vv=S.vacView==='check'||S.vacView==='dev'?S.vacView:'vac';
-  const vseg=`<div class="seg" style="margin-top:14px">${[['vac','예방접종'],['check','영유아검진'],['dev','발달 체크']].map(([k,l])=>`<button class="${vv===k?'on':''}" data-ck="view" data-v="${k}">${l}</button>`).join('')}</div>`;
-  if(vv==='dev')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>발달 체크</h1><p>월령별로 흔히 보이는 모습이에요. 영유아검진 문진표 쓸 때 도움이 돼요.</p></header>${vseg}${DEV.render()}`;
-  if(S.vacView==='check')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>영유아검진 출동 기록부</h1><p>검진 기간은 태어난 날로 계산했어요. 받으면 "검진 받았어요"로 해결 처리해 주세요.</p></header>${vseg}${CHECKUPS.render()}`;
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>예방접종 출동 기록부</h1>
-    <p>해결 ${doneN}건, 남은 접종 ${left}건. 권장일은 표준 일정으로 계산했어요. 병원 예약을 하면 날짜를 바꿔 두세요.</p></header>${CHARS.guide('vac')}${vseg}
+  const vseg=`<div class="seg">${[['vac','<i>💉</i>예방접종'],['check','<i>🩺</i>영유아검진'],['dev','<i>🧸</i>발달 체크']].map(([k,l])=>`<button class="${vv===k?'on':''}" data-ck="view" data-v="${k}">${l}</button>`).join('')}</div>`;
+  if(vv==='dev')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>발달 체크</h1>${vseg}<p>월령별로 흔히 보이는 모습이에요. 영유아검진 문진표 쓸 때 도움이 돼요.</p></header>${DEV.render()}`;
+  if(S.vacView==='check')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>영유아검진 출동 기록부</h1>${vseg}<p>검진 기간은 태어난 날로 계산했어요. 받으면 "검진 받았어요"로 해결 처리해 주세요.</p></header>${CHECKUPS.render()}`;
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>예방접종 출동 기록부</h1>${vseg}
+    <p>해결 ${doneN}건, 남은 접종 ${left}건. 권장일은 표준 일정으로 계산했어요. 병원 예약을 하면 날짜를 바꿔 두세요.</p></header>${CHARS.guide('vac')}
   ${up.map((p,i)=>caseHtml(p,i===0,false)).join('')}
   <button class="addperiod" data-act="newp">+ 접종 시기 추가</button>
   ${sol.length?'<h2 class="subh">해결된 사건</h2>'+sol.map(p=>caseHtml(p,false,true)).join(''):''}
@@ -925,11 +947,11 @@ function renderAlbum(){
   const mm=months.map(i=>{const m=S.moments.find(x=>x.type==='month'&&x.title===i+'개월'),ph=m&&safeImg(PHOTOS[m.id]);
     return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진" loading="lazy" decoding="async">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
   const av=S.albumView==='board'||S.albumView==='family'?S.albumView:'album';
-  const aseg=`<div class="seg aview">${[['album','앨범'],['family','가족'],['board','수사 보드']].map(([k,l])=>`<button class="${av===k?'on':''}" data-act="aview" data-v="${k}">${l}</button>`).join('')}</div>`;
-  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1><p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${aseg}${FAMILY.render()}
+  const aseg=`<div class="seg aview">${[['album','<i>📷</i>앨범'],['family','<i>👨‍👩‍👧</i>가족'],['board','<i>📌</i>수사 보드']].map(([k,l])=>`<button class="${av===k?'on':''}" data-act="aview" data-v="${k}">${l}</button>`).join('')}</div>`;
+  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1>${aseg}<p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${FAMILY.render()}
   <button class="fab" data-fa="up">+ 가족 사진</button>`;
-  if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1></header>${aseg}${BOARD.render()}`;
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1></header>${CHARS.guide('album')}${aseg}${MEMO.onThisDay()}
+  if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1>${aseg}</header>${BOARD.render()}`;
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1>${aseg}</header>${CHARS.guide('album')}${MEMO.onThisDay()}
   ${(()=>{const rp=ALBUM.reportDoc(),ph=(rp&&safeImg(PHOTOS[rp.id]))||safeImg(PHOTOS[(firsts().slice().reverse().find(m=>m.photo&&safeImg(PHOTOS[m.id]))||{}).id])||safeImg(PHOTOS.profile);
     return `<button class="nextcard rcard100" data-act="report" style="margin-top:14px">${ph?`<span class="r100ph"><img src="${ph}" alt=""><i>${d<100?'D-'+(100-d):'100일'}</i></span>`:''}<span><small>${d<100?fmtK(d100,true)+' 기밀 해제 예정':'기밀 해제 완료'}</small><span class="t">100일 사건 보고서</span><small>태어나서 100일까지 키·몸무게 변화, 최초 목격, 접종을 한 장에 정리해요 · ${d<100?'미리 보기':'보고서 보기'}</small></span>${ph?'':`<span class="d">${d<100?'D-'+(100-d):'100일'}</span>`}</button>`})()}
   <div style="display:flex;gap:8px;margin-top:8px"><button class="ghost rpick" data-al="report" style="flex:1">📷 ${ALBUM.reportDoc()?'보고서 사진 바꾸기':'보고서 사진 미리 올리기'}</button><button class="ghost rpick" data-book="open" style="flex:1">📖 성장 앨범 책 (PDF)</button></div>
@@ -1105,6 +1127,9 @@ function viewMenu(id){const m=S.menus.find(x=>x.id===id),ph=safeImg(PHOTOS[id]);
     <div class="actions"><button class="secondary" data-act="editmenu" data-id="${id}">수정</button><button class="primary" data-act="close">닫기</button></div>`);
 }
 
+// 탭 맨 아래 '탐정 수첩' 한 줄 (날마다 바뀜)
+const NOTES=['작은 단서도 놓치지 말 것. — 탐정 수칙 제1조','기록은 기억보다 힘이 세다.','진실은 언제나 하나, 귀여움은 언제나 무한.','오늘의 증거 사진 한 장이 10년 뒤의 보물.','수사관도 쉬어야 수사가 된다. 엄마·아빠도 꼭 쉬기!','괴도 깍정이는 기록이 없는 날을 노린다.','관찰하라, 그리고 사랑하라.','탐정의 무기는 돋보기, 수사관의 무기는 체력.','울음에도 이유가 있다. 배고픔·졸림·기저귀부터 수사.','첫 순간은 다시 오지 않는다. 최초 목격은 바로 기록!','증거는 사진으로, 감동은 메모로.','범인은 늘 가까이에… 대개 소파 밑에.','오늘 웃은 횟수: 셀 수 없음. 수사 종결.','탐정 사무소 영업시간: 24시간 (특히 새벽 3시).','단서 하나, 웃음 둘, 뽀뽀 셋.','불가능한 걸 지우고 남은 것이 진실. 대개는 졸린 거다.','오늘 못 한 기록은 내일의 단서로.','명탐정은 낮잠도 수사의 일부.'];
+function noteFoot(){if(S.mode!=='ok'||!S.profile||!S.profile.birth)return '';const d=dayNo(today());return `<p class="notefoot"><span>🐾 ${esc(CV.nick())} 탐정 사무소 · 수사 ${d}일째</span><small>오늘의 수첩: “${NOTES[d%NOTES.length]}”</small></p>`}
 // 설정(settings.js)에서 고른 것: 숨긴 탭, 첫 화면 카드 (이 폰에만)
 function hiddenTabs(){try{const v=JSON.parse(localStorage.getItem('soeun-tabs-off')||'[]');return Array.isArray(v)?v.filter(k=>['town','album','vac','food','sick'].includes(k)):[]}catch(e){return[]}}
 function homeOn(k){try{const v=JSON.parse(localStorage.getItem('soeun-home-off')||'[]');return !(Array.isArray(v)&&v.includes(k))}catch(e){return true}}

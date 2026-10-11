@@ -198,8 +198,8 @@ function render_(mode) {
   const layers = `<div class="exlayer">${P.length && R.length ? [['ph', '📷 사진'], ['wk', '🐾 산책길']].map(([k, l]) => `<button class="${X.layer[k] ? 'on' : ''}" data-xp="layer" data-v="${k}" aria-pressed="${X.layer[k]}">${l}</button>`).join('') : ''}${R.length ? `<button class="${X.days ? 'on' : ''}" data-xp="days">${X.days ? '최근 30일' : '전체 기간'}</button>` : ''}${sel ? `<button class="on" data-xp="course" data-v="">${esc(sel.name)} ✕</button>` : ''}</div>`;
   const tools = '<div class="mtools"><button data-xp="loc" aria-label="내 위치">◎</button><button data-xp="full" aria-label="크게 보기">⛶</button></div>';
   const AC = window.WALK ? WALK.courses(0).filter(g => g.n > 1) : [];
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>${esc(CV.nick())} 탐험 지도</h1><p>산책·나들이로 다녀간 곳을 모아요. 처음 가 본 시·군엔 도장 꽝!</p></header>
-  ${tab ? townSeg('') : ''}${window.WALK ? WALK.heroHtml() : ''}
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>${esc(CV.nick())} 탐험 지도</h1>${tab ? townSeg('') : ''}<p>산책·나들이로 다녀간 곳을 모아요. 처음 가 본 시·군엔 도장 꽝!</p></header>
+  ${window.WALK ? WALK.heroHtml() : ''}
   <div class="exsum"><span><b>${P.length}</b>곳 탐험</span><span><b>${nStamp}</b>/18 시·군 도장</span><span><b>${nWalk}</b>번 탐문</span></div>
   ${P.length || R.length ? `<div class="exmapwrap" data-noswipe><div id="exmap-slot"></div>${layers}${tools}${X.mapErr ? '<p class="vempty" style="padding:12px">지도를 불러오지 못했어요. 아래 목록으로 볼 수 있어요.</p>' : ''}</div>`
     : `<div class="exempty">${CHARS.svg('baby', 'lens', { size: 88 })}<p>아직 지도에 꽂힌 곳이 없어요.<br>산책할 땐 <b>🚶 탐문 출동</b>! 걸은 길과 찍은 사진이 지도에 꽂혀요.${noGeo && canWrite() ? '<br>이미 올린 사진은 아래 "사진 위치 직접 꽂기"로 꽂아요.' : ''}</p></div>`}

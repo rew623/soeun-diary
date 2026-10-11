@@ -329,7 +329,7 @@ function render_() {
     ${fcLine(code)}</section>` : '';
   // 동네 탐문 탭에선 위 칸으로 탐험 지도(첫 화면)와 오가요. 빨간 '+ 탐문 기록'은 여기서도 (walk.js)
   const inTab = S.tab === 'town' && !S.view;
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${inTab ? townSeg('info') : ''}${CHARS.guide('town')}
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1>${inTab ? townSeg('info') : ''}<p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${CHARS.guide('town')}
     <div class="treg"><span>탐문 지역</span>${sel}</div>
     ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}${inTab && !(S.me && S.me.viewer) ? '<button class="fab" data-wk="add">+ 탐문 기록</button>' : ''}`;
 }

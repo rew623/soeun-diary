@@ -39,7 +39,7 @@ function place(x, y) { bub.style.transform = `translate3d(${Math.round(x)}px,${M
 function home() {
   const W = innerWidth, side = pos && pos.side === 'l' ? 'l' : 'r';
   const x = side === 'l' ? 10 : Math.min(W, 560 + (W - 560) / 2) - BW - 10;   // 화면이 넓어도 앱 폭 안에
-  place(Math.max(10, x), clampY(pos ? pos.y * innerHeight : 96));
+  place(Math.max(10, x), clampY(pos ? pos.y * innerHeight : 56));   // 처음 자리: 제목 줄 오른쪽 (아래 소탭을 안 가리게)
 }
 addEventListener('resize', () => { if (!bub.hidden) home(); });
 // 짧게 누르면 열기, 0.6초 길게 누른 채 끌어야만 옮겨져요 (손가락이 조금 흔들려도 열리게)

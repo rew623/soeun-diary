@@ -104,7 +104,7 @@ const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.roo
 // ---------- 특수 소품: 방에서 누르면 기능이 나와요 (값이 더 비싸요) ----------
 const R = { sel: null, edit: false, night: false, radio: null, music: 0, tree: 0, tune: null };
 const FXDESC = { FRAME: '누르면 소은이 프로필 사진 이야기', CLOCK: '지금 시각으로 바늘이 움직여요 · 누르면 생후 며칠째인지', SIGN: '아기 이름이 들어가요 · 누르면 사건 파일 번호', GIRAFFE: '최근 키를 보여 줘요 · 누르면 키 변화', PIC: '우리 실제 사진을 넣어요 · 누르면 사진 고르기',
-  CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 흘러나오고, 한 번 더 누르면 꺼져요', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
+  CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 10초 흘러나와요 (한 번 더 누르면 꺼져요)', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
   LAMP: '누르면 방 불을 끄고 무드등을 켜요', RADIO: '누르면 잔잔한 잠 소리(백색소음)를 틀고 끄기', BOOK: '누르면 성장 앨범 책이 열려요', MAIL: '새 육아 글이 오면 깃발이 올라가요 · 누르면 육아 글 모음', WEATHER: '지금 산책 지수·기온이 걸려요 · 누르면 동네 탐문', TREE: '누르면 트리 불이 반짝이고 크리스마스까지 며칠 남았는지 알려 줘요' };
 function latest(...types) { for (const t of types) { const m = (S.moments || []).filter(x => x.type === t && x.photo && safeImg(PHOTOS[x.id])).sort((a, b) => a.date < b.date ? 1 : -1)[0]; if (m) return safeImg(PHOTOS[m.id]); } return safeImg(PHOTOS.profile) || ''; }
 // 다음 기념일: 100일마다 + 돌
@@ -119,15 +119,15 @@ function nextDay() {
   return { t: m[1], d: m[0] - n, f: m[0] === pv[0] ? 1 : Math.max(0, Math.min(1, (n - pv[0]) / (m[0] - pv[0]))) };
 }
 let AC = null; const ac = () => { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; };
-// 오르골 모빌: 누르면 자장가(10분 뒤 저절로 꺼짐), 한 번 더 누르면 꺼져요 (예전엔 누를 때마다 겹쳐 울렸어요)
+// 오르골 모빌: 누르면 자장가 10초, 한 번 더 누르면 꺼져요 (예전엔 누를 때마다 겹쳐 울렸어요)
 function playTune() {
   if (R.tune) { try { R.tune.p.stop(); } catch (e) {} clearTimeout(R.tune.t); R.tune = null; R.music = 0; render(); toast('🎶 오르골을 껐어요'); return; }
-  const c = ac(), len = 600;
+  const c = ac(), len = 10;   // 10초면 충분 (사용자 요청)
   let p = null;
   if (window.MUSIC && MUSIC.play) p = MUSIC.play(c, c.destination, 'lullaby', len);
   else { const N = [523, 523, 784, 784, 880, 880, 784], t0 = c.currentTime + .05, d = .42, os = []; N.forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t0 + i * d); g.gain.linearRampToValueAtTime(.16, t0 + i * d + .02); g.gain.exponentialRampToValueAtTime(.001, t0 + i * d + d * .95); o.connect(g).connect(c.destination); o.start(t0 + i * d); o.stop(t0 + i * d + d); os.push(o); }); p = { stop: () => os.forEach(o => { try { o.stop(); } catch (e) {} }) }; }
   R.tune = { p, t: setTimeout(() => { R.tune = null; R.music = 0; render(); }, len * 1000) };
-  R.music = Date.now() + len * 1000; render(); toast('🎶 오르골 자장가 ~ 한 번 더 누르면 꺼져요 (10분 뒤 저절로)');
+  R.music = Date.now() + len * 1000; render(); toast('🎶 오르골 자장가 ~\n한 번 더 누르면 꺼져요');
 }
 function toggleRadio() {
   if (R.radio) { try { R.radio.g.gain.setTargetAtTime(0, R.radio.c.currentTime, .3); R.radio.src.stop(R.radio.c.currentTime + 1); } catch (e) {} clearTimeout(R.radio.t); R.radio = null; render(); toast('라디오를 껐어요'); return; }

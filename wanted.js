@@ -140,13 +140,20 @@ function check() {
     let n = 0;
     for (const s of due) {
       W.tried[s.ws] = true;
-      try { await run('saveGame', {}, s.bounty, undefined, { key: 'wanted', val: s.ws }); S.game.wanted = s.ws; n++; setTimeout(() => { if (window.GAME) GAME.confetti(); toast(`🎩 괴도 깍정이를 따라잡았어요! 아슬아슬하게 놓쳤지만 현상금 🌰 +${s.bounty}${s.early ? ' (금요일 전 보너스 포함)' : ''}`); }, 600 + n * 2300); }
+      try { await run('saveGame', {}, s.bounty, undefined, { key: 'wanted', val: s.ws }); S.game.wanted = s.ws; n++; setTimeout(() => { escapeFx(); if (window.GAME) GAME.confetti(); toast(`🎩 괴도 깍정이를 따라잡았어요! 아슬아슬하게 놓쳤지만 현상금 🌰 +${s.bounty}${s.early ? ' (금요일 전 보너스 포함)' : ''}`); }, 600 + n * 2300); }
       catch (e) { /* 다른 폰이 먼저 받았거나 인터넷이 안 되면 이번엔 그냥 둬요 (다음에 앱을 열 때 다시) */ }
     }
     if (n && window.__app && __app.refresh) __app.refresh();
   })().finally(() => { W.paying = false; });
 }
 
+// ---------- 아슬아슬! 깍정이가 망토를 펼치고 날아가며 도토리를 떨어뜨리는 장면 (따라잡은 순간·다시 보기) ----------
+function escapeFx() {
+  if (matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const el = document.createElement('div'); el.className = 'wesc'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `<span class="wesc-t">${CHARS.svg('thief', 'card', { size: 120 })}</span>${[0, 1, 2, 3, 4].map(i => `<i style="left:${18 + i * 16}%;animation-delay:${.35 + i * .22}s">🌰</i>`).join('')}<b>아슬아슬!</b>`;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 3200);
+}
 // ---------- 성장 수사 탭 카드 ----------
 const face = (who, n) => CHARS.svg(who, '', { face: true, size: n });
 // 탐정이 깍정이를 쫓는 길 (왼쪽 → 오른쪽 끝의 깍정이)
@@ -185,7 +192,7 @@ function render_() {
   const past = weeks.slice(1).map(stat), nGot = past.filter(x => x.caught).length + (ws === c && s.caught ? 1 : 0), nGone = past.filter(x => x.over && !x.caught).length;
   const shown = W.more ? weeks : weeks.slice(0, 9);
   // 결말: 따라잡음(아슬아슬하게 사라짐) / 놓침 / 추적 중
-  const story = s.caught ? `<div class="wend got">${CHARS.svg('thief', '', { size: 66 })}<p><b>${md(s.caught)}, 깍정이를 따라잡았어요!</b><br>손이 닿기 직전, 깍정이는 ${escOf(ws)} 사라졌어요. 그래도 ${esc(t)}${josa(t, '은', '는')} 무사히 지켜 냈어요. 현상금 🌰 ${s.bounty}${s.early ? ` (금요일 전 보너스 +${EARLY})` : ''}${String((S.game && S.game.wanted) || '') >= ws ? ' · 받았어요' : ''}</p></div>`
+  const story = s.caught ? `<div class="wend got">${CHARS.svg('thief', '', { size: 66 })}<p><b>${md(s.caught)}, 깍정이를 따라잡았어요!</b><br>손이 닿기 직전, 깍정이는 ${escOf(ws)} 사라졌어요. 그래도 ${esc(t)}${josa(t, '은', '는')} 무사히 지켜 냈어요. 현상금 🌰 ${s.bounty}${s.early ? ` (금요일 전 보너스 +${EARLY})` : ''}${String((S.game && S.game.wanted) || '') >= ws ? ' · 받았어요' : ''}<br><button class="wreplay" data-wt="fx">▶ 아슬아슬 장면 다시 보기</button></p></div>`
     : s.over ? `<div class="wend gone">${CHARS.svg('thief', 'acorn', { size: 66 })}<p><b>놓쳤어요…</b><br>깍정이가 ${esc(t)}${josa(t, '을', '를')} 훔쳐 유유히 사라졌어요. 남은 건 예고장 한 장뿐. 다음 주엔 꼭!</p></div>` : '';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>${ws === c ? '괴도 깍정이 추적' : '지난 추적'}</h1><p>${md(ws)}(월) ~ ${md(s.end)}(일) · 엄마·아빠 수사관이 남긴 기록과 사진이 단서가 돼요. 단서로 거리를 0m로 줄이면 따라잡아요!</p></header>
   <div class="wposter">
@@ -223,6 +230,7 @@ document.addEventListener('click', e => {
     case 'open': W.ws = ''; S.view = 'wanted'; render(); window.scrollTo(0, 0); break;
     case 'week': W.ws = b.dataset.v; render(); window.scrollTo(0, 0); break;
     case 'more': W.more = !W.more; render(); break;
+    case 'fx': escapeFx(); break;
     case 'close': goBack(); break;
   }
 });
@@ -257,6 +265,15 @@ css.textContent = `
 .wseal{position:absolute;right:18px;top:16px;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#E0574E,#9E1F18);box-shadow:0 2px 4px rgba(0,0,0,.25),inset 0 0 0 4px rgba(255,255,255,.12);transform:rotate(-12deg)}.wseal::after{content:'🌰';position:absolute;inset:0;display:grid;place-items:center;font-size:16px;filter:grayscale(.3) brightness(1.2)}
 .wletter{margin:4px 0 0;font-size:15px;line-height:1.7;color:var(--ink);word-break:keep-all}.wletter b{color:var(--red)}
 .wsign{margin:4px 0 10px;text-align:right;font-family:var(--display);font-size:17px;color:#5E5966}
+.wesc{position:fixed;inset:0;z-index:95;pointer-events:none;overflow:hidden}
+.wesc-t{position:absolute;left:-140px;top:62%;animation:wfly 2.6s cubic-bezier(.45,.05,.55,.95) forwards}.wesc-t .chr{animation:wflap .35s ease-in-out infinite alternate}
+@keyframes wfly{0%{transform:translate(0,0) rotate(-8deg)}35%{transform:translate(45vw,-18vh) rotate(6deg)}70%{transform:translate(80vw,-34vh) rotate(-4deg)}100%{transform:translate(118vw,-60vh) rotate(10deg)}}
+@keyframes wflap{from{transform:rotate(-4deg) scaleY(1)}to{transform:rotate(4deg) scaleY(.96)}}
+.wesc i{position:absolute;top:-30px;font-style:normal;font-size:28px;animation:wdrop 1.6s cubic-bezier(.4,0,.8,.4) forwards;opacity:0}
+@keyframes wdrop{0%{opacity:1;transform:translateY(30vh) rotate(0)}100%{opacity:1;transform:translateY(105vh) rotate(260deg)}}
+.wesc b{position:absolute;left:50%;top:30%;transform:translateX(-50%) rotate(-8deg);font-family:var(--display);font-weight:400;font-size:42px;color:var(--red);text-shadow:0 2px 0 #fff,0 0 12px #fff;animation:wpop 2.6s ease-out forwards}
+@keyframes wpop{0%{opacity:0;transform:translateX(-50%) scale(.4) rotate(-8deg)}15%{opacity:1;transform:translateX(-50%) scale(1.15) rotate(-8deg)}25%{transform:translateX(-50%) scale(1) rotate(-8deg)}80%{opacity:1}100%{opacity:0}}
+.wreplay{margin-top:6px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:99px;padding:3px 12px;min-height:32px;font-size:12.5px;color:var(--navy)}
 .wend{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:10px 12px;border-radius:16px;background:#FCE8B4;font-size:14px;line-height:1.6;word-break:keep-all}.wend .chr{flex-shrink:0}.wend p{margin:0}.wend b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}.wend.gone{background:#EEE7DC}
 .wph span{display:block;font-family:var(--display);font-size:13px;color:#B08A3A;letter-spacing:5px}
 .wph b{display:block;font-family:var(--display);font-weight:400;font-size:40px;line-height:1.1;color:#8E1E17;letter-spacing:6px}
@@ -302,5 +319,5 @@ css.textContent = `
 .wmini.gone{filter:grayscale(.7);opacity:.8}
 .wmini.on{outline:3px solid var(--navy);outline-offset:1px}`;
 document.head.appendChild(css);
-window.WANTED = { card, render: render_, check, stat, monday, events, target: tgt, escape: escOf };
+window.WANTED = { card, render: render_, check, stat, monday, events, target: tgt, escape: escOf, fx: escapeFx };
 })();

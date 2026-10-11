@@ -143,7 +143,7 @@ function attendHtml() {
 // ---------- 도토리 놀이터에 붙는 칸: 놀이 칸(함께 놀기), 계급·훈장 칸(출석부) ----------
 function playSection() {
   const s = st(), hunt = GAME.played('hunt');
-  return `<section><h2 class="sh"><span>함께 놀기</span><span>${hunt ? '오늘 숨은 도토리 찾음 ✓' : `🔍 오늘 도토리는 <b style="color:var(--red)">${TAB_N[huntTab()]}</b> 어딘가에`}</span></h2>
+  return `<section><h2 class="sh"><span>함께 놀기</span><span>${hunt ? '오늘 숨은 도토리 찾음 ✓' : `🎩 깍정이가 떨어뜨린 도토리는 <b style="color:var(--red)">${TAB_N[huntTab()]}</b> 어딘가에`}</span></h2>
       <div class="gplay">
         <button data-fun="open" data-v="roulette"><span>🎡</span><b>오늘 누가?</b><small>집안일 당번 룰렛</small></button>
         <button data-fun="cookie"><span>🥠</span><b>오늘의 운세</b><small>${GAME.played('cookie') ? '오늘 운세 다시 보기' : '포춘 쿠키 깨기'}</small></button>
@@ -174,7 +174,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-fun], #hidacorn'); if (!b) return;
   if (b.id === 'hidacorn') {
     const s = st(); s.acorn += 1; save(s); GAME.mark('hunt'); b.classList.add('got'); GAME.confetti();
-    toast('🔍 숨은 도토리 발견! 🌰 +1'); setTimeout(() => b.remove(), 600); return;
+    toast('🎩 괴도 깍정이가 도망치다 떨어뜨린 도토리 발견! 🌰 +1'); setTimeout(() => b.remove(), 600); return;
   }
   const v = b.dataset.v;
   switch (b.dataset.fun) {
