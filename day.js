@@ -21,6 +21,7 @@ const K = {
 const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath'];
 // 5칸 × 2줄 (자주 쓰는 것 첫 줄, 옆으로 밀지 않아도 다 보여요)
 const QUICK = [['formula', '🍼', '분유'], ['breast', '🤱', '모유수유'], ['solid', '🥣', '이유식'], ['diaper', '🧷', '소변/대변'], ['sleep', '😴', '수면'], ['pump', '🍶', '유축수유'], ['bath', '🛁', '목욕'], ['memo', '📝', '메모'], ['temp', '🌡️', '체온'], ['med', '💊', '투약']];
+const PH = { memo: '기록하고 싶은 정보가 있다면 적어 주세요', formula: '예: 160 탔다가 130 먹음', pump: '예: 냉동 모유 데워서 먹임', breast: '예: 왼쪽 먹다가 잠듦', diaper: '예: 엉덩이가 살짝 빨개요', sleep: '예: 안아서 재움, 중간에 한 번 깸', bath: '예: 물 38도, 머리도 감김' };
 const AMT = { 조금: '양 조금', 보통: '양 보통', 많이: '양 많이' }, STT = { 묽음: '묽은 변', 보통: '보통 변', 단단: '단단한 변', 설사: '설사' };
 const SLOT_T = { 아침: '08:00', 점심: '12:00', 저녁: '18:00', 간식: '15:00' };
 const p2 = n => String(n).padStart(2, '0');
@@ -102,7 +103,7 @@ function line(e) {
   const memo = e.src === 'care' ? r.memo : e.src === 'meal' ? '' : r.memo;
   const dot = k === 'diaper' ? (r.poo ? K.poo.c : K.pee.c) : (K[k] || K.memo).c;
   const act = e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
-  return `<button class="dyrow${r.live ? ' live' : ''}" ${act}><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dydot" style="--c:${dot}"></span><span class="dyb"><b>${k === 'diaper' ? (r.poo ? '💩 ' : '💧 ') : (K[k] || K.memo).i + ' '}${name}</b><small>${[det, memo ? esc(memo) : ''].filter(Boolean).join(' · ')}${r.by ? ` <em>${esc(r.by)}</em>` : ''}</small></span><i>›</i></button>`;
+  return `<button class="dyrow${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act}><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dydot" style="--c:${dot}"></span><span class="dyb"><b>${k === 'diaper' ? (r.poo ? '💩 ' : '💧 ') : (K[k] || K.memo).i + ' '}${name}</b><small>${[det, memo ? esc(memo) : ''].filter(Boolean).join(' · ')}${r.by ? ` <em>${esc(r.by)}</em>` : ''}</small></span><i>›</i></button>`;
 }
 
 // ---------- 화면 ----------
@@ -289,7 +290,7 @@ function openForm(k, c) {
       <div class="quick dyqk">${[5, 10, 15, 20, 30].map(x => `<button type="button" data-act="fill" data-t="dy-dur" data-v="${x}">${x}분</button>`).join('')}</div>`;
   }
   openSheet(`<h3>${icon} ${title} ${c ? '수정' : '기록'}</h3>${body}${tIn}
-    <label class="field"><span>${k === 'memo' ? '메모' : '메모 (선택)'}</span><textarea id="dy-memo" maxlength="300" placeholder="${k === 'memo' ? '기록하고 싶은 정보가 있다면 적어 주세요' : k === 'formula' ? '예: 160 탔다가 130 먹음' : '예: 살짝 딱딱했어요'}">${esc((c && c.memo) || '')}</textarea></label>
+    <label class="field"><span>${k === 'memo' ? '메모' : '메모 (선택)'}</span><textarea id="dy-memo" maxlength="300" placeholder="${PH[k] || '예: 메모'}">${esc((c && c.memo) || '')}</textarea></label>
     <p class="err" id="dy-err"></p>
     <div class="actions">${c ? `<button class="danger" data-dy="del" data-id="${c.id}">삭제</button>` : ''}<button class="secondary" data-act="close">닫기</button><button class="primary" data-dy="save">${c ? '수정 완료' : '저장'}</button></div>`);
   if (k === 'diaper') pooSync();
@@ -317,6 +318,23 @@ async function save(b) {
   if (!res) return;
   const k = F.k; F = null; closeSheet(); D.date = g.date; D.wk = monday(g.date); render();
   toast(`${k === 'diaper' ? '🧷 기저귀' : (K[k] || K.memo).i + ' ' + (K[k] || K.memo).n} 기록을 남겼어요`);
+}
+// 빠른 단추: 누르는 그 순간, 같은 종류의 가장 최근 기록과 똑같은 값으로 바로 남겨요 (사용자 요청 2026.10.11)
+// 다 먹이고 나서 목록에서 눌러 양·메모를 고쳐요. 처음(최근 기록 없음)·메모는 창을 열어요, 수면은 바로 타이머
+async function quickAdd(k, btn) {
+  if (!canWrite()) { toast('보기 전용이라 기록은 엄마·아빠 수사관이 남겨요'); return; }
+  if (k === 'sleep') { startTimer('sleep'); return; }
+  const last = (S.cares || []).filter(c => c.k === k && !c.live).sort((a, b) => (b.date + b.t).localeCompare(a.date + a.t))[0];
+  if (k === 'memo' || !last) { openForm(k, null); return; }
+  const now = new Date(), it = { id: newCid(), k, t: hmOf(now), e: '', memo: '', live: 0, at: Date.now() };
+  ['ml', 'l', 'r', 'dur', 'pee', 'poo', 'amt', 'st'].forEach(x => { if (last[x] != null && last[x] !== '') it[x] = last[x]; });
+  if (btn) btn.disabled = true;
+  const res = await write('careSave', ymdOf(now), it, '');
+  if (btn) btn.disabled = false;
+  if (!res) return;
+  D.mode = 'day'; D.sub.day = 'log'; D.date = today(); D.flash = it.id; render(); setTimeout(() => { if (D.flash === it.id) D.flash = ''; }, 2600);
+  const det = k === 'formula' || k === 'pump' ? ` ${it.ml}ml` : k === 'breast' ? ` 왼쪽 ${Math.round(it.l || 0)}분·오른쪽 ${Math.round(it.r || 0)}분` : k === 'diaper' ? ` ${[it.pee ? '소변' : '', it.poo ? '대변' : ''].filter(Boolean).join('·')}` : k === 'bath' ? ` ${it.dur || 0}분` : '';
+  toast(`${k === 'diaper' ? '🧷' : (K[k] || K.memo).i} ${hmOf(now)}${det} 바로 남겼어요\n다르면 목록에서 눌러 고쳐요`);
 }
 // 타이머: 수면(잠든 시각부터) · 모유수유(왼쪽·오른쪽 따로 쌓기) — 두 폰이 같이 봐요
 async function startTimer(k) {
@@ -364,7 +382,7 @@ document.addEventListener('click', async e => {
     const k = b.dataset.k;
     if (k === 'solid') { openMeal(null, { date: D.date, tm: D.date === today() ? hmOf(new Date()) : '12:00' }); return; }
     if (k === 'temp' || k === 'med') { openLog(k); return; }
-    openForm(k, null); return;
+    quickAdd(k, b); return;
   }
   if (a === 'edit') { const c = (S.cares || []).find(x => x.id === b.dataset.id); if (c) openForm(c.k, c); return; }
   if (a === 'editlog') { const l = (S.logs || []).find(x => x.id === b.dataset.id); if (l) openLog(l.kind, l.id); return; }
@@ -437,6 +455,7 @@ css.textContent = `
 .dyb{flex:1;min-width:0}.dyb b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}
 .dyb small{display:block;font-size:13px;color:var(--ink);opacity:.85;line-height:1.5}.dyb em{font-style:normal;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:4px;white-space:nowrap}
 .dyrow i{font-style:normal;color:var(--muted);font-size:20px;padding-top:6px}
+.dyrow.flash{animation:dyflash 2.4s ease-out}@keyframes dyflash{0%,40%{background:#FFE7A8}100%{background:transparent}}
 .dyrow.live{background:color-mix(in srgb,#FFF3E2 70%,transparent);border-radius:12px}
 .dyfl{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}   /* 두 줄로 감아서 고른 칸이 늘 보이게 */
 .dyfl button{flex:0 0 auto;display:flex;align-items:center;gap:5px;min-height:36px;border-radius:99px;border:1.5px solid var(--line);background:#FFFDF7;color:var(--muted);font-size:13px;padding:0 11px}
