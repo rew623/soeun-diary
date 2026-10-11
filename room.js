@@ -138,7 +138,7 @@ function toggleRadio() {
 }
 const go = (fn) => { closeSheet(); fn(); render(); window.scrollTo(0, 0); };
 const FX = {
-  FRAME: () => toast('소은이 프로필 사진이에요. 대상 정보에서 바꿀 수 있어요 📸'),
+  FRAME: () => toast('소은이 프로필 사진이에요. 탐정 정보에서 바꿀 수 있어요 📸'),
   CLOCK: () => { const d = new Date(Date.now() + 9 * 3600e3); toast(`⏰ 지금 ${d.getUTCHours()}시 ${d.getUTCMinutes()}분 · 소은이 생후 ${dayNo(today())}일째`); },
   SIGN: () => toast(`🕵️ ${((S.profile && S.profile.name) || '우리 아기')} 탐정 사무소 · 사건 파일 No.${fileNo()}`),
   GIRAFFE: () => { const L = (S.records || []).filter(r => r.height != null && r.height !== '').sort((a, b) => a.date < b.date ? 1 : -1);

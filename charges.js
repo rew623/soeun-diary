@@ -58,15 +58,15 @@ function pick() {
 
 function html() {
   const p = S.profile, { list, verdict } = pick();
-  return `<section class="charge" aria-label="수사 혐의">
-    <div class="chg-head"><span>혐의 사실 · 피의자 ${esc(p.name || '우리 아기')}</span><button class="ghost" data-chg="next">다른 혐의 ↻</button></div>
-    <ol>${list.map(([t, why], i) => `<li><b>제${i + 1}항</b><span><strong>${esc(t)} 혐의</strong><small>${esc(why)}</small></span></li>`).join('')}</ol>
+  return `<section class="charge" aria-label="명탐정의 귀여운 사건 파일">
+    <div class="chg-head"><span>🕵️ 명탐정 ${esc(p.name || '우리 아기')}의 귀여운 사건 파일</span><button class="ghost" data-chg="next">다른 사건 ↻</button></div>
+    <ol>${list.map(([t, why], i) => `<li><b>제${i + 1}항</b><span><strong>${esc(t)} 사건</strong><small>${esc(why)}</small></span></li>`).join('')}</ol>
     <span class="chg-stamp">${esc(verdict)}</span>
   </section>`;
 }
 function boardCard() {
   const { list, verdict } = pick();
-  return { id: 'charge', go: 'grow', cls: 'kraft', html: `<b class="bt">혐의 사실</b>${list.map(([t]) => `<p class="bl">${esc(t)}</p>`).join('')}<small style="color:var(--red)">${esc(verdict)}</small>` };
+  return { id: 'charge', go: 'grow', cls: 'kraft', html: `<b class="bt">귀여운 사건 파일</b>${list.map(([t]) => `<p class="bl">${esc(t)}</p>`).join('')}<small style="color:var(--red)">${esc(verdict)}</small>` };
 }
 
 document.addEventListener('click', e => {

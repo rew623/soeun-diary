@@ -36,7 +36,7 @@ function render_() {
       <article class="bpage bcover">${cover ? `<img src="${cover}" alt="">` : CHARS.svg('baby', 'camera', { size: 200 })}
         <span class="bno">사건 파일 No.${fileNo()}</span><h1>${esc(p.name || '우리 아기')} 성장 수사 일지</h1>
         <p>${fmtK(p.birth, true).replace(/^(\d+월)/, `${p.birth.slice(0, 4)}년 $1`)} 태어남 · 오늘 생후 ${dayNo(today())}일</p>
-        <p class="bsig">담당 수사관 엄마${p.mom ? ' ' + esc(p.mom) : ''} · 아빠${p.dad ? ' ' + esc(p.dad) : ''}</p></article>
+        <p class="bsig">함께한 수사관 엄마${p.mom ? ' ' + esc(p.mom) : ''} · 아빠${p.dad ? ' ' + esc(p.dad) : ''}</p></article>
       ${P.map(page).join('')}
     </div>`;
 }

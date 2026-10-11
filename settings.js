@@ -62,7 +62,7 @@ function render_() {
     <div class="st2"><button class="ghost" data-stg="clearph">🧹 사진 사본 지우기</button><button class="ghost" data-stg="reload">🔁 앱 다시 불러오기</button></div></section>
   <section class="stsec"><h2 class="sh"><span>수사 통계</span><span>${esc(CV.nick())}</span></h2>
     <div class="ststat">${stat.map(([i, l, n]) => `<span><i>${i}</i><b>${n.toLocaleString()}</b><small>${l}</small></span>`).join('')}</div>
-    <button class="ghost" data-act="settings" style="width:100%;margin-top:10px">👶 수사 대상 정보 고치기</button></section>
+    <button class="ghost" data-act="settings" style="width:100%;margin-top:10px">🕵️ 명탐정 정보 고치기</button></section>
   <p class="foot" style="text-align:center;margin:14px 0 0">소은이 성장 수사 일지 · ${esc(V.ver || '')}<br>${CHARS.svg('thief', '', { face: true, size: 34 })}</p>
   <button class="secondary" data-stg="back" style="width:100%;margin-top:12px">돌아가기</button>`;
 }

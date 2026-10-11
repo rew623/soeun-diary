@@ -612,7 +612,7 @@ function askRole(){if(roleAsked||myRole()||(S.me&&S.me.viewer)||!S.profile||!S.p
 const I_BADGE='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"></path><path d="M9 12l2 2 4-4"></path></svg>';
 async function setRole(r){try{localStorage.setItem('investigator',r)}catch(e){}S.me.role=r;render();try{await run('setMyRole',r)}catch(e){}}
 function openRole(){openSheet(`<h3>어느 수사관이신가요?</h3>
-  <p class="hint" style="margin:-8px 0 12px">이 폰에서 남기는 기록에 수사관 이름이 붙어요. 나중에 대상 정보에서 바꿀 수 있어요.</p>
+  <p class="hint" style="margin:-8px 0 12px">이 폰에서 남기는 기록에 수사관 이름이 붙어요. 나중에 탐정 정보에서 바꿀 수 있어요.</p>
   <div class="rolepick"><button data-act="role" data-v="엄마">${CHARS.svg('mom','heart',{size:84})}엄마</button><button data-act="role" data-v="아빠">${CHARS.svg('dad','lens',{size:84})}아빠</button></div>`)}
 
 function openInv(role){
@@ -716,10 +716,10 @@ function renderGrow(){
   }).slice(0,S.recAll?undefined:REC_SHOW).join(''):'<li class="emptylist">아래 버튼으로 첫 증거를 기록해 보세요.</li>';
 
   return `
-  <div class="filebar"><span>사건 파일 No.${fileNo()}</span><span class="fbr"><button class="ghost" data-act="settings">대상 정보</button><button class="ghost stgear" data-stg="open" aria-label="설정">⚙️</button></span></div>
-  <div class="squad"><span class="lab">담당 수사관</span><div class="badges">${['엄마','아빠'].map(r=>{const k=r==='엄마'?'mom':'dad',nm=p[k],ph=safeImg(PHOTOS[k]);return `<button class="idb ${myRole()===r?'me':''}" data-act="idcard" data-v="${r}">${ph?`<img class="ph" src="${ph}" alt="${r} 수사관 사진">`:`<span class="ph chrph">${CHARS.svg(k,'',{face:1,size:52})}</span>`}<span class="tx"><b>${r} 수사관</b>${GAME.rankHtml(r)}<span>${nm?esc(nm):'사진, 이름 추가'}</span>${myRole()===r?'<em style="align-self:flex-start;margin-top:2px">나</em>':''}</span></button>`}).join('')}</div></div>
+  <div class="filebar"><span>사건 파일 No.${fileNo()}</span><span class="fbr"><button class="ghost" data-act="settings">탐정 정보</button><button class="ghost stgear" data-stg="open" aria-label="설정">⚙️</button></span></div>
+  <div class="squad"><span class="lab">명탐정을 돕는 수사관</span><div class="badges">${['엄마','아빠'].map(r=>{const k=r==='엄마'?'mom':'dad',nm=p[k],ph=safeImg(PHOTOS[k]);return `<button class="idb ${myRole()===r?'me':''}" data-act="idcard" data-v="${r}">${ph?`<img class="ph" src="${ph}" alt="${r} 수사관 사진">`:`<span class="ph chrph">${CHARS.svg(k,'',{face:1,size:52})}</span>`}<span class="tx"><b>${r} 수사관</b>${GAME.rankHtml(r)}<span>${nm?esc(nm):'사진, 이름 추가'}</span>${myRole()===r?'<em style="align-self:flex-start;margin-top:2px">나</em>':''}</span></button>`}).join('')}</div></div>
   <div class="suspect">${pol}
-    <div class="info"><span class="lab">수사 대상</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
+    <div class="info"><span class="lab">🕵️ 유능한 명탐정</span><b class="nm">${esc(p.name||'우리 아기')}</b><span>${by}년 ${bm}월 ${bd}일생</span><span>${mo}개월 ${rd}일째</span>${ms?`<span class="stamp">${ms}</span>`:''}</div>
   </div>
   <div class="dday" aria-label="생후 ${d}일"><span>수사</span><b>${d}</b><span>일째</span></div>
   ${(()=>{const oc=CV.occasion();if(!oc.label)return '';const today_=!oc.soon,dd=daysBetween(today(),oc.date);
@@ -821,7 +821,7 @@ function renderOnboarding(){
   $app.innerHTML=`<div class="onb">
     <div style="display:flex;gap:4px;align-items:flex-end;margin-bottom:6px">${CHARS.svg('mom','heart',{size:86})}${CHARS.svg('baby','lens',{size:110})}${CHARS.svg('dad','note',{size:86})}</div>
     <p class="big">성장 수사 일지</p>
-    <p>수사 대상의 이름과 태어난 날을 알려 주세요. 생후 일수, 성장곡선, 예방접종 일정을 자동으로 계산해요.</p>
+    <p>명탐정의 이름과 태어난 날을 알려 주세요. 생후 일수, 성장곡선, 예방접종 일정을 자동으로 계산해요.</p>
     <label class="field"><span>이름 (애칭도 좋아요)</span><input id="ob-name" maxlength="20" placeholder="우리 아기"></label>
     <label class="field"><span>태어난 날</span><input id="ob-birth" type="date" max="${today()}"></label>
     <div class="field"><span>성별 (성장곡선 기준)</span><div class="quick" id="ob-sex">${[['F','여아'],['M','남아']].map(([v,l])=>`<button data-act="picksex" data-v="${v}" class="${'F'===v?'on':''}">${l}</button>`).join('')}</div></div>
@@ -994,11 +994,11 @@ function renderReport(){
     <div class="rhead"><span class="no">사건 파일 No.${fileNo()}, ${done?'기밀 해제':'작성 중'}</span><h1>100일 사건 보고서</h1></div>
     <div class="rphoto" ${rph?`data-view="${rp.id}" role="button"`:''}>${ph?`<img src="${ph}" alt="">`:'<span class="noph">사진 없음</span>'}<span class="cap">${fmtDate(d100)}, 생후 100일</span><span class="stamp">${done?'100일 달성':'D-'+daysBetween(today(),d100)}</span></div>
     <button class="ghost rpick" data-al="report">📷 ${rp?'보고서 사진 바꾸기':done?'보고서 사진 고르기':'보고서 사진 미리 올리기'}</button>
-    <p class="rtext">수사 대상 ${esc(p.name)}은(는) ${fmtK(p.birth,true)} ${first('weight')?fmt('weight',first('weight').weight)+'kg로 ':''}처음 발견되었다. 100일간 엄마, 아빠 수사관의 밀착 수사 결과 아래와 같은 성장이 확인되었다.</p>
+    <p class="rtext">명탐정 ${esc(p.name)}은(는) ${fmtK(p.birth,true)} ${first('weight')?fmt('weight',first('weight').weight)+'kg로 ':''}탐정 사무소의 문을 열었다. 100일간 엄마, 아빠 수사관과 함께한 수사 결과 아래와 같은 성장이 확인되었다.</p>
     <div class="rstats">${row('weight')}${row('height')}${row('head')}</div>
     <div class="rnums"><div><b>${vDone}</b><small>해결한 접종</small></div><div><b>${F.length}</b><small>최초 목격</small></div><div><b>${recs.length}</b><small>증거 기록</small></div></div>
     ${events.length?`<div class="revents"><small class="no">주요 사건</small>${events.join('')}</div>`:''}
-    <div class="rfoot"><span><small>담당 수사관</small><b>엄마${p.mom?' '+esc(p.mom):''}, 아빠${p.dad?' '+esc(p.dad):''}</b></span></div>
+    <div class="rfoot"><span><small>함께한 수사관</small><b>엄마${p.mom?' '+esc(p.mom):''}, 아빠${p.dad?' '+esc(p.dad):''}</b></span></div>
     <p class="foot">화면을 캡처해서 가족에게 공유해 보세요.</p>
     <button class="secondary" data-act="closereport" style="width:100%;margin-top:6px">앨범으로 돌아가기</button>
   </div>`;
@@ -1181,7 +1181,7 @@ function openRecord(id){
 }
 function openSettings(){
   const p=S.profile||{};pending=undefined;
-  openSheet(`<h3>수사 대상 정보</h3>
+  openSheet(`<h3>명탐정 정보</h3>
     <label class="field"><span>이름</span><input id="s-name" maxlength="20" value="${esc(p.name||'')}" placeholder="우리 아기"></label>
     <label class="field"><span>태어난 날</span><input id="s-birth" type="date" value="${p.birth||''}" max="${today()}"></label>
     ${photoField(safeImg(PHOTOS.profile))}
@@ -1336,7 +1336,7 @@ document.addEventListener('click',async e=>{
   case 'start':{const b=val('ob-birth');if(!b)return err('ob-err','태어난 날을 입력해 주세요');const sx=document.querySelector('#ob-sex .on');await saveProfile({name:val('ob-name')||'우리 아기',birth:b,sex:sx?sx.dataset.v:'F'});break}
   case 'saveprof':{const b=val('s-birth');if(!b)return err('s-err','태어난 날을 입력해 주세요');
     const np={name:val('s-name')||'우리 아기',birth:b,mom:val('s-mom'),dad:val('s-dad')};const sx=$sheet.querySelector('#s-sex .on');if(sx)np.sex=sx.dataset.v;if(pending!==undefined)np.photo=pending;const rb=$sheet.querySelector('#s-role .on');if(rb){np.role=rb.dataset.v;try{localStorage.setItem('investigator',rb.dataset.v)}catch(e){}S.me.role=rb.dataset.v}
-    if(await saveProfile(np)){closeSheet();toast('대상 정보를 저장했어요')}break}
+    if(await saveProfile(np)){closeSheet();toast('명탐정 정보를 저장했어요')}break}
   case 'saverec':{const date=val('f-date'),w=num(val('f-weight')),h=num(val('f-height')),hc=num(val('f-head'));
     if(!date)return err('f-err','측정한 날을 입력해 주세요');
     if(date<S.profile.birth)return err('f-err','태어난 날 이후 날짜를 골라 주세요');

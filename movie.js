@@ -294,7 +294,7 @@ const RC = {
     fade(ctx, fin(lt, 2.7, .5), () => txt(ctx, '엄마 수사관 · 아빠 수사관의 기록', W / 2, H - 64, 30, '#5C3A12'));
   },
   rProfile(ctx, W, H, s, lt) {
-    bgDraw(ctx, 'gingham'); heading(ctx, W, '수사 대상', '프로필', lt);
+    bgDraw(ctx, 'gingham'); heading(ctx, W, '유능한 명탐정', '프로필', lt);
     const e = pop(lt, .3, .6), cy = 560 - (1 - clamp(e)) * 120;
     fade(ctx, e * 1.4, () => { pola(ctx, s.img, W / 2, cy, 420, 470, -3, '', 1 + .04 * lt / s.dur); CV.tape(ctx, W / 2, cy - 235 - 26, 180, 48, -4); });
     const ce = fin(lt, .9, .5);
