@@ -509,7 +509,7 @@ async function prepAssets(W, H, sc) {
 
 // ---------- 녹화 ----------
 const pickMime = () => { if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) return ''; for (const m of ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']) { try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (e) {} } return ''; };
-async function prep(src) { const im = await CV.img(src), k = Math.min(1, 960 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k)); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); return c; }
+async function prep(src) { const im = await CV.img(src), k = Math.min(1, 960 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.__src = src; c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k)); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); return c; }
 function overlay() {
   if (M.el) return M.el;
   const el = document.createElement('div'); el.className = 'mvo'; el.hidden = true;

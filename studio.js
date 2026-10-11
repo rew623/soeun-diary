@@ -9,15 +9,20 @@ const load1 = src => new Promise((res, rej) => { const im = new Image(); if (!/^
 // 그래도 안 되면 Firebase 로그인 경로(Storage SDK getBlob, app.js의 __photoBlob)로 받아요
 const fromBlob = async b => { const u = URL.createObjectURL(b); try { const im = await load1(u); im.__blob = u; return im; } catch (e) { URL.revokeObjectURL(u); throw e; } };
 CV.img = async src => {
-  try { return await load1(src); } catch (e) { if (/^(data|blob):/.test(src)) throw e; }
-  try { const r = await fetch(src, { mode: 'cors', cache: 'reload', credentials: 'omit' }); if (r.ok) return await fromBlob(await r.blob()); } catch (e) {}
-  if (window.__photoBlob) return fromBlob(await window.__photoBlob(src));
+  const tag = im => { im.__src = src; return im; };   // 어떤 사진인지 (보여 줄 곳 찾기 FOCUS용)
+  try { return tag(await load1(src)); } catch (e) { if (/^(data|blob):/.test(src)) throw e; }
+  try { const r = await fetch(src, { mode: 'cors', cache: 'reload', credentials: 'omit' }); if (r.ok) return tag(await fromBlob(await r.blob())); } catch (e) {}
+  if (window.__photoBlob) return tag(await fromBlob(await window.__photoBlob(src)));
   throw new Error('사진을 불러오지 못했어요');
 };
 // 사진에서 보여 줘야 할 곳(얼굴·아기) 찾기 — 작게 줄여 피부색·윤곽·채도로 점수를 매기고, 가장 눈에 띄는 곳의 무게중심 (사진마다 한 번, 저장)
 // 아무것도 못 찾으면 위쪽(사람 얼굴은 보통 위 1/3)으로. 사용자 요청(2026.10.11): 소은일보 사진 줄·기념 사진관에서 사진 윗부분(머리)이 잘림
 CV.focus = im => {
   if (im.__focus) return im.__focus;
+  const f = window.FOCUS ? FOCUS.forImage(im, () => focusCalc(im)) : focusCalc(im);   // 직접 정한 자리(🎯)가 있으면 그것
+  im.__focus = f; return f;
+};
+function focusCalc(im) {
   let f = { x: .5, y: .36 };
   try {
     const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, k = 56 / Math.max(iw, ih), w = Math.max(8, Math.round(iw * k)), h = Math.max(8, Math.round(ih * k));
@@ -40,9 +45,9 @@ CV.focus = im => {
     let sx = 0, sy = 0, sw = 0;
     for (let yy = 1; yy < h - 1; yy++) for (let xx = 1; xx < w - 1; xx++) { const q = S[yy * w + xx]; if (q >= cut && q > .35) { sx += xx * q; sy += yy * q; sw += q; } }
     if (sw > 2) f = { x: Math.max(.15, Math.min(.85, .82 * (sx / sw) / (w - 1) + .09)), y: Math.max(.12, Math.min(.85, .78 * (sy / sw) / (h - 1) + .22 * .36)) };
-  } catch (e) { /* canvas가 막힌 사진 등: 위쪽 기본값 */ }
-  im.__focus = f; return f;
-};
+  } catch (e) { f = { x: .5, y: .36, none: true }; /* canvas가 막힌 사진 등: 위쪽 기본값 (기억 안 함) */ }
+  return f;
+}
 // 사진을 칸에 꽉 차게 (z: 확대, fx·fy: 0~1 남는 부분 중 어느 쪽을 보여 줄지 — 안 주면 CV.focus로 저절로)
 CV.cover = (ctx, im, x, y, w, h, z = 1, fx, fy) => {
   const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw || !ih) return;
@@ -265,7 +270,7 @@ function render_() {
     <button class="secondary" data-st="close" style="width:100%;margin-top:10px">돌아가기</button>`;
 }
 function selBar() {
-  if (ST.pan) return `<span>✋</span><small>사진을 끌어서 옮겨요</small><button data-st="zoom" data-v="-1" aria-label="작게">−</button><button data-st="zoom" data-v="1" aria-label="크게">＋</button><button data-st="pan0">자동</button><button class="on" data-st="pan">✓ 다 됐어요</button>`;
+  if (ST.pan) return `<span>✋</span><small>사진을 끌어서 옮겨요</small><button data-st="zoom" data-v="-1" aria-label="작게">−</button><button data-st="zoom" data-v="1" aria-label="크게">＋</button><button data-st="pan0">자동</button>${ST.key && (S.moments || []).some(m => m.id === ST.key) && !(S.me && S.me.viewer) ? '<button data-st="panmem">📌 이 자리 기억</button>' : ''}<button class="on" data-st="pan">✓ 다 됐어요</button>`;
   if (ST.sel === 'b') return `<span>말풍선</span><button data-st="bdel">지우기</button>`;
   const s = ST.stickers[ST.sel]; if (!s) return `${ST.img ? '<button data-st="pan">✋ 사진 위치 맞추기</button>' : ''}<small>스티커·말풍선을 누르면 크기·돌리기·지우기</small>`;
   return `<span>${s.e}</span><button data-st="ssz" data-v="-1">작게</button><button data-st="ssz" data-v="1">크게</button><button data-st="srot">돌리기</button><button data-st="sdel">지우기</button>`;
@@ -308,6 +313,13 @@ document.addEventListener('click', async e => {
     case 'sdel': ST.stickers.splice(ST.sel, 1); ST.sel = -1; updSel(); later(); break;
     case 'pan': ST.pan = !ST.pan; ST.sel = -1; updSel(); later(); if (ST.pan) toast('사진을 끌어서 보여 줄 곳을 맞춰요'); break;
     case 'pan0': resetPan(); later(); break;
+    case 'panmem': {   // 지금 보이는 가운데(얼굴 자리 55%)를 이 사진의 '보여 줄 곳'으로 — 수사 보드·앨범·신문·영상에서도
+      const im = ST.img, bx = ST.box; if (!im || !bx || !ST.key) break;
+      const a = ST.fx == null || ST.fy == null ? autoPos() : { fx: ST.fx, fy: ST.fy }, iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, sc = Math.max(bx.w / iw, bx.h / ih) * (ST.z || 1), dw = iw * sc, dh = ih * sc;
+      const x = Math.max(0, Math.min(1, ((dw - bx.w) * a.fx + bx.w / 2) / dw)), y = Math.max(0, Math.min(1, ((dh - bx.h) * a.fy + bx.h * .55) / dh));
+      if (await write('setFocus', ST.key, `${x.toFixed(2)},${y.toFixed(2)}`)) toast('📌 이 사진은 어디서든 이 자리가 보이게 잘라요');
+      break;
+    }
     case 'zoom': { if (ST.fx == null || ST.fy == null) { const a = autoPos(); ST.fx = a.fx; ST.fy = a.fy; } ST.z = Math.max(1, Math.min(3, Math.round(((ST.z || 1) + (v === '1' ? .15 : -.15)) * 100) / 100)); later(); break; }
     case 'bdel': ST.bubble = ''; ST.sel = -1; const bi = document.getElementById('st-bub'); if (bi) bi.value = ''; updSel(); later(); break;
     case 'save': case 'share': case 'album': {

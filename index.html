@@ -459,6 +459,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="walk.js"></script>
 <script src="dupes.js"></script>
 <script src="settings.js"></script>
+<script src="focus.js"></script>
 <script src="push-key.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
@@ -550,6 +551,7 @@ const MOCK={
   saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people'||k==='capsule')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
   setGeo:(id,geo)=>{[].concat(id).forEach(i=>{const m=DB.moments.find(x=>x.id===i);if(m)m.geo=geo});return{data:MOCK.getData()}},
+  setFocus:(id,fp)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.fp=fp;return{data:MOCK.getData()}},
   saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={}),k=typeof once==='string'?once:once.key,v=typeof once==='string'?null:once.val;if(v===null?g0[k]:(g0[k]&&String(g0[k])>=v))throw new Error('이미 받은 보상이에요');g0[k]=v===null?((o||{})[k]||true):v;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
@@ -670,7 +672,7 @@ function render(){
   if(S.view==='explore'||(S.tab==='town'&&!S.view&&S.townView!=='info'))EXPLORE.mount();
   if(S.view==='walk')WALK.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();WALK.afterRender();
+  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();WALK.afterRender();if(window.FOCUS)FOCUS.apply($app);
   NAVcur={tab:S.tab,view:_view,albumView:S.albumView,vacView:S.vacView,townView:S.townView};
 }
 
@@ -1137,7 +1139,7 @@ function homeOn(k){try{const v=JSON.parse(localStorage.getItem('soeun-home-off')
 const $sheet=document.getElementById('sheet'),$scrim=document.getElementById('scrim');
 // 같은 창을 다시 그릴 때(제목이 같으면)는 '적던 중' 표시를 그대로 둬요
 const sheetTitle=()=>{const h=$sheet.querySelector('h3');return h?h.textContent.trim():''};
-function openSheet(html){const w=myRole()==='아빠'?'dad':myRole()==='엄마'?'mom':'baby',was=$sheet.classList.contains('open')?sheetTitle():'';$sheet.innerHTML=html.replace('<h3>',`<h3><span class="shc">${CHARS.svg(w,'',{face:1,size:40})}</span>`);if(!was||was!==sheetTitle())delete $sheet.dataset.dirty;$sheet.style.transform='';$scrim.style.opacity='';$scrim.classList.add('open');$sheet.classList.add('open');$sheet.scrollTop=0}
+function openSheet(html){const w=myRole()==='아빠'?'dad':myRole()==='엄마'?'mom':'baby',was=$sheet.classList.contains('open')?sheetTitle():'';$sheet.innerHTML=html.replace('<h3>',`<h3><span class="shc">${CHARS.svg(w,'',{face:1,size:40})}</span>`);if(window.FOCUS)FOCUS.apply($sheet);if(!was||was!==sheetTitle())delete $sheet.dataset.dirty;$sheet.style.transform='';$scrim.style.opacity='';$scrim.classList.add('open');$sheet.classList.add('open');$sheet.scrollTop=0}
 function closeSheet(){$sheet.classList.remove('open','nudge');$scrim.classList.remove('open');$sheet.style.transform='';$scrim.style.opacity='';delete $sheet.dataset.dirty}
 // 적던 창은 바깥 누르기·뒤로가기·끌어내리기로 바로 닫지 않고 한 번 더 확인 (2.5초 안에 한 번 더 하면 닫혀요). 닫기·취소 단추는 바로 닫혀요
 let sheetWarn=0;

@@ -31,7 +31,7 @@ const TBL = {
 };
 const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks' };
 const LIM = { body: 5000, path: 60000, pics: 4000 };       // 칸별 글자 수 (나머지는 300)
-const OPT = { mom: ['geo', 'tm'] };   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각은 고쳐 저장해도 안 지워지게)
+const OPT = { mom: ['geo', 'tm', 'fp'] };   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각·보여 줄 곳은 고쳐 저장해도 안 지워지게)
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
 const SCHEDULE = [
   ['출생', 0, [['B형간염 1차', '']]],
@@ -82,7 +82,7 @@ function build() {
   const item = k => list(k).map(o => {
     const c = { id: o.id };
     TBL[k].forEach(key => { c[key] = key === 'photo' ? !!o.photoUrl : (o[key] == null ? '' : String(o[key])); });
-    if (k === 'mom') { c.board = !!o.board; c.geo = o.geo ? String(o.geo) : ''; c.tm = o.tm ? String(o.tm) : ''; }   // 수사 보드에 붙인 사진, 찍은 곳 "위도,경도"(빼기는 -), 찍은 시각 HH:MM(:SS)
+    if (k === 'mom') { c.board = !!o.board; c.geo = o.geo ? String(o.geo) : ''; c.tm = o.tm ? String(o.tm) : ''; c.fp = o.fp ? String(o.fp) : ''; }   // fp: 사진에서 보여 줄 곳 "가로,세로"(0~1, focus.js)   // 수사 보드에 붙인 사진, 찍은 곳 "위도,경도"(빼기는 -), 찍은 시각 HH:MM(:SS)
     c.t = +o._o > 1e12 ? +o._o : 0;                 // 남긴 때 (이번 주 수배범 계산용, 예전에 옮겨 온 기록은 0)
     return c;
   });
@@ -285,6 +285,14 @@ const H = {
     const b = writeBatch(db);
     ids.forEach(x => { localSet('mom', x, { geo }); b.set(dref('mom', x), { geo }, { merge: true }); });
     await commit(b.commit());
+    return { data: data() };
+  },
+
+  // 사진에서 보여 줄 곳(얼굴): 앨범 문서에 fp 칸만 "0.52,0.31" (''면 저절로). 수사 보드·앨범 칸·사진관·신문·영상이 다 이 자리를 보여 줘요
+  async setFocus(id, fp) {
+    id = String(id); if (!M.col.mom.has(id)) throw new Error('없는 사진이에요');
+    fp = String(fp || ''); if (fp && !/^(0(\.\d{1,3})?|1(\.0{1,3})?),(0(\.\d{1,3})?|1(\.0{1,3})?)$/.test(fp)) throw new Error('자리 형식이 올바르지 않아요');
+    localSet('mom', id, { fp }); await commit(setDoc(dref('mom', id), { fp }, { merge: true }));
     return { data: data() };
   },
 

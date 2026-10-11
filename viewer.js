@@ -10,7 +10,7 @@ lb.innerHTML = `<div class="lb-stage">
     <div class="lb-card" hidden></div>
     <button class="lb-nav prev" data-lb="prev" aria-label="이전 사진" hidden>‹</button><button class="lb-nav next" data-lb="next" aria-label="다음 사진" hidden>›</button></div>
   <div class="lb-top"><span class="lb-cap"></span><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
-  <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn deco" data-lb="deco"><i>🎨</i><span>꾸미기</span></button><button class="lb-btn edit" data-lb="edit"><i>✏️</i><span>편집</span></button></div>`;
+  <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn" data-lb="focus" hidden><i>🎯</i><span>보여 줄 곳</span></button><button class="lb-btn deco" data-lb="deco"><i>🎨</i><span>꾸미기</span></button><button class="lb-btn edit" data-lb="edit"><i>✏️</i><span>편집</span></button></div>`;
 document.body.appendChild(lb);
 const $stage = lb.querySelector('.lb-stage'), $track = lb.querySelector('.lb-track'), $card = lb.querySelector('.lb-card');
 const slides = () => [...$track.children];                       // [이전, 현재, 다음] (넘길 때 순서를 돌려요)
@@ -85,6 +85,7 @@ function header() {
   if (pctx && cur && cur.key) { e.innerHTML = '<i>📍</i><span>핀 위치</span>'; e.hidden = !!(S.me && S.me.viewer); }
   else { e.innerHTML = `<i>${cur && cur.editLabel ? '👉' : '✏️'}</i><span>${esc((cur && cur.editLabel) || '편집')}</span>`; e.hidden = !(cur && cur.edit); }
   lb.querySelector('[data-lb=deco]').hidden = !(cur && cur.key && window.STUDIO);
+  lb.querySelector('[data-lb=focus]').hidden = !(cur && cur.key && window.FOCUS && !(S.me && S.me.viewer) && (S.moments || []).some(m => m.id === cur.key && m.photo));   // 🎯 사진에서 보여 줄 곳(얼굴) 정하기
   boardBtn();
 }
 function showBox() {
@@ -154,7 +155,8 @@ lb.addEventListener('click', async e => {
     if (pctx && cur && cur.key) { const k = cur.key, c = pctx; close(); if (c === 'walk' && window.WALK) WALK.pinPhoto([k]); else if (window.EXPLORE) EXPLORE.pinPhoto(k); return; }   // 원본은 그대로, 지도 핀 자리만
     const f = cur && cur.edit; close(); if (f) f();
   }
-  if (b.dataset.lb === 'deco') { const k = cur && cur.key; close(); closeSheet(); if (k && window.STUDIO) STUDIO.open(k); }   // 기념 사진관으로 이 사진 꾸미기 (지도 핀 창 같은 아래 창은 닫고)
+  if (b.dataset.lb === 'deco') { const k = cur && cur.key; close(); closeSheet(); if (k && window.STUDIO) STUDIO.open(k); }
+  if (b.dataset.lb === 'focus') { const k = cur && cur.key; close(); if (k && window.FOCUS) FOCUS.pick(k); }   // 기념 사진관으로 이 사진 꾸미기 (지도 핀 창 같은 아래 창은 닫고)
   if (b.dataset.lb === 'board' && cur && cur.boardId) {
     const m = S.moments.find(x => x.id === cur.boardId), on = !(m && m.board);
     b.disabled = true;
@@ -238,6 +240,7 @@ const sheetOpen = () => document.getElementById('sheet').classList.contains('ope
 window.addEventListener('popstate', () => {
   if (history.state && history.state.soeunGuard) return;
   if (window.__askClose && __askClose()) { guard(); return; }            // 앱 확인창
+  if (window.FOCUS && FOCUS.close()) { guard(); return; }                // 🎯 보여 줄 곳 정하기
   if (isOpen()) { close(); guard(); return; }                          // 1) 사진 크게 보기
   if (sheetOpen()) { if (window.__app && __app.softClose) __app.softClose(); else closeSheet(); guard(); return; }   // 2) 편집창 같은 아래 창 (적던 중이면 한 번 더 눌러야 닫혀요)
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리
