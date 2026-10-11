@@ -33,8 +33,11 @@ function geoPhotos() {
   }).filter(Boolean).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 }
 let memo = null;
+// 본부(우리 집): 내가 정한 곳(탐문 기본 출발지와 같은 것, WALK.home — 두 폰 같이) → 없으면 다녀간 날이 가장 많은 곳
+const myHome = () => (window.WALK && WALK.home ? WALK.home() : null);
+const hk = () => { const h = myHome(); return h ? h.lat + ',' + h.lng : ''; };
 function places() {
-  if (memo && memo.src === S.moments && memo.w === S.walks) return memo.P;
+  if (memo && memo.src === S.moments && memo.w === S.walks && memo.hk === hk()) return memo.P;
   const P = [];
   geoPhotos().forEach(ph => {
     let best = null, bd = 1e9; for (const pl of P) { const d = km(pl.c, ph.p); if (d < bd) { bd = d; best = pl; } }
@@ -43,9 +46,10 @@ function places() {
   });
   P.forEach((pl, i) => { pl.i = i; pl.n = pl.photos.length; pl.last = pl.photos[pl.n - 1].date; });
   // 본부(집): 다녀간 날이 가장 많은 곳 (사진 3장 이상)
-  const home = P.slice().sort((a, b) => b.days.size - a.days.size || b.n - a.n)[0];
-  if (home && home.n >= 3) home.home = true;
-  memo = { src: S.moments, w: S.walks, P };
+  const mh = myHome();
+  if (mh) { let best = null, bd = 1e9; P.forEach(pl => { const d = km(pl.c, mh); if (d < bd) { bd = d; best = pl; } }); if (best && bd <= 0.3) best.home = true; }
+  else { const home = P.slice().sort((a, b) => b.days.size - a.days.size || b.n - a.n)[0]; if (home && home.n >= 3) home.home = true; }
+  memo = { src: S.moments, w: S.walks, P, hk: hk() };
   return P;
 }
 const homeOf = P => P.find(p => p.home) || null;
@@ -120,14 +124,14 @@ function mount() {
     mapLoading = false; geocoder = new kakao.maps.services.Geocoder();
     const R = window.WALK ? WALK.routes() : [], c = places()[0] ? places()[0].c : R[0] ? R[0].T.pts[0] : { lat: 37.3422, lng: 127.9202 };
     map = new kakao.maps.Map(mapEl, { center: new kakao.maps.LatLng(c.lat, c.lng), level: 7 });
-    onTap(mapEl, map, ll => pinTap(map, ll) || nearTap(ll));   // 핀 놓기 중이면 누른 곳으로, 아니면 그 근처를 지난 탐문 기록 목록
+    onTap(mapEl, map, ll => { if (X.homePick) { X.homePick = false; WALK.setHome({ lat: ll.getLat(), lng: ll.getLng() }); render(); toast('🏠 여기를 본부로 정했어요'); return; } pinTap(map, ll) || nearTap(ll); });   // 본부 정하기 중이면 그 자리로, 핀 놓기 중이면 누른 곳으로, 아니면 그 근처를 지난 탐문 기록 목록   // 핀 놓기 중이면 누른 곳으로, 아니면 그 근처를 지난 탐문 기록 목록
     lastSig = ''; X.fitN = -1; sync(); resolve();
   }).catch(() => { mapLoading = false; X.mapErr = 'fail'; if (shown()) render(); });
 }
 function sync() {
   if (!map) return;
   const P = places(), R = window.WALK ? WALK.routes() : [], CS = window.WALK ? WALK.courses(X.days) : [];
-  const sig = `${X.layer.ph ? 1 : 0}${X.layer.wk ? 1 : 0}${X.days}${X.course}|` + P.map(p => `${p.c.lat},${p.c.lng},${p.n},${safeImg(PHOTOS[p.photos[p.n - 1].id]) ? 1 : 0}`).join('|') + '|' + R.map(r => r.w.id + r.T.pts.length).join(',');
+  const sig = hk() + `${X.layer.ph ? 1 : 0}${X.layer.wk ? 1 : 0}${X.days}${X.course}|` + P.map(p => `${p.c.lat},${p.c.lng},${p.n},${safeImg(PHOTOS[p.photos[p.n - 1].id]) ? 1 : 0}`).join('|') + '|' + R.map(r => r.w.id + r.T.pts.length).join(',');
   if (sig === lastSig) return; lastSig = sig;
   overlays.forEach(o => o.setMap(null)); overlays = []; lines.forEach(o => o.setMap(null)); lines = [];
   const bounds = new kakao.maps.LatLngBounds(); let n = 0;
@@ -154,6 +158,11 @@ function sync() {
     const ov = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 1.15, clickable: true, zIndex: 5 });
     ov.setMap(map); overlays.push(ov); bounds.extend(pos); n++;
   });
+  { const mh = myHome(); if (mh && !homeOf(P)) {   // 내가 정한 본부에 아직 사진이 없으면 🏠 표시만
+    const el = document.createElement('button'), pos = new kakao.maps.LatLng(mh.lat, mh.lng); el.type = 'button'; el.className = 'expin home'; el.innerHTML = '<span>🏠</span><b>본부</b>'; el.setAttribute('aria-label', '본부 (우리 집)');
+    el.addEventListener('click', ev => { ev.stopPropagation(); if (pinTap(map, pos)) return; homeSheet(); });
+    const ov = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 1.15, clickable: true, zIndex: 5 }); ov.setMap(map); overlays.push(ov); bounds.extend(pos); n++;
+  } }
   if (P.some(pl => !RG[rkey(pl.c)])) resolve();   // 새로 생긴 곳(탐문 사진 등)의 동네 이름
   const fit = P.length + R.length * 1000 + X.days * 7 + (X.course == null ? 0 : 99 + X.course);
   if (X.fitN !== fit && n) { X.fitN = fit; if (n === 1 && P.length === 1 && !R.length) { map.setCenter(new kakao.maps.LatLng(P[0].c.lat, P[0].c.lng)); map.setLevel(5); } else map.setBounds(bounds, 50, 40, 40, 40); }
@@ -207,9 +216,9 @@ function render_(mode) {
   ${window.WALK ? WALK.sectionHtml() : ''}
   ${AC.length ? `<section><h2 class="sh"><span>🔁 단골 코스</span><span>${AC.length}개</span></h2><p class="foot" style="margin:0 0 8px">거의 같은 길로 여러 번 걸은 탐문은 한 코스로 묶어요. 지도에선 코스마다 길 하나만 그리고 많이 걸을수록 굵게, 🐾 숫자는 걸은 횟수예요.</p>
     <div class="wklist">${AC.map(g => `<button class="wkrow" data-xp="csheet" data-v="${g.i}"><span class="wkart">${WALK.routeSvg(g.T.pts, 60, 60)}</span><span class="wkrt"><b>${esc(g.name)}</b><small>${g.n}번 · 평균 ${g.m >= 1000 ? (g.m / 1000).toFixed(1) + 'km' : g.m + 'm'} · 마지막 ${fmtK(g.last, true)}</small></span><em>›</em></button>`).join('')}</div></section>` : ''}
-  ${firsts.length || h ? `<section><h2 class="sh"><span>처음 가 본 곳</span><span>${firsts.length}곳</span></h2>
+  ${firsts.length || h || P.length ? `<section><h2 class="sh"><span>처음 가 본 곳</span><span>${firsts.length}곳</span></h2>
     <div class="exlist">${firsts.slice(0, X.more).map(pl => { const r = regionOf(pl), ph = safeImg(PHOTOS[pl.photos[pl.n - 1].id]); return `<button class="exrow" data-xp="place" data-v="${pl.i}">${ph ? `<img src="${ph}" alt="" loading="lazy" decoding="async">` : '<span class="exnoph">📷</span>'}<span class="exrt"><b>${esc(label(pl))}</b><small>${r && r.g ? `${esc(sido(r.s))} ${esc(r.g)}${r.guess ? ' (짐작)' : ''} · ` : ''}첫 방문 ${fmtK(pl.first, true)} · 사진 ${pl.n}장${pl.days.size > 1 ? ` · ${pl.days.size}번 방문` : ''}</small></span><em>›</em></button>`; }).join('')}
-    ${h ? `<button class="exrow home" data-xp="place" data-v="${h.i}"><span class="exnoph">🏠</span><span class="exrt"><b>본부 (우리 집)</b><small>사진이 가장 많은 곳 · 사진 ${h.n}장</small></span><em>›</em></button>` : ''}</div>
+    ${h ? `<button class="exrow home" data-xp="place" data-v="${h.i}"><span class="exnoph">🏠</span><span class="exrt"><b>본부 (우리 집)</b><small>${myHome() ? '내가 정한 곳' : '사진이 가장 많은 곳'} · 사진 ${h.n}장</small></span><em>›</em></button>` : `<button class="exrow home" data-xp="home"><span class="exnoph">🏠</span><span class="exrt"><b>본부 (우리 집)</b><small>${myHome() ? '내가 정한 곳 · 아직 여기서 찍은 사진은 없어요' : '아직 안 정했어요 · 눌러서 우리 집을 정해요'}</small></span><em>›</em></button>`}</div>
     ${firsts.length > X.more ? `<button class="addperiod" data-xp="more">더 보기 (${firsts.length - X.more}곳 남음)</button>` : ''}</section>` : ''}
   <section><h2 class="sh"><span>강원 시·군 도장판</span><span>${nStamp}/18</span></h2>
     <div class="exstamps">${st.gw.map(x => `<span class="exst${x.on ? ' on' : ''}"><b>${x.name.replace(/(시|군)$/, '')}</b>${x.on ? `<i>탐험</i><small>${fmtMD(x.on.first)}${x.on.guess ? '?' : ''}</small>` : '<small>미탐험</small>'}</span>`).join('')}</div>
@@ -235,7 +244,17 @@ function openPlace(i) {
     ${cw ? `<p class="foot" style="margin:0 0 8px">사진을 누르면 크게 보고, 오른쪽 위 동그라미로 골라요. 고른 사진만 옮기거나 빼요.${nW ? ' 🐾는 탐문 경로에서 찍은 시각으로 찾은 자리예요.' : ''}</p>
       <div class="explact" data-pl="${i}"><button class="ghost" data-xp="plmove" data-v="${i}">📍 이곳 핀 모두 옮기기</button><button class="ghost exdanger" data-xp="plunpin" data-v="${i}">이곳 핀 모두 빼기</button></div>
       <p class="foot" style="margin:0 0 6px">옮기기를 누르면 이 창이 닫히고, 지도에서 새 자리를 누르면 돼요.</p>` : ''}
+    ${cw ? (pl.home ? `<div class="exhome"><button class="ghost" data-xp="home">🏠 본부 위치 바꾸기</button></div>` : `<div class="exhome"><button class="ghost" data-xp="sethome" data-v="${i}">🏠 여기를 본부(우리 집)로</button></div>`) : ''}
     <div class="actions"><button class="secondary" data-act="close">닫기</button>${map ? `<button class="ghost" data-xp="focus" data-v="${i}">지도에서 보기</button>` : ''}</div>`);
+}
+// 본부(우리 집) 정하기 — 탐문 기록의 기본 출발지와 같은 곳이에요 (엄마·아빠 폰 같이)
+function homeSheet() {
+  const h = myHome(), cw = canWrite();
+  openSheet(`<h3>🏠 본부 (우리 집)</h3>
+    <p class="hint">${h ? `지금 본부: <b>${esc(h.n || `${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}`)}</b>` : '아직 안 정해서 사진을 가장 많이 찍은 곳을 본부로 보여 줘요.'}<br>본부는 탐문 기록의 <b>기본 출발지</b>로도 써요. 엄마·아빠 폰에 같이 보여요.</p>
+    ${cw ? `<div class="exhome col"><button class="ghost" data-xp="homehere">📍 지금 있는 곳을 본부로</button><button class="ghost" data-xp="homemap">🗺️ 지도에서 눌러 정하기</button>${h ? '<button class="ghost exdanger" data-xp="homeoff">본부 지우기 (사진 많은 곳으로)</button>' : ''}</div>
+      <p class="foot" style="margin:6px 0 0">지도의 다른 곳 핀을 눌러 '🏠 여기를 본부로'를 눌러도 돼요.</p>` : '<p class="foot">보기 전용이라 바꿀 수 없어요.</p>'}
+    <div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
 }
 
 // ---------- 직접 꽂기 (여러 장 한 번에) ----------
@@ -386,6 +405,11 @@ document.addEventListener('click', async e => {
   if (a === 'open') { S.view = 'explore'; render(); window.scrollTo(0, 0); return; }
   if (a === 'close') { goBack(); return; }
   if (a === 'place') { openPlace(+b.dataset.v); return; }
+  if (a === 'home') { const h = homeOf(places()); if (h && b.closest('.exlist')) openPlace(h.i); else homeSheet(); return; }
+  if (a === 'sethome') { const pl = places()[+b.dataset.v]; if (!pl) return; const r = regionOf(pl); WALK.setHome(Object.assign({}, pl.c, { n: r && r.d ? r.d : '' })); closeSheet(); render(); toast('🏠 여기를 본부로 정했어요\n탐문 기록의 기본 출발지도 여기예요'); return; }
+  if (a === 'homeoff') { if (!(await ask('본부를 지울까요?\n사진을 가장 많이 찍은 곳을 본부로 보여 주고,\n탐문 기본 출발지도 없어져요.', { ok: '지우기', danger: true }))) return; WALK.setHome(null); closeSheet(); render(); return; }
+  if (a === 'homehere') { b.disabled = true; navigator.geolocation.getCurrentPosition(p => { WALK.setHome({ lat: p.coords.latitude, lng: p.coords.longitude }); closeSheet(); render(); toast('🏠 지금 있는 곳을 본부로 정했어요'); }, () => { b.disabled = false; toast('위치를 가져오지 못했어요. 위치 권한을 확인해 주세요'); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }); return; }
+  if (a === 'homemap') { closeSheet(); if (!map) { toast('지도를 불러온 뒤 다시 해 주세요'); return; } X.homePick = true; toast('🗺️ 지도에서 우리 집 자리를 눌러요'); if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   if (a === 'focus') { focus(+b.dataset.v); return; }
   if (a === 'more') { X.more += 30; render(); return; }
   if (a === 'loc') { if (map) locate(map); return; }
@@ -457,6 +481,7 @@ html.mf-open #scrim{z-index:56}html.mf-open #sheet{z-index:57}   /* 크게 본 �
 .exrt small{font-size:12px;color:var(--muted)}
 .exrow em{font-style:normal;color:var(--muted)}
 .exrow.home{border-style:dashed}
+.exhome{display:flex;gap:8px;margin:10px 0 0}.exhome.col{flex-direction:column}.exhome button{flex:1;min-height:44px}
 .exstamps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .exst{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:62px;border:1.5px dashed var(--line);border-radius:14px;background:#FFFDF7;padding:6px 2px}
 .exst b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--muted)}
