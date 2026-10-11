@@ -288,9 +288,9 @@ css.textContent = `
 .ppslx{position:absolute;right:-6px;top:-6px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:var(--red);color:#fff;font-size:12px;padding:0;line-height:1}
 .ppno{margin:8px 0 0;font-size:12.5px;color:var(--muted)}.ppno button{border:0;background:none;color:var(--red);text-decoration:underline;font-size:12.5px;min-height:32px}
 .ppreset{width:100%;margin-top:8px;min-height:40px;border-radius:99px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-size:13px}
-.ppgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-height:56vh;overflow-y:auto}
-.ppgrid button{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:8px;overflow:hidden;background:#ddd}
-.ppgrid img{width:100%;height:100%;object-fit:cover;display:block}
+.ppgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:max-content;gap:5px;max-height:56vh;overflow-y:auto}
+.ppgrid button{position:relative;display:block;width:100%;height:0;min-height:0;padding:0 0 100%;border:0;border-radius:8px;overflow:hidden;background:#ddd}
+.ppgrid img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .ppgrid small{position:absolute;left:4px;bottom:3px;color:#fff;font-size:11px;text-shadow:0 1px 2px #000}
 .ppgrid .on{outline:3px solid var(--red);outline-offset:-3px}.ppgrid .no{opacity:.45}.ppms .chip.on{background:var(--navy);color:#fff}
 .ppwrap{position:relative;margin-top:12px}

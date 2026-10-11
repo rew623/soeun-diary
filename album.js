@@ -464,10 +464,10 @@ css.textContent = `
 .pktop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1.5px dashed rgba(31,42,68,.25);flex-wrap:wrap}
 .pktop button{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--navy);background:#fff;font-size:22px;color:var(--navy)}
 .pktop b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--navy)}.pktop small{width:100%;font-size:12px;color:var(--ink2,#555)}
-.pkgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px;align-content:start}
+.pkgrid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:max-content;gap:4px;padding:8px;align-content:start}
 .pkym{grid-column:1/-1;font-family:var(--display);color:var(--navy);font-size:15px;padding:8px 2px 2px}
-.pkc{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:8px;overflow:hidden;background:#ddd}
-.pkc img{width:100%;height:100%;object-fit:cover;display:block}
+.pkc{position:relative;display:block;width:100%;height:0;min-height:0;padding:0 0 100%;border:0;border-radius:8px;overflow:hidden;background:#ddd}   /* 정사각 칸: 폰 크롬에서 aspect-ratio 단추가 줄 높이를 못 잡아 겹치던 것 */
+.pkc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pkc.on{outline:3px solid var(--red);outline-offset:-3px}
 .pkc i{position:absolute;right:5px;top:5px;min-width:24px;height:24px;border-radius:12px;background:var(--red);color:#fff;font-style:normal;font-size:13px;display:grid;place-items:center;padding:0 5px}
 .pkmore{grid-column:1/-1;min-height:44px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);margin:8px 0}
