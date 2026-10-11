@@ -150,7 +150,7 @@ async function draw(cv, ym) {
   const top = y, pw = 610, ph = 440, nx = M + pw + 30, nw = W - M - nx;
   if (I.main && imgs[I.main.id]) {
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.18)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4; ctx.fillStyle = '#fff'; ctx.fillRect(M, top, pw, ph); ctx.restore();
-    CV.cover(ctx, imgs[I.main.id], M + 8, top + 8, pw - 16, ph - 16, 1, .5, .3);
+    CV.cover(ctx, imgs[I.main.id], M + 8, top + 8, pw - 16, ph - 16, 1);
     CV.text(ctx, `▲ ${fmtK(I.main.date, true)} 생후 ${dayNo(I.main.date)}일${I.main.title ? ` · ${I.main.title}` : ''}의 ${nm()} 탐정`, M, top + ph + 34, '22px "Gowun Dodum"', MUTED, 'left', pw);
   } else {
     ctx.fillStyle = '#EDE3CC'; ctx.fillRect(M, top, pw, ph);
@@ -167,7 +167,7 @@ async function draw(cv, ym) {
   const strip = I.strip.filter(p => imgs[p.id]);
   if (strip.length >= 2) {
     const gap = 14, n = strip.length, sw = (W - 2 * M - gap * (n - 1)) / n, sh = 150;
-    strip.forEach((p, i) => { const x = M + i * (sw + gap); ctx.fillStyle = '#fff'; ctx.fillRect(x, y, sw, sh); CV.cover(ctx, imgs[p.id], x + 5, y + 5, sw - 10, sh - 10, 1, .5, .35); CV.text(ctx, fmtMD(p.date), x + sw - 10, y + sh - 12, '20px Jua', '#fff', 'right'); });
+    strip.forEach((p, i) => { const x = M + i * (sw + gap); ctx.fillStyle = '#fff'; ctx.fillRect(x, y, sw, sh); CV.cover(ctx, imgs[p.id], x + 5, y + 5, sw - 10, sh - 10, 1); CV.text(ctx, fmtMD(p.date), x + sw - 10, y + sh - 12, '20px Jua', '#fff', 'right'); });
     y += sh + 26;
   }
   rule(y, 2); y += 18;

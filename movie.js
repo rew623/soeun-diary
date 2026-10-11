@@ -122,7 +122,7 @@ function pola(ctx, img, cx, cy, w, h, rot, cap, z = 1, capSize) {
   ctx.shadowColor = 'rgba(40,25,10,.35)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 10;
   ctx.fillStyle = '#FFFDF8'; ctx.fillRect(-w / 2 - m, -h / 2 - m, w + 2 * m, h + m + bot);
   ctx.shadowColor = 'transparent';
-  if (img) CV.cover(ctx, img, -w / 2, -h / 2, w, h, z, .5, .4); else { ctx.fillStyle = '#EDE3CC'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.drawImage(emo('🐿️'), -w * .2, -w * .2, w * .4, w * .4); }
+  if (img) CV.cover(ctx, img, -w / 2, -h / 2, w, h, z); else { ctx.fillStyle = '#EDE3CC'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.drawImage(emo('🐿️'), -w * .2, -w * .2, w * .4, w * .4); }
   if (cap) CV.text(ctx, cap, 0, h / 2 + bot * .68, `${Math.round(capSize || w * .085)}px Jua`, '#3A3330', 'center', w);
   ctx.restore();
 }
@@ -198,14 +198,14 @@ function drawPhoto(ctx, W, H, s, lt, i) {
   if (!s.img && (lay === 'full' || lay === 'pose')) lay = 'pola';
   if (!port && (lay === 'board' || lay === 'film')) lay = 'pola';
   if (lay === 'pose') {
-    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); CV.cover(ctx, s.img, 0, 0, W, H, 1, .5, .45);
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); CV.cover(ctx, s.img, 0, 0, W, H, 1);
     CV.rr(ctx, W - 250, 40, 210, 92, 46); ctx.fillStyle = 'rgba(31,42,68,.85)'; ctx.fill(); txt(ctx, s.l1, W - 145, 104, 56, '#FCE8B4');
     txt(ctx, s.l2, W - 145, 172, 28, '#fff', 'center', 0, 'g');
     return;
   }
   if (lay === 'full') {
     ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H);
-    const z = 1.04 + .09 * p, fx = i % 2 ? .35 + .3 * p : .65 - .3 * p; CV.cover(ctx, s.img, 0, 0, W, H, z, fx, .45);
+    const z = 1.04 + .09 * p, fx = i % 2 ? .35 + .3 * p : .65 - .3 * p; CV.cover(ctx, s.img, 0, 0, W, H, z, fx);
     ctx.save(); ctx.strokeStyle = 'rgba(255,253,247,.85)'; ctx.lineWidth = 8; CV.rr(ctx, 18, 18, W - 36, H - 36, 26); ctx.stroke(); ctx.restore();
     const g = ctx.createLinearGradient(0, H * .5, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,14,28,.82)'); ctx.fillStyle = g; ctx.fillRect(0, H * .5, W, H * .5);
     const up = ease(lt / .7), lines = [s.l2, s.l3, s.l4].filter(Boolean);
@@ -233,7 +233,7 @@ function drawPhoto(ctx, W, H, s, lt, i) {
     const w = W * .62, h = w * 1.12, x = W / 2 - w / 2 - 14, y = 170, e = pop(lt, .05, .5);
     fade(ctx, e * 1.5, () => scaleAt(ctx, x + w / 2, y + h / 2, 1.1 - .1 * clamp(e), () => {
       ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(-2 * Math.PI / 180); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; ctx.fillStyle = '#FFFDF8'; ctx.fillRect(-w / 2 - 12, -h / 2 - 12, w + 24, h + 24); ctx.shadowColor = 'transparent';
-      if (s.img) CV.cover(ctx, s.img, -w / 2, -h / 2, w, h, 1.02 + .05 * p, .5, .4); else { ctx.fillStyle = '#EDE3CC'; ctx.fillRect(-w / 2, -h / 2, w, h); }
+      if (s.img) CV.cover(ctx, s.img, -w / 2, -h / 2, w, h, 1.02 + .05 * p); else { ctx.fillStyle = '#EDE3CC'; ctx.fillRect(-w / 2, -h / 2, w, h); }
       ctx.restore();
     }));
     fade(ctx, fin(lt, .35), () => { ctx.save(); ctx.translate(x + 36, y + 70); ctx.rotate(-.18); ctx.fillStyle = '#FCE8B4'; ctx.fillRect(-64, -24, 150, 48); txt(ctx, `증거물 #${s.no}`, 11, 9, 26, '#5C3A12'); ctx.restore(); });
@@ -251,7 +251,7 @@ function drawPhoto(ctx, W, H, s, lt, i) {
     ctx.fillStyle = '#0A0A0E'; ctx.fillRect(sx, sy, sw, sh);
     for (let yy = sy + 14; yy < sy + sh - 20; yy += 46) { ctx.fillStyle = '#E8E2D0'; CV.rr(ctx, sx + 12, yy, 24, 30, 5); ctx.fill(); CV.rr(ctx, sx + sw - 36, yy, 24, 30, 5); ctx.fill(); }
     const px = sx + 54, pw = sw - 108, py = sy + 26, ph = sh - 52;
-    if (s.img) CV.cover(ctx, s.img, px, py, pw, ph, 1.03 + .06 * p, .5, .4); else { ctx.fillStyle = '#2A2A33'; ctx.fillRect(px, py, pw, ph); }
+    if (s.img) CV.cover(ctx, s.img, px, py, pw, ph, 1.03 + .06 * p); else { ctx.fillStyle = '#2A2A33'; ctx.fillRect(px, py, pw, ph); }
     if (s.date) { ctx.save(); ctx.shadowColor = 'rgba(255,140,40,.8)'; ctx.shadowBlur = 8; txt(ctx, `'${s.date.slice(2, 4)} ${s.date.slice(5, 7)} ${s.date.slice(8)}`, px + pw - 20, py + ph - 24, 34, '#FF9A3C', 'right'); ctx.restore(); }
     txt(ctx, `${s.no}A`, sx + 70, sy - 10, 24, '#FF9A3C', 'left');
   });

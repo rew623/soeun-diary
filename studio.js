@@ -14,10 +14,44 @@ CV.img = async src => {
   if (window.__photoBlob) return fromBlob(await window.__photoBlob(src));
   throw new Error('사진을 불러오지 못했어요');
 };
-// 사진을 칸에 꽉 차게 (z: 확대, fx·fy: 0~1 어느 쪽을 보여 줄지)
-CV.cover = (ctx, im, x, y, w, h, z = 1, fx = .5, fy = .5) => {
+// 사진에서 보여 줘야 할 곳(얼굴·아기) 찾기 — 작게 줄여 피부색·윤곽·채도로 점수를 매기고, 가장 눈에 띄는 곳의 무게중심 (사진마다 한 번, 저장)
+// 아무것도 못 찾으면 위쪽(사람 얼굴은 보통 위 1/3)으로. 사용자 요청(2026.10.11): 소은일보 사진 줄·기념 사진관에서 사진 윗부분(머리)이 잘림
+CV.focus = im => {
+  if (im.__focus) return im.__focus;
+  let f = { x: .5, y: .36 };
+  try {
+    const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, k = 56 / Math.max(iw, ih), w = Math.max(8, Math.round(iw * k)), h = Math.max(8, Math.round(ih * k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data, L = new Float32Array(w * h), S = new Float32Array(w * h), E = new Float32Array(w * h), K = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L[i] = (d[i * 4] * .299 + d[i * 4 + 1] * .587 + d[i * 4 + 2] * .114) / 255;
+    for (let yy = 1; yy < h - 1; yy++) for (let xx = 1; xx < w - 1; xx++) {
+      const i = yy * w + xx, r = d[i * 4] / 255, g = d[i * 4 + 1] / 255, b = d[i * 4 + 2] / 255, lum = L[i];
+      const m = Math.hypot(r, g, b) || 1, sd = Math.hypot(r / m - .78, g / m - .57, b / m - .44);
+      K[i] = lum > .18 && lum < .97 && r > b ? Math.max(0, (.2 - sd) / .2) : 0;   // 피부색(smartcrop 방식)
+      E[i] = Math.min(1, Math.abs(4 * lum - L[i - 1] - L[i + 1] - L[i - w] - L[i + w]) * 5);
+    }
+    // 피부색이어도 둘레에 윤곽(눈·코·입·머리카락)이 없으면 벽·바닥일 수 있어서 약하게
+    for (let yy = 2; yy < h - 2; yy++) for (let xx = 2; xx < w - 2; xx++) {
+      const i = yy * w + xx; let ed = 0, sk = 0; for (let a = -2; a <= 2; a++) for (let c = -2; c <= 2; c++) { ed += E[i + a * w + c]; sk += K[i + a * w + c]; } ed /= 25; sk /= 25;
+      const r = d[i * 4] / 255, g = d[i * 4 + 1] / 255, b = d[i * 4 + 2] / 255, mx = Math.max(r, g, b), sat = mx ? (mx - Math.min(r, g, b)) / mx : 0;
+      S[i] = K[i] * (.2 + Math.min(1, ed * 3)) * 2 + sk * E[i] * 1.2 + E[i] * .2 + (sat > .45 && L[i] > .2 ? .06 : 0);
+    }
+    const v = Array.from(S).filter(q => q > 0).sort((a, b) => a - b), cut = v.length ? v[Math.floor(v.length * .85)] : 0;
+    let sx = 0, sy = 0, sw = 0;
+    for (let yy = 1; yy < h - 1; yy++) for (let xx = 1; xx < w - 1; xx++) { const q = S[yy * w + xx]; if (q >= cut && q > .35) { sx += xx * q; sy += yy * q; sw += q; } }
+    if (sw > 2) f = { x: Math.max(.15, Math.min(.85, .82 * (sx / sw) / (w - 1) + .09)), y: Math.max(.12, Math.min(.85, .78 * (sy / sw) / (h - 1) + .22 * .36)) };
+  } catch (e) { /* canvas가 막힌 사진 등: 위쪽 기본값 */ }
+  im.__focus = f; return f;
+};
+// 사진을 칸에 꽉 차게 (z: 확대, fx·fy: 0~1 남는 부분 중 어느 쪽을 보여 줄지 — 안 주면 CV.focus로 저절로)
+CV.cover = (ctx, im, x, y, w, h, z = 1, fx, fy) => {
   const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw || !ih) return;
   const s = Math.max(w / iw, h / ih) * z, dw = iw * s, dh = ih * s;
+  if (fx == null || fy == null) {   // 보여 줄 곳이 칸 가운데 오게 (가장자리 밖으로는 안 넘어가게)
+    const f = CV.focus(im), sx = dw - w, sy = dh - h;
+    if (fx == null) fx = sx > 0 ? Math.max(0, Math.min(1, (f.x * dw - w / 2) / sx)) : .5;
+    if (fy == null) fy = sy > 0 ? Math.max(0, Math.min(1, (f.y * dh - h * .55) / sy)) : .5;   // 얼굴을 칸 가운데보다 조금 아래에 (머리 위 여백)
+  }
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.drawImage(im, x + (w - dw) * fx, y + (h - dh) * fy, dw, dh); ctx.restore();
 };
 CV.rr = (ctx, x, y, w, h, r) => { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
@@ -95,7 +129,10 @@ window.CV = CV;
 // ---------- 사진관 ----------
 const STK = ['🎉', '🎂', '👑', '💖', '⭐', '🍼', '🧸', '🌸', '🎈', '🔍', '🌰', '🐿️', '💯', '🎀', '🌙', '☀️', '🥳', '👶', '🍀', '🦄'];
 const TPL = [['stamp', '탐정 도장'], ['polaroid', '폴라로이드'], ['file', '사건 파일'], ['film', '필름'], ['clean', '깔끔하게']];
-const ST = { src: '', key: '', tpl: 'stamp', sq: false, title: '', sub: '', stats: true, stickers: [], bubble: '', bx: .26, by: .12, sel: -1, img: null, loading: false, oc: null };
+const ST = { src: '', key: '', tpl: 'stamp', sq: false, title: '', sub: '', stats: true, stickers: [], bubble: '', bx: .26, by: .12, sel: -1, img: null, loading: false, oc: null, pan: false, fx: undefined, fy: undefined, z: 1, box: null };
+// 사진 칸에 그리기: 직접 맞춘 위치(ST.fx·fy·z)가 있으면 그대로, 없으면 저절로(CV.focus). 칸 크기는 끌어서 옮길 때 쓰려고 기억
+function photo(ctx, im, x, y, w, h) { ST.box = { w, h }; CV.cover(ctx, im, x, y, w, h, ST.z || 1, ST.fx, ST.fy); }
+const resetPan = () => { ST.fx = ST.fy = undefined; ST.z = 1; };
 const WH = () => [1080, ST.sq ? 1080 : 1350];
 
 function open(key) {
@@ -105,7 +142,7 @@ function open(key) {
   ST.title = oc.label ? `${CV.nick()} ${oc.label}` : `${CV.nick()} 생후 ${dayNo(d)}일`;
   ST.sub = oc.label && !/^생후/.test(oc.label) ? `${CV.dot(d)} · 생후 ${dayNo(d)}일` : CV.dot(d);
   ST.stickers = oc.label ? [{ e: '🎉', x: .85, y: .09, s: 120, r: 12 }, { e: '💖', x: .13, y: .63, s: 90, r: -10 }] : []; // 왼쪽 위는 '사건 파일' 글씨 자리라 비워 둠
-  ST.bubble = ''; ST.sel = -1; ST.img = null;
+  ST.bubble = ''; ST.sel = -1; ST.img = null; ST.pan = false; resetPan();
   S.view = 'studio'; render(); window.scrollTo(0, 0);
 }
 
@@ -113,7 +150,7 @@ function open(key) {
 function drawTpl(ctx, W, H, im) {
   const tq = H > W, title = ST.title, sub = ST.sub, stat = ST.stats ? CV.stats(ST.oc ? ST.oc.date : today()) : '', lab = (ST.oc && ST.oc.label) || `${dayNo(today())}일`;
   if (ST.tpl === 'clean') {
-    ctx.fillStyle = '#1F2A44'; ctx.fillRect(0, 0, W, H); if (im) CV.cover(ctx, im, 0, 0, W, H);
+    ctx.fillStyle = '#1F2A44'; ctx.fillRect(0, 0, W, H); if (im) photo(ctx, im, 0, 0, W, H);
     const g = ctx.createLinearGradient(0, H * .55, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(15,20,35,.78)'); ctx.fillStyle = g; ctx.fillRect(0, H * .55, W, H * .45);
     CV.rr(ctx, 40, 40, 360, 64, 32); ctx.fillStyle = 'rgba(255,253,247,.88)'; ctx.fill(); CV.text(ctx, '🔍 소은 탐정 수사 일지', 220, 84, '30px "Gowun Dodum"', '#1F2A44');
     CV.text(ctx, title, W / 2, H - (stat ? 210 : 160), '104px Jua', '#fff', 'center', W - 120);
@@ -124,7 +161,7 @@ function drawTpl(ctx, W, H, im) {
   if (ST.tpl === 'film') {
     ctx.fillStyle = '#161616'; ctx.fillRect(0, 0, W, H);
     for (const y of [24, H - 64]) for (let x = 22; x < W; x += 74) { CV.rr(ctx, x, y, 40, 40, 8); ctx.fillStyle = '#F5EFE3'; ctx.fill(); }
-    const py = 112, ph = H - (tq ? 400 : 330); if (im) CV.cover(ctx, im, 50, py, W - 100, ph); ctx.strokeStyle = '#000'; ctx.lineWidth = 6; ctx.strokeRect(50, py, W - 100, ph);
+    const py = 112, ph = H - (tq ? 400 : 330); if (im) photo(ctx, im, 50, py, W - 100, ph); ctx.strokeStyle = '#000'; ctx.lineWidth = 6; ctx.strokeRect(50, py, W - 100, ph);
     CV.text(ctx, CV.dot(ST.oc ? ST.oc.date : today()).slice(2), W - 90, py + ph - 30, '44px Jua', '#F4A340', 'right');
     CV.text(ctx, title, W / 2, py + ph + 110, '92px Jua', '#FFF8EC', 'center', W - 120);
     CV.text(ctx, [sub, stat].filter(Boolean).join('  ·  '), W / 2, py + ph + 172, '36px "Gowun Dodum"', '#CFC6B6', 'center', W - 120);
@@ -135,7 +172,7 @@ function drawTpl(ctx, W, H, im) {
     ctx.strokeStyle = 'rgba(244,156,156,.22)'; ctx.lineWidth = 26; for (let x = 13; x < W; x += 78) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); } for (let y = 13; y < H; y += 78) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
     const cw = W - 150, chh = H - (tq ? 170 : 130), cx = W / 2, cy = H / 2 + 6;
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(1.6 * Math.PI / 180); ctx.shadowColor = 'rgba(80,50,40,.28)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 12; ctx.fillStyle = '#FFFDF8'; ctx.fillRect(-cw / 2, -chh / 2, cw, chh); ctx.shadowColor = 'transparent';
-    const pw = cw - 70, ph = chh - (tq ? 270 : 240); if (im) CV.cover(ctx, im, -cw / 2 + 35, -chh / 2 + 35, pw, ph);
+    const pw = cw - 70, ph = chh - (tq ? 270 : 240); if (im) photo(ctx, im, -cw / 2 + 35, -chh / 2 + 35, pw, ph);
     CV.text(ctx, title, 0, -chh / 2 + 35 + ph + 112, '88px Jua', '#1F2A44', 'center', cw - 80);
     CV.text(ctx, [sub, stat].filter(Boolean).join('  ·  '), 0, -chh / 2 + 35 + ph + 172, '34px "Gowun Dodum"', '#8C7458', 'center', cw - 80);
     ctx.restore(); CV.tape(ctx, W / 2, 62, 220, 58, -3, 'rgba(244,156,184,.75)');
@@ -149,7 +186,7 @@ function drawTpl(ctx, W, H, im) {
     CV.text(ctx, `CASE No.${fileNo()}`, fx + 165, fy - 10, '38px Jua', '#5C4126');
     const pw = fw - 120, ph = fh - (tq ? 330 : 280), px = fx + 60, py = fy + 60;
     ctx.save(); ctx.translate(px + pw / 2, py + ph / 2); ctx.rotate(-1.5 * Math.PI / 180); ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 18; ctx.fillRect(-pw / 2 - 14, -ph / 2 - 14, pw + 28, ph + 28); ctx.shadowColor = 'transparent';
-    if (im) CV.cover(ctx, im, -pw / 2, -ph / 2, pw, ph); ctx.restore();
+    if (im) photo(ctx, im, -pw / 2, -ph / 2, pw, ph); ctx.restore();
     ctx.strokeStyle = '#9AA5B1'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(px + 70, py - 40); ctx.lineTo(px + 70, py + 90); ctx.arc(px + 92, py + 90, 22, Math.PI, 0, true); ctx.lineTo(px + 114, py - 20); ctx.arc(px + 96, py - 20, 18, 0, Math.PI, true); ctx.lineTo(px + 78, py + 70); ctx.stroke();
     CV.stamp(ctx, fx + fw - 150, py + ph - 20, 112, '기밀 해제', lab, -13);
     CV.rr(ctx, fx + 50, py + ph + 52, fw - 100, tq ? 190 : 150, 16); ctx.fillStyle = '#FFFDF7'; ctx.fill();
@@ -162,7 +199,7 @@ function drawTpl(ctx, W, H, im) {
   CV.text(ctx, `사건 파일 No.${fileNo()} · 증거 사진`, 70, 78, '32px "Gowun Dodum"', '#8C7458', 'left');
   const pw = W - 170, ph = H - (tq ? 420 : 330), cx = W / 2, cy = 112 + ph / 2;
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(-1.2 * Math.PI / 180); ctx.shadowColor = 'rgba(60,40,20,.3)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10; ctx.fillStyle = '#FFFDF8'; ctx.fillRect(-pw / 2 - 20, -ph / 2 - 20, pw + 40, ph + 40); ctx.shadowColor = 'transparent';
-  if (im) CV.cover(ctx, im, -pw / 2, -ph / 2, pw, ph); ctx.restore();
+  if (im) photo(ctx, im, -pw / 2, -ph / 2, pw, ph); ctx.restore();
   CV.tape(ctx, cx - pw / 2 + 30, cy - ph / 2 - 6, 170, 52, -28); CV.tape(ctx, cx + pw / 2 - 30, cy - ph / 2 - 6, 170, 52, 26);
   CV.stamp(ctx, W - 175, cy + ph / 2 - 50, 118, '기밀 해제', lab, -14);
   const ty = cy + ph / 2 + (tq ? 140 : 112);
@@ -198,7 +235,7 @@ async function redraw() {
   if (ST.src && (!ST.img || ST.img.__src !== ST.src)) {
     // 불러오는 중이면 끝난 뒤 한 번 더 그림 (그사이 화면을 다시 그려 canvas가 바뀌어도 새 canvas에)
     if (ST.loading) { ST.again = true; return; } ST.loading = true; const want = ST.src;
-    try { const im = await CV.img(want); im.__src = want; if (ST.src === want) ST.img = im; } catch (e) { toast("이 사진은 꾸미기용으로 못 열었어요. '📱 폰에서'로 같은 사진을 골라 주세요"); ST.img = null; }
+    try { const im = await CV.img(want); im.__src = want; if (ST.src === want) { ST.img = im; updSel(); } } catch (e) { toast("이 사진은 꾸미기용으로 못 열었어요. '📱 폰에서'로 같은 사진을 골라 주세요"); ST.img = null; }
     ST.loading = false; if (ST.again) { ST.again = false; if (ST.src && ST.img && ST.img.__src !== ST.src) return redraw(); }
   }
   const n = ++drawing; await CV.fonts(ST.title, ST.sub, ST.bubble); if (n !== drawing) return;
@@ -228,8 +265,9 @@ function render_() {
     <button class="secondary" data-st="close" style="width:100%;margin-top:10px">돌아가기</button>`;
 }
 function selBar() {
+  if (ST.pan) return `<span>✋</span><small>사진을 끌어서 옮겨요</small><button data-st="zoom" data-v="-1" aria-label="작게">−</button><button data-st="zoom" data-v="1" aria-label="크게">＋</button><button data-st="pan0">자동</button><button class="on" data-st="pan">✓ 다 됐어요</button>`;
   if (ST.sel === 'b') return `<span>말풍선</span><button data-st="bdel">지우기</button>`;
-  const s = ST.stickers[ST.sel]; if (!s) return `<small>스티커나 말풍선을 누르면 크기·돌리기·지우기를 할 수 있어요</small>`;
+  const s = ST.stickers[ST.sel]; if (!s) return `${ST.img ? '<button data-st="pan">✋ 사진 위치 맞추기</button>' : ''}<small>스티커·말풍선을 누르면 크기·돌리기·지우기</small>`;
   return `<span>${s.e}</span><button data-st="ssz" data-v="-1">작게</button><button data-st="ssz" data-v="1">크게</button><button data-st="srot">돌리기</button><button data-st="sdel">지우기</button>`;
 }
 const updSel = () => { const el = document.getElementById('st-sel'); if (el) el.innerHTML = selBar(); };
@@ -245,7 +283,7 @@ const fname = () => `${CV.nick()}_${((ST.oc && ST.oc.label) || dayNo(today()) + 
 
 // 폰 사진 고르기 칸은 body에 (파일 창에서 돌아올 때 화면을 다시 그려도 안 사라지게)
 const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/*'; picker.hidden = true; document.body.appendChild(picker);
-picker.addEventListener('change', () => { const f = picker.files[0]; picker.value = ''; if (!f) return; ST.key = ''; ST.src = URL.createObjectURL(f); ST.img = null; render(); });
+picker.addEventListener('change', () => { const f = picker.files[0]; picker.value = ''; if (!f) return; ST.key = ''; ST.src = URL.createObjectURL(f); ST.img = null; resetPan(); render(); });
 
 document.addEventListener('input', e => {
   if (S.view !== 'studio') return;
@@ -261,13 +299,16 @@ document.addEventListener('click', async e => {
     case 'open': open(b.dataset.id || ''); break;
     case 'close': goBack(); break;
     case 'file': picker.click(); break;
-    case 'photo': ST.key = b.dataset.id; ST.src = safeImg(PHOTOS[b.dataset.id]); ST.img = null; document.querySelectorAll('.stph .on').forEach(x => x.classList.remove('on')); b.classList.add('on'); later(); break;
+    case 'photo': ST.key = b.dataset.id; ST.src = safeImg(PHOTOS[b.dataset.id]); ST.img = null; resetPan(); document.querySelectorAll('.stph .on').forEach(x => x.classList.remove('on')); b.classList.add('on'); later(); break;
     case 'tpl': ST.tpl = v; document.querySelectorAll('[data-st=tpl]').forEach(x => x.classList.toggle('on', x === b)); later(); break;
     case 'ratio': ST.sq = v === '11'; render(); break;
     case 'stk': ST.stickers.push({ e: v, x: .3 + Math.random() * .4, y: .25 + Math.random() * .3, s: 130, r: Math.round(Math.random() * 30 - 15) }); ST.sel = ST.stickers.length - 1; updSel(); later(); break;
     case 'ssz': { const s = ST.stickers[ST.sel]; if (s) { s.s = Math.max(50, Math.min(420, s.s * (v === '1' ? 1.2 : 1 / 1.2))); later(); } break; }
     case 'srot': { const s = ST.stickers[ST.sel]; if (s) { s.r = ((s.r || 0) + 20) % 360; later(); } break; }
     case 'sdel': ST.stickers.splice(ST.sel, 1); ST.sel = -1; updSel(); later(); break;
+    case 'pan': ST.pan = !ST.pan; ST.sel = -1; updSel(); later(); if (ST.pan) toast('사진을 끌어서 보여 줄 곳을 맞춰요'); break;
+    case 'pan0': resetPan(); later(); break;
+    case 'zoom': { if (ST.fx == null || ST.fy == null) { const a = autoPos(); ST.fx = a.fx; ST.fy = a.fy; } ST.z = Math.max(1, Math.min(3, Math.round(((ST.z || 1) + (v === '1' ? .15 : -.15)) * 100) / 100)); later(); break; }
     case 'bdel': ST.bubble = ''; ST.sel = -1; const bi = document.getElementById('st-bub'); if (bi) bi.value = ''; updSel(); later(); break;
     case 'save': case 'share': case 'album': {
       b.disabled = true;
@@ -292,14 +333,24 @@ function hit(x, y) {
   for (let i = ST.stickers.length - 1; i >= 0; i--) { const s = ST.stickers[i]; if (Math.hypot(x - s.x * W, y - s.y * H) < s.s * .62) return i; }
   return -1;
 }
+// 지금 그려진 사진 위치(저절로 맞춘 것 포함)를 fx·fy로
+function autoPos() {
+  const im = ST.img, b = ST.box; if (!im || !b) return { fx: .5, fy: .5 };
+  const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, sc = Math.max(b.w / iw, b.h / ih) * (ST.z || 1), dw = iw * sc, dh = ih * sc, f = CV.focus(im);
+  return { fx: dw > b.w ? Math.max(0, Math.min(1, (f.x * dw - b.w / 2) / (dw - b.w))) : .5, fy: dh > b.h ? Math.max(0, Math.min(1, (f.y * dh - b.h * .55) / (dh - b.h))) : .5 };
+}
 function start(c, cx, cy) {
-  const [x, y] = pt(c, cx, cy), h = hit(x, y), [W, H] = WH();
+  const [x, y] = pt(c, cx, cy), h = ST.pan ? -1 : hit(x, y), [W, H] = WH();
+  if (ST.pan && ST.img && ST.box) { const a = ST.fx == null || ST.fy == null ? autoPos() : { fx: ST.fx, fy: ST.fy }; dg = { c, pan: true, x, y, fx: a.fx, fy: a.fy }; return true; }
   ST.sel = h; updSel(); later(); if (h === -1) return false;
   const o = h === 'b' ? { x: ST.bx * W, y: ST.by * H } : { x: ST.stickers[h].x * W, y: ST.stickers[h].y * H };
   dg = { c, h, dx: o.x - x, dy: o.y - y }; return true;
 }
 function move(cx, cy) {
-  if (!dg) return; const [x, y] = pt(dg.c, cx, cy), [W, H] = WH(), nx = Math.max(0, Math.min(1, (x + dg.dx) / W)), ny = Math.max(0, Math.min(1, (y + dg.dy) / H));
+  if (!dg) return; const [x, y] = pt(dg.c, cx, cy), [W, H] = WH();
+  if (dg.pan) { const im = ST.img, b = ST.box, iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, sc = Math.max(b.w / iw, b.h / ih) * (ST.z || 1), sx = iw * sc - b.w, sy = ih * sc - b.h;
+    ST.fx = sx > 0 ? Math.max(0, Math.min(1, dg.fx - (x - dg.x) / sx)) : .5; ST.fy = sy > 0 ? Math.max(0, Math.min(1, dg.fy - (y - dg.y) / sy)) : .5; later(); return; }
+  const nx = Math.max(0, Math.min(1, (x + dg.dx) / W)), ny = Math.max(0, Math.min(1, (y + dg.dy) / H));
   if (dg.h === 'b') { ST.bx = nx; ST.by = ny; } else { ST.stickers[dg.h].x = nx; ST.stickers[dg.h].y = ny; }
   later();
 }
@@ -315,7 +366,7 @@ css.textContent = `
 .stwrap{position:sticky;top:0;z-index:3;background:var(--paper);padding:6px 0 4px;margin:0 -6px;border-bottom:1.5px dashed var(--line)}
 .stcv{display:block;width:min(70vw,330px);height:auto;margin:0 auto;border-radius:14px;box-shadow:0 6px 18px rgba(43,38,34,.22);background:#EAD7B7}
 .stsel{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;min-height:40px;margin-top:6px}
-.stsel span{font-size:22px}.stsel small{font-size:12px;color:var(--muted)}.stsel button{min-height:34px;padding:4px 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:13px;color:var(--navy)}
+.stsel span{font-size:22px}.stsel button.on{background:var(--red);border-color:var(--red);color:#fff}.stsel small{font-size:12px;color:var(--muted)}.stsel button{min-height:34px;padding:4px 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:13px;color:var(--navy)}
 .stph{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px}
 .stph button{flex:0 0 auto;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid transparent;padding:0;background:var(--card2)}
 .stph button.on{border-color:var(--red);box-shadow:0 0 0 2px #fff inset}.stph img{width:100%;height:100%;object-fit:cover;display:block}
