@@ -198,7 +198,7 @@ function render_() {
   <div class="wposter">
     <span class="wseal" aria-hidden="true"></span>
     <div class="wph"><span>CALLING CARD</span><b>예고장</b></div>
-    <div class="wmug">${CHARS.svg('thief', 'card', { size: 150 })}</div>
+    <div class="wmug" data-wt="say" role="button" tabindex="0" aria-label="괴도 깍정이의 한마디">${CHARS.svg('thief', 'card', { size: 150 })}<p class="wsay" hidden></p></div>
     <p class="wletter">${esc(nm)} 탐정님께.<br>이번 주 일요일 자정, <b>${esc(t)}</b>${josa(t, '을', '를')} 가지러 가겠습니다.<br>잡을 수 있다면 잡아 보시죠.</p>
     <p class="wsign">— 괴도 깍정이 🎩</p>
     <p class="wpline"><em>이번 변장</em>${v[4]} ${esc(v[3])}</p>
@@ -231,6 +231,7 @@ document.addEventListener('click', e => {
     case 'week': W.ws = b.dataset.v; render(); window.scrollTo(0, 0); break;
     case 'more': W.more = !W.more; render(); break;
     case 'fx': escapeFx(); break;
+    case 'say': { const p = b.querySelector('.wsay'); if (!p || !window.CHARS || !CHARS.talk) break; p.textContent = CHARS.talk('thief'); p.hidden = false; p.classList.remove('on'); void p.offsetWidth; p.classList.add('on'); clearTimeout(W.sayT); W.sayT = setTimeout(() => { p.hidden = true; }, 4200); break; }
     case 'close': goBack(); break;
   }
 });
@@ -277,7 +278,8 @@ css.textContent = `
 .wend{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:10px 12px;border-radius:16px;background:#FCE8B4;font-size:14px;line-height:1.6;word-break:keep-all}.wend .chr{flex-shrink:0}.wend p{margin:0}.wend b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}.wend.gone{background:#EEE7DC}
 .wph span{display:block;font-family:var(--display);font-size:13px;color:#B08A3A;letter-spacing:5px}
 .wph b{display:block;font-family:var(--display);font-weight:400;font-size:40px;line-height:1.1;color:#8E1E17;letter-spacing:6px}
-.wmug{margin:8px auto 4px;width:180px;height:160px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(closest-side,#FFF3C9,rgba(255,243,201,0))}
+.wmug{position:relative;margin:8px auto 4px;width:180px;height:160px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(closest-side,#FFF3C9,rgba(255,243,201,0));cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wsay{position:absolute;left:50%;bottom:calc(100% - 18px);transform:translateX(-50%);width:max-content;max-width:min(78vw,300px);margin:0;padding:8px 12px;background:#fff;border:1.5px solid #D6CFC3;border-radius:16px;font-size:13.5px;line-height:1.5;color:#3E3A44;box-shadow:0 4px 12px rgba(31,42,68,.15);word-break:keep-all;z-index:2}.wsay::after{content:'';position:absolute;left:50%;top:100%;margin-left:-7px;border:7px solid transparent;border-top-color:#fff}.wsay.on{animation:gpop .3s ease-out}
 .wmug .wface{font-size:96px}
 .wpname{display:block;font-family:var(--display);font-weight:400;font-size:28px;color:var(--navy);line-height:1.2;word-break:keep-all}
 .wpline{margin:6px 0 0;font-size:14px;color:var(--ink);word-break:keep-all}

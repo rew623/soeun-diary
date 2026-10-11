@@ -210,6 +210,7 @@ function confetti() {
 }
 let checking = false;
 function check() {
+  if (S.mode === 'ok' && S.profile && S.profile.birth) lookOnce();
   if (checking || S.mode !== 'ok' || !S.profile || !S.profile.birth) return;
   checking = true;
   setTimeout(() => {
@@ -282,25 +283,25 @@ function card() {
 }
 
 // ---------- 도토리 놀이터 화면 (S.view='medals') : 놀이 | 꾸미기 | 계급·훈장 ----------
-const CLOTHES = [['', '기본', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
+const CLOTHES = [['', '기본', 0], ['conan', '코난 옷', 0], ['sherlock', '셜록 망토 코트', 0], ['watson', '왓슨 트위드 재킷', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
   ['hoodie', '곰 후드티', 8], ['sailor', '세일러복', 8], ['bee', '꿀벌 옷', 9], ['tiger', '호랑이 옷', 9], ['soccer', '축구 유니폼', 9], ['dress', '꽃무늬 원피스', 10], ['trench', '탐정 코트', 10],
   ['dino', '공룡 옷', 10], ['tutu', '발레 튜튜', 11], ['suit', '정장', 12], ['santa', '산타 옷', 12], ['hanbok', '색동 한복', 15], ['hanbokB', '파랑 한복', 15], ['rudolph', '루돌프 옷', 10], ['elf', '요정 옷', 10], ['santaDress', '산타 원피스', 12]];
 const WHO = [['baby', '소은'], ['mom', '엄마'], ['dad', '아빠']];
 // 식구마다 따로 사는 꾸미기 (산 물건은 그 사람만, 두 폰엔 같이): [id, 이름, 도토리], 맨 앞은 기본(무료)
-const HATN = { det: '탐정 모자', flower: '꽃 화관', bunny: '토끼 머리띠', bear: '곰돌이 귀', beanie: '털모자', party: '생일 고깔', cap: '야구 모자', straw: '밀짚모자', chef: '요리사 모자', santa: '산타 모자', crown: '왕관', beret: '베레모', tiara: '티아라', antler: '루돌프 뿔', elfhat: '요정 모자' };
+const HATN = { none: '모자 없음 (코난)', deer: '셜록 사냥모자', bowler: '왓슨 보울러 모자', det: '탐정 모자', flower: '꽃 화관', bunny: '토끼 머리띠', bear: '곰돌이 귀', beanie: '털모자', party: '생일 고깔', cap: '야구 모자', straw: '밀짚모자', chef: '요리사 모자', santa: '산타 모자', crown: '왕관', beret: '베레모', tiara: '티아라', antler: '루돌프 뿔', elfhat: '요정 모자' };
 const CLN = Object.fromEntries(CLOTHES.map(c => [c[0], c]));
 const hatL = (ids, c) => ids.map((id, i) => [id, HATN[id] || '', c[i]]);
 const clL = ids => ids.map(id => [id, (CLN[id] || ['', '기본'])[1], (CLN[id] || [0, 0, 0])[2]]);
 const KIT = {
-  baby: { hat: hatL(['det', 'bunny', 'bear', 'flower', 'beanie', 'party', 'antler', 'elfhat', 'santa', 'crown'], [0, 6, 6, 5, 7, 8, 8, 9, 12, 15]),
-    cloth: clL(['', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'rudolph', 'elf', 'santa', 'hanbok']),
+  baby: { hat: hatL(['det', 'none', 'bunny', 'bear', 'flower', 'beanie', 'party', 'antler', 'elfhat', 'santa', 'crown'], [0, 0, 6, 6, 5, 7, 8, 8, 9, 12, 15]),
+    cloth: clL(['', 'conan', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'rudolph', 'elf', 'santa', 'hanbok']),
     prop: [['lens', '돋보기', 0], ['rattle', '딸랑이', 3], ['bottle', '젖병', 3], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
-  mom: { hat: [['', '빨간 리본', 0], ...hatL(['flower', 'beret', 'bunny', 'beanie', 'straw', 'antler', 'santa', 'tiara'], [5, 7, 6, 7, 9, 8, 12, 14])],
-    cloth: clL(['', 'stripe', 'pajama', 'apron', 'cardigan', 'knit', 'rain', 'dress', 'trench', 'elf', 'santaDress', 'hanbok']),
-    prop: [['heart', '하트', 0], ['note', '수첩', 2], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6], ['candy', '지팡이 사탕', 4], ['gift', '선물 상자', 6]] },
-  dad: { hat: [['', '중절모', 0], ...hatL(['det', 'cap', 'beanie', 'straw', 'chef', 'antler', 'elfhat', 'santa', 'crown'], [6, 8, 7, 9, 10, 8, 9, 12, 15])],
-    cloth: clL(['', 'stripe', 'pajama', 'hoodie', 'knit', 'soccer', 'apron', 'trench', 'suit', 'rudolph', 'santa', 'hanbokB']),
-    prop: [['camera', '카메라', 0], ['note', '수첩', 2], ['lens', '돋보기', 3], ['coffee', '커피', 4], ['wrench', '공구', 5], ['balloon', '풍선', 5], ['bell', '방울', 4], ['gift', '선물 상자', 6]] }
+  mom: { hat: [['', '빨간 리본', 0], ...hatL(['bowler', 'flower', 'beret', 'bunny', 'beanie', 'straw', 'antler', 'santa', 'tiara'], [0, 5, 7, 6, 7, 9, 8, 12, 14])],
+    cloth: clL(['', 'watson', 'stripe', 'pajama', 'apron', 'cardigan', 'knit', 'rain', 'dress', 'trench', 'elf', 'santaDress', 'hanbok']),
+    prop: [['heart', '하트', 0], ['note', '수첩', 0], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6], ['candy', '지팡이 사탕', 4], ['gift', '선물 상자', 6]] },
+  dad: { hat: [['', '중절모', 0], ...hatL(['deer', 'det', 'cap', 'beanie', 'straw', 'chef', 'antler', 'elfhat', 'santa', 'crown'], [0, 6, 8, 7, 9, 10, 8, 9, 12, 15])],
+    cloth: clL(['', 'sherlock', 'stripe', 'pajama', 'hoodie', 'knit', 'soccer', 'apron', 'trench', 'suit', 'rudolph', 'santa', 'hanbokB']),
+    prop: [['camera', '카메라', 0], ['lens', '돋보기', 0], ['note', '수첩', 2], ['coffee', '커피', 4], ['wrench', '공구', 5], ['balloon', '풍선', 5], ['bell', '방울', 4], ['gift', '선물 상자', 6]] }
 };
 const KINDS = [['hat', '🎩 모자', 'hats'], ['cloth', '👕 옷', 'clothes'], ['prop', '🧸 손에 든 소품', 'props']];
 const PROP0 = { baby: 'lens', mom: 'heart', dad: 'camera' };
@@ -397,8 +398,19 @@ function eventHat() {
   if (md === '05-05') return ['party', '어린이날'];
   return null;
 }
-function skin() { const s = st(); if (s.hat !== 'det') return s.hat; const e = S.profile ? eventHat() : null; return e ? e[0] : 'det'; }
+function skin() { const s = st(), h = s.hat || 'det'; if (h !== 'det' && h !== 'none') return h; const e = S.profile ? eventHat() : null; return e ? e[0] : h; }   // 기본 모자(탐정·코난 모자 없음)일 때만 명절·생일 모자
 
+// 2026.10.11 컨셉(사용자 요청): 소은=코난, 아빠=셜록 홈즈, 엄마=왓슨 — 처음 한 번 두 폰 같이 그 옷으로 갈아입혀요 (game/shared look 칸, 산 물건은 그대로, 꾸미기에서 언제든 바꿔요)
+let looking = false;
+function lookOnce() {
+  const g = S.game; if (!g || !g.srv || g.look || looking || !canWrite() || !local().synced) return;   // 이 폰 것을 가족 저장에 합친 뒤에 (합치기와 겹치지 않게)
+  const s = st();
+  looking = true;
+  const o = { look: 'holmes', hat: 'none', hatOf: Object.assign({}, s.hatOf || {}, { mom: 'bowler', dad: 'deer' }), wear: Object.assign({}, s.wear || {}, { baby: 'conan', mom: 'watson', dad: 'sherlock' }), propOf: Object.assign({}, s.propOf || {}, { baby: 'lens', mom: 'note', dad: 'lens' }) };
+  Object.assign(g, clone(o));
+  run('saveGame', o, 0, undefined, 'look').then(() => { setTimeout(() => toast('🕵️ 소은=코난, 아빠=셜록, 엄마=왓슨으로 갈아입었어요!\n꾸미기에서 언제든 바꿀 수 있어요'), 800); render(); })
+    .catch(() => { if (window.__app && __app.refresh) __app.refresh(); }).finally(() => { looking = false; });   // 다른 폰이 먼저 했으면 그쪽 모습으로
+}
 // ---------- 방 꾸미기는 room.js (ROOMS) ----------
 const roomSvg = () => window.ROOMS ? ROOMS.svg() : '';
 

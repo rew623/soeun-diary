@@ -45,6 +45,10 @@ const HATS = {
   tiara: '<path d="M34 37l4-12 6 7 10-14 10 14 6-7 4 12z" fill="#F4E08A" stroke="#C99A1E" stroke-width="1.5" stroke-linejoin="round"/><circle cx="54" cy="27" r="3" fill="#F49CB8"/><circle cx="41" cy="32" r="1.8" fill="#7FC4E8"/><circle cx="67" cy="32" r="1.8" fill="#7FC4E8"/>',
   antler: '<path d="M27 38q27-24 54 0" stroke="#8C5530" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M36 30l-6-16M33 22l-7-3M32 17l2-7M72 30l6-16M75 22l7-3M76 17l-2-7" stroke="#A0703F" stroke-width="3.2" fill="none" stroke-linecap="round"/><circle cx="46" cy="31" r="2.4" fill="#3E8E5A"/><circle cx="49" cy="29.5" r="1.8" fill="#D9473D"/>',
   elfhat: '<path d="M30 39Q54 31 78 39L64 15Q58 5 44 3Q52 11 50 19Z" fill="#3E8E5A"/><path d="M28 37q26-8 52 0v5q-26-8-52 0z" fill="#F4C542"/><circle cx="44" cy="3.5" r="3.4" fill="#F4C542" stroke="#C99A1E"/>',
+  // 2026.10.11 컨셉: 셜록(아빠)의 사냥모자 · 왓슨(엄마)의 보울러 모자 · 코난(소은)은 모자 없이
+  none: '',
+  deer: '<path d="M29 39Q31 15 54 14Q77 15 79 39Z" fill="#A27B4C"/><path d="M33 25h42M31 31h46" stroke="#7E5C34" stroke-width="1.3" stroke-dasharray="2 2.4" opacity=".85"/><path d="M42 16q-3 11-1 23M66 16q3 11 1 23M54 14v25" stroke="#7E5C34" stroke-width="1.2" fill="none" opacity=".6"/><path d="M37 38Q54 47 71 38l1 4.5Q54 52 36 42.5Z" fill="#87633A"/><path d="M31 38q-5-9 2-17M77 38q5-9-2-17" stroke="#87633A" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M54 14c-5-5-10-2-8 1s6 1 8-1zM54 14c5-5 10-2 8 1s-6 1-8-1z" fill="#6E4F2C"/><circle cx="54" cy="14" r="1.9" fill="#5A3E20"/>',
+  bowler: '<g transform="rotate(-6 54 34)"><ellipse cx="54" cy="37" rx="25" ry="5" fill="#3A2E2A"/><path d="M38 37Q37 15 54 15Q71 15 70 37Z" fill="#4A3B35"/><path d="M38.4 31h31.2v4.2H38.4z" fill="#8E2B3A"/><path d="M44 21q4-3.4 9-3.4" stroke="#6E5A52" stroke-width="2" fill="none" stroke-linecap="round"/><ellipse cx="69" cy="31.5" rx="4" ry="2.6" fill="#F49CB8" transform="rotate(-30 69 31.5)"/><ellipse cx="73" cy="34" rx="4" ry="2.6" fill="#F7B3C8" transform="rotate(25 73 34)"/><circle cx="70.6" cy="33" r="1.8" fill="#E07A9A"/></g>',
   chef: '<ellipse cx="45" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="63" cy="20" rx="10" ry="9" fill="#fff" stroke="#E0C9A2"/><ellipse cx="54" cy="15" rx="11" ry="9" fill="#fff" stroke="#E0C9A2"/><rect x="38" y="24" width="32" height="13" rx="3" fill="#fff" stroke="#E0C9A2"/>'
 };
 // 옷 (도토리로 사서 소은·엄마·아빠 따로 입히기, GAME.wear(who)) — 몸통 타원 안에 맞춰 그림(clip), 밖으로 나오는 건 out
@@ -73,6 +77,10 @@ const OUTFITS = {
   rudolph: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#A0703F"/><ellipse cx="54" cy="102" rx="13" ry="12" fill="#E8C9A0"/></g><path d="M42 86q12 7 24 0" stroke="#B3261E" stroke-width="3.2" fill="none" stroke-linecap="round"/><circle cx="54" cy="91" r="3.4" fill="#F4C542" stroke="#C99A1E"/><path d="M52.5 92h3" stroke="#C99A1E" stroke-width="1"/>`,
   elf: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#3E8E5A"/><path d="M28 106l6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6v18H28z" fill="#F4C542"/><rect x="28" y="95" width="52" height="4" fill="#2B2622"/><rect x="51" y="94" width="6" height="6" rx="1" fill="none" stroke="#F4C542" stroke-width="1.5"/></g><path d="M43 81l11 8 11-8" stroke="#D9473D" stroke-width="3" fill="none" stroke-linecap="round"/>`,
   santaDress: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#D9473D"/><rect x="51" y="80" width="6" height="18" fill="#fff"/></g><path d="M33 99q21 5 42 0l9 13q-30 9-60 0z" fill="#D9473D"/><path d="M24 112q30 9 60 0" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round"/><circle cx="54" cy="85" r="1.8" fill="#D9473D"/><circle cx="54" cy="92" r="1.8" fill="#D9473D"/>`,
+  // 코난(파란 재킷·빨간 나비넥타이·반바지, 동그란 안경은 svg에서) · 셜록(체크무늬 망토 코트) · 왓슨(올리브 트위드 재킷·크라바트·청진기)
+  conan: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#2F5DA8"/><rect x="28" y="104" width="52" height="12" fill="#5C6E8F"/><path d="M45 76l9 20 9-20z" fill="#fff"/><path d="M44 76l10 20-6 4-8-21zM64 76l-10 20 6 4 8-21z" fill="#24498A"/><circle cx="58.5" cy="98" r="1.4" fill="#E0B341"/><circle cx="58.5" cy="102.5" r="1.4" fill="#E0B341"/></g><path d="M47 82l7 3.2 7-3.2-.8 6.2-6.2-2.5-6.2 2.5z" fill="#D9302C"/><circle cx="54" cy="85.3" r="1.9" fill="#A61E1A"/>`,
+  sherlock: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#8A6A45"/>${[36, 46, 56, 66, 76].map(x => `<path d="M${x} 74v42" stroke="#6F5234" stroke-width="1" opacity=".55"/>`).join('')}${[86, 96, 106].map(y => `<path d="M28 ${y}h52" stroke="#6F5234" stroke-width="1" opacity=".55"/>`).join('')}<path d="M28 78q26-8 52 0v18q-26 9-52 0z" fill="#9A7853"/>${[38, 48, 60, 70].map(x => `<path d="M${x} 75v24" stroke="#7A5C3A" stroke-width="1" opacity=".6"/>`).join('')}<path d="M28 88h52" stroke="#7A5C3A" stroke-width="1" opacity=".6"/><path d="M28 96q26 9 52 0" stroke="#6F5234" stroke-width="1.6" fill="none"/><path d="M45 75l9 8 9-8" stroke="#5A4128" stroke-width="3.2" fill="none" stroke-linejoin="round"/></g><circle cx="54" cy="91" r="1.6" fill="#4A3520"/><circle cx="54" cy="97" r="1.6" fill="#4A3520"/>`,
+  watson: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#77754B"/>${[[34, 88], [40, 101], [71, 92], [66, 107], [35, 109], [73, 82], [44, 112]].map(([x, y]) => `<path d="M${x} ${y}l3-2" stroke="#5E5C38" stroke-width="1.2"/>`).join('')}<path d="M45 76l9 18 9-18z" fill="#F6F1E4"/><path d="M44 76l10 18-5 5-8-21zM64 76l-10 18 5 5 8-21z" fill="#62603A"/><rect x="50" y="95" width="8" height="16" rx="1" fill="#8C6A45"/><circle cx="54" cy="100" r="1" fill="#E0C9A2"/><circle cx="54" cy="105" r="1" fill="#E0C9A2"/></g><path d="M50 80q4 3 8 0l-1.2 6.4q-2.8 1.6-5.6 0z" fill="#8E2B3A"/><path d="M41 80q-5 12 3 21M67 80q5 12-3 21" stroke="#A3ACB6" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="44" cy="102" r="2.8" fill="#D3D8DD" stroke="#A3ACB6" stroke-width="1.2"/>`,
   cardigan: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#FFFDF7"/><rect x="28" y="74" width="20" height="42" fill="#C9A7D9"/><rect x="60" y="74" width="20" height="42" fill="#C9A7D9"/><rect x="28" y="110" width="52" height="6" fill="#B691C9"/></g>${[90, 98, 106].map(y => `<circle cx="49" cy="${y}" r="1.7" fill="#fff" stroke="#B691C9"/>`).join('')}`
 };
 // 괴도 깍정이 — 도토리를 노리는 괴도 다람쥐 (무표정한 까만 눈 + 흰 실크햇·외눈 안경·망토, 직접 만든 캐릭터)
@@ -101,7 +109,7 @@ function svg(who = 'baby', prop = '', o = {}) {
   if (who === 'thief') return thiefSvg(prop, o);
   const f = FUR[who] || FUR.baby, d = DARK[who] || DARK.baby, size = o.size || 72;
   const vb = o.face ? '16 12 76 76' : '0 0 120 120';
-  const wear = o.face ? '' : o.outfit != null ? o.outfit : (window.GAME && GAME.wear ? GAME.wear(who) : '');
+  const worn = o.outfit != null ? o.outfit : (window.GAME && GAME.wear ? GAME.wear(who) : ''), wear = o.face ? '' : worn;   // 얼굴만 그릴 때도 안경은 옷 따라 (코난)
   const tail = o.face ? '' : `<path d="M70 100c34 0 44-32 30-52-9-13-27-10-25 5" fill="none" stroke="${d}" stroke-width="24" stroke-linecap="round"/><path d="M72 99c26-2 34-28 24-44-6-9-17-7-17 2" fill="none" stroke="#F0B67E" stroke-width="9" stroke-linecap="round" opacity=".75"/>`;
   const body = o.face ? '' : `<ellipse cx="54" cy="95" rx="24" ry="20" fill="${f}"/><ellipse cx="54" cy="99" rx="14" ry="13" fill="#FCEBD3"/>
     <ellipse cx="43" cy="114" rx="8" ry="4.5" fill="${d}"/><ellipse cx="65" cy="114" rx="8" ry="4.5" fill="${d}"/>
@@ -126,11 +134,14 @@ function svg(who = 'baby', prop = '', o = {}) {
   let hat = '';
   // 소은: 산 모자(명절·생일엔 저절로) / 엄마·아빠: GAME.hatOf(who)로 고른 모자, 없으면 원래 리본·중절모
   const skin = who === 'baby' ? (o.hat || (window.GAME && GAME.skin ? GAME.skin() : 'det')) : (o.hat != null ? o.hat : (window.GAME && GAME.hatOf ? GAME.hatOf(who) : ''));
-  if (skin && HATS[skin]) hat = HATS[skin];
+  if (skin === 'none') hat = '';
+  else if (skin && HATS[skin]) hat = HATS[skin];
   else if (who === 'baby') hat = HATS.det;
   else if (who === 'mom') hat = `<path d="M24 30l-10-7v14zM24 30l10-7v14z" fill="#B3261E"/><circle cx="24" cy="30" r="3.2" fill="#D9473D"/>`;
   else if (who === 'dad') hat = `<ellipse cx="54" cy="36" rx="32" ry="6.5" fill="#1F2A44"/><path d="M37 36q0-21 17-21t17 21z" fill="#1F2A44"/><path d="M37.5 30h33v5h-33z" fill="#B3261E"/><path d="M48 18q6 4 12 0" stroke="#2E3B5C" stroke-width="2" fill="none"/>`;
-  const glasses = who === 'dad' ? `<circle cx="42" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><circle cx="66" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><path d="M50.5 55h7" stroke="#1F2A44" stroke-width="2.4"/>` : '';
+  // 안경: 코난 옷이면 크고 동그란 까만 안경 · 아빠는 셜록 코트가 아닐 때만 원래 안경
+  const glasses = worn === 'conan' ? `<g fill="none" stroke="#1E1E26" stroke-width="2.8"><circle cx="42" cy="55" r="9.8"/><circle cx="66" cy="55" r="9.8"/><path d="M51.8 54.4q2.2-1.6 4.4 0M32.2 54l-4.6-2.2M75.8 54l4.6-2.2"/></g><path d="M36.5 49.6a7 7 0 0 1 4.2-2.6M60.5 49.6a7 7 0 0 1 4.2-2.6" stroke="#fff" stroke-width="1.5" fill="none" opacity=".75" stroke-linecap="round"/>`
+    : who === 'dad' && worn !== 'sherlock' ? `<circle cx="42" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><circle cx="66" cy="55" r="8.5" fill="none" stroke="#1F2A44" stroke-width="2.4"/><path d="M50.5 55h7" stroke="#1F2A44" stroke-width="2.4"/>` : '';
   const bandage = prop === 'thermo' || prop === 'shield' ? `<g transform="rotate(-22 70 38)"><rect x="61" y="35" width="18" height="7" rx="3.5" fill="#F6C9A8"/><rect x="67" y="35" width="6" height="7" fill="#EDB48D"/></g>` : '';
   return `<svg class="chr" width="${size}" height="${size}" viewBox="${vb}" aria-hidden="true">${tail}${body}${ears}${head}${face}${glasses}${hat}${bandage}</svg>`;
 }
@@ -193,67 +204,79 @@ function talkLines(who) {
   const n = nick(), sh = short(), d = S.profile && S.profile.birth ? daysBetween(S.profile.birth, today()) + 1 : 1, h = hourK();
   const th = window.WANTED && WANTED.stat ? (() => { try { return WANTED.stat(WANTED.monday(today())); } catch (e) { return null; } })() : null;
   const chase = th ? (th.caught ? `이번 주 괴도 깍정이는 아슬아슬하게 놓쳤지만, 훔친 걸 되찾았어요!` : `괴도 깍정이까지 남은 거리 ${th.left}m! 오늘 기록 하나면 더 가까워져요.`) : '';
+  const jo = (w, x, y) => { const c = String(w).slice(-1).charCodeAt(0); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? x : y; };
+  // 소은 = 코난 (동그란 안경·나비넥타이), 아빠 = 셜록 홈즈, 엄마 = 왓슨 (2026.10.11 사용자 요청)
   if (who === 'baby') return [
     '진실은 언제나 하나! …그리고 맘마 시간도 언제나 지금!',
     `몸은 아기, 두뇌는 명탐정! ${sh} 탐정 등장!`,
+    '이 안경만 있으면 범인 얼굴이 다 보여요. 지금은… 셜록 아빠 얼굴이네요.',
+    '나비넥타이 변성기는 없지만 옹알이 변성기는 있어요. 아부부부…',
+    '시계형 마취총 대신 하품 한 방이면 셜록 아빠도 쿨쿨!',
+    '셜록 아빠, 이번 사건은 제가 먼저 풀었어요!',
+    '왓슨 엄마, 오늘 사건도 수첩에 꼭 적어 주세요!',
     '불가능한 걸 모두 지우고 남은 게 진실이에요. 즉… 기저귀가 젖었어요.',
-    '기본이죠, 아빠 수사관. 이 정도 추리쯤은.',
     '게임이 시작됐어요! 괴도 깍정이, 이번엔 놓치지 않아!',
+    '범인은 이 안에 있어요! …셜록 아빠, 입가에 과자 부스러기.',
     '작은 단서도 놓치면 안 돼요. 소파 밑 쪽쪽이 같은 거요.',
-    '범인은 이 안에 있어요! …아빠, 입가에 과자 부스러기.',
-    '시계형 마취총은 없지만, 하품 한 방이면 수사관 전원 졸음 유발!',
-    '나비넥타이 변성기 대신 옹알이 변성기를 쓰고 있어요. 아부부부…',
-    '베이커가 221B보다 우리 집 거실이 좋아요. 맘마가 있거든요.',
-    '보는 것과 관찰하는 건 달라요. 엄마, 오늘 머리 묶으셨네요!',
+    '보는 것과 관찰하는 건 달라요. 왓슨 엄마, 오늘 머리 묶으셨네요!',
     '추리 완료! 결론: 지금 안아 주면 사건 해결.',
     `수사 ${d}일째. 아직 미해결 사건: 아빠 양말 한 짝 실종.`,
     '명탐정은 낮잠도 수사의 일부예요. 쿨쿨…',
     '흔적은 거짓말을 안 해요. 이 침 자국… 범인은 바로 저예요!',
-    '용의자 발견! 거울 속 귀여운 아기… 앗, 저잖아?',
     '깍정이의 예고장에서 도토리 냄새가 나요. 킁킁, 단서 확보!',
-    '사소한 것 속에 진실이 숨어 있어요. 사진 한 장도 큰 단서!',
     '돋보기로 보니… 엄마 얼굴에 사랑이 잔뜩 묻었어요.',
-    '왓슨… 아니 아빠! 우유 대령해 주세요.',
     chase,
-    h >= 21 || h < 5 ? '쉿… 밤엔 잠복 근무 중. 깍정이는 밤에 움직이거든요.' : h < 10 ? '좋은 아침, 수사관님들! 오늘의 첫 단서는 제 웃음이에요.' : '오늘도 사건 현장(놀이 매트)으로 출동! 탐정 배지 반짝반짝.'
+    h >= 21 || h < 5 ? '쉿… 밤엔 잠복 근무 중. 깍정이는 밤에 움직이거든요.' : h < 10 ? '좋은 아침, 셜록 아빠·왓슨 엄마! 오늘의 첫 단서는 제 웃음이에요.' : '오늘도 사건 현장(놀이 매트)으로 출동! 안경 반짝반짝.'
   ].filter(Boolean);
   if (who === 'mom') return [
+    '홈즈… 아니 아빠, 또 혼자 추리하지 말고 같이 해요.',
+    '기록은 제가 할게요. 왓슨은 원래 기록 담당이니까요!',
+    '의사 왓슨의 진단: 탐정님 오늘 컨디션 최고!',
+    '이 사건, 제 수첩에 "소은 탐정의 모험"으로 남겨 둘게요.',
+    '셜록 아빠가 또 졸고 있네요. 사건은 우리가 풀어요, 탐정님.',
+    '왓슨의 왕진 가방: 기저귀·물티슈·손수건 준비 완료!',
+    '청진기로 들어 보니… 탐정님 심장이 "엄마 좋아" 하고 뛰어요.',
     '탐정님, 오늘 증거 사진 확보 완료! 📸',
-    '깍정이 발자국이 베란다에서 끊겼어요. 탐정님 판단은요?',
-    '수사도 좋지만 먼저 맘마부터 드시죠, 탐정님.',
     '보고합니다. 오늘 탐정님 귀여움 수치… 측정 불가!',
-    '기록은 제가 꼼꼼히. 그래프는 거짓말을 안 하거든요.',
-    '탐정님이 웃으면 그날 사건은 다 해결된 기분이에요.',
     '예고장 분석 결과, 깍정이는 꼭 일요일 밤에 나타나요.',
     '지문 채취 완료… 아, 이건 탐정님 침이네요.',
-    '현장 보존! …이라고 하고 싶지만 장난감은 정리할게요.',
-    '아빠 수사관, 잠복 중에 또 졸았죠? 다 봤어요.',
-    '탐정님 손톱 정리 작전, 오늘 밤 극비리에 진행합니다.',
     `${n}가 태어난 지 ${d}일. 하루하루가 최고의 증거예요.`,
     '깍정이가 아무리 날쌔도 우리 셋 팀워크는 못 이겨요.',
     '새벽 출동도 괜찮아요. 탐정님 숨소리가 제일 좋은 소리니까.',
     chase
   ].filter(Boolean);
   if (who === 'dad') return [
-    `명탐정 ${sh} 님의 조수, 아빠 수사관 대기 중!`,
-    '범인은… 저 아니에요. 과자는 진짜 몰라요.',
-    '잠복근무 중… 사실 조금 졸려요.',
-    '깍정이 발견! …인 줄 알았는데 다람쥐 인형이었어요.',
-    '현장 출동 준비 완료! 유모차 바퀴 공기압 정상.',
-    '체력은 자신 있어요. 목말이든 비행기든 맡겨만 주세요!',
-    '잠든 척하고 있으면 사건이 저절로 풀릴지도… 어디서 본 수법인데.',
-    '추리는 탐정님이, 힘쓰는 건 제가!',
-    '아빠 수사관 보고: 기저귀 상황 이상 무… 아, 이상 있음!',
+    '왓슨, 이건 아주 기초적인 추리일세.',
+    '게임이 시작됐네! 사냥모자를 쓰니 추리가 술술 풀리는군.',
+    '불가능한 것을 지우면 남는 것이 진실이지. 지금 남은 건… 기저귀일세.',
+    '코난 군… 아니 소은 탐정, 오늘은 자네가 나보다 한 수 위야.',
+    '베이커가 221B보다 우리 집 거실이 최고의 탐정 사무소지.',
+    '바이올린 대신 자장가를 켜 볼까? 탐정님 잠복 시간이야.',
+    '관찰 결과: 왓슨이 오늘 커피를 세 잔째 마셨군.',
+    '사건 해결의 열쇠는 늘 사소한 데 있지. 예를 들면 탐정님의 딸꾹질.',
+    '셜록 보고: 기저귀 상황 이상 무… 아, 이상 있음!',
+    '잠든 척하면 사건이 저절로 풀릴지도… 어디서 본 수법인데.',
+    `명탐정 ${sh} 님의 파트너, 셜록 아빠 대기 중!`,
+    '깍정이 녀석, 실크햇 하나는 인정하지. 하지만 잡히는 건 시간문제야.',
     '오늘도 탐정님 볼에 뽀뽀 지문 남기기 성공.',
-    '깍정이 녀석, 모자 하나는 멋지더라… 아, 아닙니다 탐정님!',
-    '탐정님 웃음소리 녹음해 뒀어요. 출근길 증거 자료로.',
-    '제 돋보기 어디 갔지? …머리 위에 있었네.',
-    '주말엔 탐문 출동! 유모차 운전은 제가 할게요.',
-    '탐정님 따라 뒤집기 연습 중인데, 허리가 비명을 질러요.',
     chase
   ].filter(Boolean);
-  // 괴도 깍정이는 말을 안 해요 (예고장·몸짓만)
-  return ['……(말없이 실크햇을 살짝 기울인다)', '……(외눈 안경이 반짝, 그리고 사라졌다)', '🎩 예고장: 잡을 수 있다면 잡아 보시죠, 탐정님.', '……(망토를 펄럭이며 창밖으로)', '🎩 오늘 밤 도토리 한 알을 접수하겠습니다.'];
+  // 괴도 깍정이: 말은 아끼고 예고장·몸짓으로 (이번 주 추적 상황 반영)
+  const tg = th && window.WANTED && WANTED.target ? WANTED.target(th.v) : '';
+  return [
+    '……(말없이 실크햇을 살짝 들어 인사한다)',
+    '🎩 예고장 — 오늘 밤, 탐정님의 쪽쪽이를 잠시 빌려 가겠습니다.',
+    tg ? `🎩 예고장 — 이번 주 일요일 자정, ${tg}${jo(tg, '을', '를')} 가지러 가겠습니다.` : '',
+    '……(외눈 안경이 반짝, 다음 순간 커튼만 흔들렸다)',
+    '🎩 잡을 수 있다면 잡아 보시죠, 꼬마 탐정님. 단서는 이미 드렸습니다.',
+    '……(창틀에 도토리 한 알을 두고 사라졌다)',
+    '🎩 셜록 씨, 그 사냥모자 잘 어울리십니다. 하지만 저는 못 잡으실걸요.',
+    '🎩 왓슨 씨의 기록은 정말 꼼꼼하군요… 조심해야겠습니다.',
+    '🎩 코난 군… 아니 소은 탐정, 그 동그란 안경 너머로 다 보이시나요?',
+    '……(망토를 펄럭이며 지붕 위로 사라졌다)',
+    th && th.caught ? '🎩 이번 주는 아슬아슬했습니다. 다음 예고장을 기다리시죠.' : th ? `🎩 단서가 ${th.left}m만 더 모이면… 아니, 아무것도 아닙니다.` : '',
+    h >= 21 || h < 5 ? '🎩 달이 밝은 밤이군요. 괴도가 일하기 딱 좋은.' : '🎩 낮에는 쉽니다. 괴도는 밤의 신사거든요.'
+  ].filter(Boolean);
 }
 const TK = {};
 // 같은 말이 연달아 나오지 않게 섞어서 차례로
@@ -262,7 +285,7 @@ function talk(who) {
   let q = TK[who]; if (!q || !q.left.length || q.n !== L.length) { const ord = L.map((_, i) => i); for (let i = ord.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ord[i], ord[j]] = [ord[j], ord[i]]; } if (q && ord[0] === q.last && ord.length > 1) ord.push(ord.shift()); q = TK[who] = { left: ord, n: L.length, last: -1 }; }
   const i = q.left.shift(); q.last = i; return L[i];
 }
-const TNAME = { baby: () => `${short()} 탐정`, mom: () => '엄마 수사관', dad: () => '아빠 수사관', thief: () => '괴도 깍정이' };
+const TNAME = { baby: () => `${short()} 탐정`, mom: () => '왓슨 엄마', dad: () => '셜록 아빠', thief: () => '괴도 깍정이' };
 const seen = {};
 const hash = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
 function guide(tab) {
@@ -272,7 +295,7 @@ function guide(tab) {
   // 성장 수사(첫 화면)는 소은 탐정의 방 (도토리 놀이터 > 꾸미기에서 도토리로 산 가구·벽지가 보여요)
   // '방 꾸미기'는 방 바로 아래 오른쪽에 걸쳐 둬요 (말풍선 안에 있으면 캐릭터가 하는 말 같아서 — 사용자 요청)
   if (tab === 'grow' && window.GAME && GAME.roomSvg) return `<div class="guide ghome g-${who}" aria-live="polite"><div class="groomwrap"><button class="gchar groomb" data-guide="${tab}" aria-label="다음 말 듣기">${GAME.roomSvg()}</button><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button></div>
-    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><div class="gfoot"><small>${L.length > 1 ? `${i + 1}/${L.length} · ` : ''}식구를 누르면 한마디 · 빈 곳은 다음 안내</small></div></div></div>`;
+    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><div class="gfoot"><small>${L.length > 1 ? `${i + 1}/${L.length} · ` : ''}식구·깍정이를 누르면 한마디 · 빈 곳은 다음 안내</small></div></div></div>`;
   return `<div class="guide g-${who}" aria-live="polite"><button class="gchar" data-guide="${tab}" aria-label="다음 말 듣기">${svg(who, prop, { size: 84 })}</button>
     <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 저를 누르면 다음 말` : ''}</small></div></div>`;
 }
@@ -291,7 +314,7 @@ function say(box, who, el) {
   const bub = box.querySelector('.gbub'), nb = bub && bub.querySelector('b'), p = bub && bub.querySelector('p'); if (!nb || !p) return;
   box.classList.remove('g-baby', 'g-mom', 'g-dad', 'g-thief'); box.classList.add('g-' + who);
   nb.textContent = TNAME[who](); p.textContent = txt;
-  const sm = bub.querySelector('.gfoot small'); if (sm) sm.textContent = '식구를 누르면 한마디 · 빈 곳을 누르면 다음 안내';
+  const sm = bub.querySelector('.gfoot small'); if (sm) { if (who === 'thief' && window.WANTED) sm.innerHTML = '<button class="gtcard" data-wt="open">🎩 이번 주 예고장 보기 ›</button>'; else sm.textContent = '식구·깍정이를 누르면 한마디 · 빈 곳은 다음 안내'; }
   bub.classList.remove('say'); void bub.offsetWidth; bub.classList.add('say');
   if (el) { el.classList.remove('ttalk'); void el.getBoundingClientRect(); el.classList.add('ttalk'); setTimeout(() => el.classList.remove('ttalk'), 700); }
 }
@@ -322,7 +345,8 @@ css.textContent = `
 .ghedit{flex-shrink:0;border:1.5px solid var(--line);border-radius:99px;background:#FFFDF7;font-size:12px;padding:3px 10px;min-height:30px;color:var(--ink)}
 .guide.ghome.hop .gchar{animation:none}
 @keyframes gbob{0%,100%{transform:none}50%{transform:translateY(-2px) rotate(1.5deg)}}
-.gbub.say{animation:gpop .3s ease-out}.g-thief .gbub b{color:#5E5966}
+.gbub.say{animation:gpop .3s ease-out}.g-thief .gbub b{color:#5E5966}.g-thief .gbub{background:#FBFAF6;border-color:#D6CFC3}
+.gtcard{border:1.5px solid #D6CFC3;background:#fff;border-radius:99px;padding:3px 12px;min-height:32px;font-size:12.5px;color:#5E5966}
 .groom .ttalk .rbod{animation:rtalk .6s cubic-bezier(.3,1.6,.5,1);transform-box:fill-box;transform-origin:50% 100%}
 @keyframes rtalk{0%{transform:none}35%{transform:translateY(-8%) scale(1.06,.96)}70%{transform:translateY(0) scale(.97,1.03)}100%{transform:none}}
 @media (prefers-reduced-motion:reduce){.gchar .chr,.guide.hop .gchar,.guide.hop .gbub{animation:none}}

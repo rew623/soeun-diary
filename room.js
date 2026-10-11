@@ -323,7 +323,7 @@ document.addEventListener('click', e => {
   const pg = e.target.closest('#ghomeshop [data-mv=baby], #ghomeshop [data-mv=mom], #ghomeshop [data-mv=dad]');
   if (pg && !R.edit && window.GAME && GAME.kitFor) { GAME.kitFor(pg.dataset.mv); return; }
   const tf = e.target.closest('[data-thief]');
-  if (tf && !e.target.closest('.groom-edit')) { if (window.WANTED) { S.view = 'wanted'; render(); window.scrollTo(0, 0); } return; }
+  if (tf && !e.target.closest('.groom-edit')) { const gb = tf.closest('.ghome'); if (gb && window.CHARS && CHARS.say) CHARS.say(gb, 'thief', tf); else if (window.WANTED) { S.view = 'wanted'; render(); window.scrollTo(0, 0); } return; }   // 첫 화면 방에선 깍정이의 한마디(예고장)
   const fx = e.target.closest('[data-rfx]');
   if (fx && !e.target.closest('.groom-edit')) { const f = FX[fx.dataset.rfx]; if (f) f(); return; }
   const pk = e.target.closest('[data-roompick]'); if (pk) { const s = state(); s.pic = pk.dataset.roompick; save(s); closeSheet(); render(); toast('액자 사진을 바꿨어요'); return; }
@@ -398,7 +398,7 @@ css.textContent = `
 .rsize button{min-width:42px;min-height:38px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-size:20px;font-family:var(--display);color:var(--navy)}.rsize button:disabled{opacity:.35}
 .rsize .rsz0{font-size:12.5px;font-family:var(--body);min-width:0;padding:0 10px}.rsize span{min-width:44px;text-align:center;font-family:var(--display);font-size:16px;color:var(--red)}
 .rsize.none{color:var(--muted);font-size:13px;border-style:dashed;border-color:var(--line)}
-.rfx{cursor:pointer}.rthief{cursor:pointer}.rthief .rpk{animation:rpeek 5s ease-in-out infinite}@keyframes rpeek{0%,55%,100%{transform:translateY(9px)}65%,90%{transform:none}}@media (prefers-reduced-motion:reduce){.rthief .rpk{animation:none}}.rnotes,.rwave{opacity:0;transition:opacity .3s}.rnotes.on,.rwave.on{opacity:1;animation:rbob 1s ease-in-out infinite}
+.rfx{cursor:pointer}.rthief{cursor:pointer}.rthief .rpk{animation:rpeek 5s ease-in-out infinite}.groom .rthief.ttalk .rpk{animation:rtip .6s ease-in-out}@keyframes rtip{0%,100%{transform:none}30%{transform:translateY(-3px) rotate(-6deg)}60%{transform:translateY(-1px) rotate(4deg)}}@keyframes rpeek{0%,55%,100%{transform:translateY(9px)}65%,90%{transform:none}}@media (prefers-reduced-motion:reduce){.rthief .rpk{animation:none}}.rnotes,.rwave{opacity:0;transition:opacity .3s}.rnotes.on,.rwave.on{opacity:1;animation:rbob 1s ease-in-out infinite}
 @keyframes rbob{50%{transform:translateY(-3px)}}
 .rtw{animation:rtw .6s ease-in-out infinite alternate}@keyframes rtw{from{opacity:.35}to{opacity:1}}
 .rbar{display:flex;justify-content:flex-end;margin:8px 0 0}.rbar .ghost{font-size:12.5px;min-height:34px}
