@@ -1,0 +1,34 @@
+# 수유 알람: 마지막 수유 + 낮/밤 간격이 되면 폰으로 알려요 (10분마다 확인 — GitHub가 바쁘면 조금 늦을 수 있어요)
+name: 수유 알람 보내기
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '1이면 보내지 않고 보낼 게 있는지만 봐요'
+        default: '0'
+
+concurrency:
+  group: feed
+  cancel-in-progress: true
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: firebase-admin 설치
+        run: npm install --no-save --no-package-lock --no-audit --no-fund firebase-admin@12
+      - name: 수유 알람
+        run: node .github/scripts/feed.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY: ${{ inputs.dry || '0' }}

@@ -68,6 +68,46 @@ function sleptMin(L, date) {
   I.forEach(([s, f]) => { if (s > ce) { sum += ce - cs; cs = s; ce = f; } else ce = Math.max(ce, f); });
   return (sum + ce - cs) / 60000;
 }
+// ---------- 수유 알람: 다음 수유 예정 (마지막 분유·모유·유축 + 낮/밤 간격, 두 폰 같이 game/shared feed) ----------
+// 알림은 .github/workflows/feed.yml이 10분마다 확인해서 보내요 (.github/scripts/feed.mjs — 계산은 여기와 같게)
+const FD = { on: 0, day: 4, night: 7, ns: '20:00', ne: '06:00', pre: 10 };
+const feedCfg = () => Object.assign({}, FD, (window.GAME && GAME.store && GAME.store.get().feed) || {});
+const inNight = (hm, c) => c.ns <= c.ne ? hm >= c.ns && hm < c.ne : hm >= c.ns || hm < c.ne;
+function nextFeed() {
+  const c = feedCfg(), L = evs().filter(e => e.src === 'care' && ['formula', 'breast', 'pump'].includes(e.k) && e.s <= Date.now()), last = L[L.length - 1];
+  if (!last) return { c };
+  const night = inNight(last.t, c); return { c, last, night, due: last.s + (night ? c.night : c.day) * 36e5 };
+}
+const leftTxt = due => { const m = Math.round((due - Date.now()) / 60000); return m >= 0 ? `${durTxt(m)} 남음` : `${durTxt(-m)} 지났어요`; };
+function feedBar() {
+  const f = nextFeed(), c = f.c;
+  if (!f.last) return `<button class="dynext" data-dy="feedset"><span>⏰</span><div><small>수유 알람 ${c.on ? '켬' : '꺼짐'}</small><b class="sm">분유·모유를 남기면 다음 수유 시각을 알려 줘요</b></div><i>⚙️</i></button>`;
+  const d = new Date(f.due), dd = ymdOf(d), when = (dd === today() ? '' : dd > today() ? '내일 ' : '') + hmOf(d), late = f.due < Date.now();
+  return `<button class="dynext${late ? ' late' : ''}" data-dy="feedset"><span>⏰</span><div><small>다음 수유 예정 · ${c.on ? '🔔 알람 켬' : '알람 꺼짐'}</small><b>${when}</b><em data-feedleft="${f.due}">${leftTxt(f.due)}</em><small>마지막 수유 ${f.last.t} + ${f.night ? '밤' : '낮'} ${f.night ? c.night : c.day}시간</small></div><i>⚙️</i></button>`;
+}
+function feedSheet() {
+  const c = feedCfg(), cw = canWrite(); let push = ''; try { push = localStorage.getItem('soeun-push') || ''; } catch (e) {}
+  const step = (id, v, d, lab) => `<div class="dyside"><b>${lab}</b><button type="button" data-dy="min" data-t="${id}" data-v="-${d}">−</button><span><input id="${id}" inputmode="decimal" value="${v}"><small>시간</small></span><button type="button" data-dy="min" data-t="${id}" data-v="${d}">＋</button></div>`;
+  openSheet(`<h3>⏰ 수유 알람</h3>
+    <label class="check"><input type="checkbox" id="fa-on" ${c.on ? 'checked' : ''} ${cw ? '' : 'disabled'}> 다음 수유 시간에 알림 받기 <small>(엄마·아빠 폰 같이)</small></label>
+    <p class="hint" style="margin:10px 0 6px">마지막 수유(분유·모유·유축)에서 이만큼 지나면 알려요.</p>
+    ${step('fa-day', c.day, .5, '낮')}${step('fa-night', c.night, .5, '밤<br><small>막수 뒤</small>')}
+    <div class="field"><span>밤으로 칠 시간 <small>(마지막 수유가 이 사이면 밤 간격)</small></span><div class="dytpr">${tpick('fa-ns', c.ns)}${tpick('fa-ne', c.ne)}</div></div>
+    <div class="field"><span>미리 알림</span><div class="quick" id="fa-pre">${[0, 10, 15, 30].map(x => `<button type="button" data-act="pick1" data-v="${x}" class="${+c.pre === x ? 'on' : ''}">${x ? x + '분 전' : '딱 그때'}</button>`).join('')}</div></div>
+    <p class="foot" style="margin:4px 0 10px">알림은 서버가 10분마다 확인해서 보내서 10~30분쯤 늦게 올 수 있어요. 그래서 알림에 <b>수유 예정 시각</b>을 적어 보내요.${push ? ' 이 폰은 알림 받는 중이에요.' : ''}</p>
+    ${push ? '' : '<button type="button" class="ghost" data-fam="push-on" style="width:100%;min-height:46px;margin-bottom:10px">🔔 이 폰에서 알림 받기 켜기</button>'}
+    <p class="err" id="fa-err"></p>
+    <div class="actions"><button class="secondary" data-act="close">닫기</button>${cw ? '<button class="primary" data-dy="feedsave">저장</button>' : ''}</div>`);
+}
+function feedSave() {
+  const v = id => num(($(id) || {}).value), on = $('fa-on') && $('fa-on').checked, pre = document.querySelector('#fa-pre .on');
+  const day = Math.round(v('fa-day') * 2) / 2, night = Math.round(v('fa-night') * 2) / 2, ns = ($('fa-ns') || {}).value, ne = ($('fa-ne') || {}).value;
+  if (!(day >= 1 && day <= 12) || !(night >= 1 && night <= 14)) { $('fa-err').textContent = '간격은 1~12시간(밤은 14시간)으로 적어 주세요'; return; }
+  if (!/^\d\d:\d\d$/.test(ns || '') || !/^\d\d:\d\d$/.test(ne || '')) { $('fa-err').textContent = '밤 시간을 확인해 주세요'; return; }
+  const s = GAME.store.get(); s.feed = { on: on ? 1 : 0, day, night, ns, ne, pre: pre ? +pre.dataset.v : 10 }; GAME.store.set(s);
+  closeSheet(); render(); toast(on ? '⏰ 수유 알람을 켰어요\n엄마·아빠 폰에 같이 와요' : '수유 알람 설정을 저장했어요');
+}
+
 // ---------- 하루 숫자 ----------
 function stats(date) {
   const L = ofDay(date), care = k => L.filter(e => e.src === 'care' && e.k === k);
@@ -148,7 +188,7 @@ function dayLog() {
   }
   const chips = [[st.formula.n, `🍼 분유 ${st.formula.ml}ml · ${st.formula.n}회`], [st.breast.n, `🤱 모유 ${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`], [st.pump.n, `🍶 유축 ${st.pump.ml}ml`], [st.solid.n, `🥣 이유식 ${st.solid.n}회`],
     [st.pee.n, `💧 소변 ${st.pee.n}`], [st.poo.n, `💩 대변 ${st.poo.n}`], [st.sleep.min, `😴 ${durTxt(st.sleep.min)}`], [st.bath.n, `🛁 목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span>${x[1]}</span>`).join('');
-  return `${liveCards()}${quickRow()}
+  return `${liveCards()}${isT ? feedBar() : ''}${quickRow()}
     <section class="dysum">${last}${chips ? `<div class="dychips">${chips}</div>` : `<p class="vempty" style="margin:4px 0">${isT ? '아직 오늘 기록이 없어요. 위 동그란 단추로 남겨요.' : '이날 기록이 없어요.'}</p>`}</section>
     ${L.length ? `<section class="dylist">${L.map(line).join('')}</section>` : ''}`;
 }
@@ -392,8 +432,9 @@ async function endTimer(id, sw) {
 }
 // 진행 중 시간 글자만 고쳐요 (화면 전체를 다시 그리지 않게)
 function tick() {
-  const L = (S.cares || []).filter(c => c.live);
-  if (!L.length || S.tab !== 'day' || S.view) { clearInterval(D.iv); D.iv = 0; return; }
+  const L = (S.cares || []).filter(c => c.live), fl = document.querySelectorAll('[data-feedleft]');
+  if ((!L.length && !fl.length) || S.tab !== 'day' || S.view) { clearInterval(D.iv); D.iv = 0; return; }
+  fl.forEach(el => { el.textContent = leftTxt(+el.dataset.feedleft); el.closest('.dynext').classList.toggle('late', +el.dataset.feedleft < Date.now()); });
   L.forEach(c => {
     const t = Date.now() - msOf(c.date, c.t), txt = c.k === 'breast' ? (() => { const add = c.seg ? (Date.now() - c.seg) / 60000 : 0, l = (+c.l || 0) + (c.side !== 'r' ? add : 0), r = (+c.r || 0) + (c.side === 'r' ? add : 0); return `왼쪽 ${Math.floor(l)}분 · 오른쪽 ${Math.floor(r)}분`; })() : `${durTxt(t / 60000)}째`;
     document.querySelectorAll(`[data-el="${c.id}"]`).forEach(el => { el.textContent = txt; });
@@ -401,7 +442,7 @@ function tick() {
 }
 function afterRender() {
   if (S.tab !== 'day' || S.view) return;
-  tick(); if ((S.cares || []).some(c => c.live) && !D.iv) D.iv = setInterval(tick, 15000);
+  tick(); if (((S.cares || []).some(c => c.live) || document.querySelector('[data-feedleft]')) && !D.iv) D.iv = setInterval(tick, 15000);
 }
 
 document.addEventListener('click', async e => {
@@ -442,6 +483,8 @@ document.addEventListener('click', async e => {
     const box = document.querySelector(`[data-ch="${CSS.escape(key)}"]`); if (box) { const [st, mk] = key.split('.'), M = (METRICS[st] || []).find(x => x[0] === mk); if (M) { const days = [...Array(7)].map((_, i) => addDays(D.wk, i)), vals = days.map(d => M[3](stats(d))), u = st === 'solid' && mk === 'amt' ? (days.map(stats).find(s => s.solid.n) || { solid: { unit: 'g' } }).solid.unit : M[2]; box.innerHTML = bars(key, days, vals, u, st === 'diaper' ? (mk === 'poo' ? K.poo.c : K.pee.c) : K[st].c); } }
     return;
   }
+  if (a === 'feedset') { feedSheet(); return; }
+  if (a === 'feedsave') { feedSave(); return; }
   if (a === 'tip') { const t = $('dy-tip'); if (t && D.tips) t.textContent = D.tips[+v] || ''; return; }
 });
 document.addEventListener('change', e => {
@@ -490,6 +533,10 @@ css.textContent = `
 .dyb{flex:1;min-width:0}.dyb b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}
 .dyb small{display:block;font-size:13px;color:var(--ink);opacity:.85;line-height:1.5}.dyb em{font-style:normal;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:4px;white-space:nowrap}
 .dyrow i{font-style:normal;color:var(--muted);font-size:20px;padding-top:6px}
+.dynext{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#FFFDF7;border:2px solid var(--navy);border-radius:16px;padding:10px 12px;margin:2px 0 12px;box-shadow:0 3px 0 rgba(31,42,68,.15)}
+.dynext>span{font-size:28px}.dynext>div{flex:1;min-width:0}.dynext small{display:block;font-size:12px;color:var(--muted)}
+.dynext b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--navy);margin-right:8px}.dynext b.sm{font-size:15px;display:block}.dynext em{font-style:normal;font-size:14px;color:var(--ink)}
+.dynext.late{border-color:var(--red)}.dynext.late em{color:var(--red);font-weight:700}.dynext>i{font-style:normal;font-size:20px}
 .dyrow.flash{animation:dyflash 2.4s ease-out}@keyframes dyflash{0%,40%{background:#FFE7A8}100%{background:transparent}}
 .dyrow.live{background:color-mix(in srgb,#FFF3E2 70%,transparent);border-radius:12px}
 .dyfl{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}   /* 두 줄로 감아서 고른 칸이 늘 보이게 */
