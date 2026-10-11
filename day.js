@@ -183,9 +183,9 @@ function dayLog() {
   let last = '';
   if (isT) {   // 오늘: 마지막 수유·기저귀·잠 (언제였는지가 제일 궁금하니까 크게)
     const now = Date.now(), A = evs().filter(e => e.s <= now), feed = A.filter(e => ['formula', 'pump', 'breast', 'solid'].includes(e.k)).pop(), dia = A.filter(e => e.k === 'diaper').pop();
-    const sl = A.filter(e => e.k === 'sleep').pop(), sleeping = sl && sl.raw.live;
+    const bath = A.filter(e => e.k === 'bath').pop();
     const box = (ic, lab, e, sub) => `<div><small>${ic} ${lab}</small>${e ? `<b>${e}</b><em>${sub}</em>` : '<b class="no">-</b><em>기록 없음</em>'}</div>`;
-    last = `<p class="dylh">마지막 기록</p><div class="dylast">${box('🍼', '수유', feed && feed.t, feed && agoTxt(feed.s))}${box('🧷', '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${sleeping ? box('😴', '자는 중', sl.t, `<b data-el="${sl.id}"></b>`) : box('😴', '깬 시각', sl && sl.e ? hmOf(new Date(sl.e)) : '', sl && sl.e ? agoTxt(sl.e) : '')}</div>`;
+    last = `<p class="dylh">마지막 기록</p><div class="dylast">${box('🍼', '수유', feed && feed.t, feed && agoTxt(feed.s))}${box('🧷', '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${box('🛁', '목욕', bath && bath.t, bath && agoTxt(bath.s))}</div>`;
   }
   const chips = [[st.formula.n, `🍼 분유 ${st.formula.ml}ml · ${st.formula.n}회`], [st.breast.n, `🤱 모유 ${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`], [st.pump.n, `🍶 유축 ${st.pump.ml}ml`], [st.solid.n, `🥣 이유식 ${st.solid.n}회`],
     [st.pee.n, `💧 소변 ${st.pee.n}`], [st.poo.n, `💩 대변 ${st.poo.n}`], [st.sleep.min, `😴 ${durTxt(st.sleep.min)}`], [st.bath.n, `🛁 목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span>${x[1]}</span>`).join('');
