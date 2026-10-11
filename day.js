@@ -398,6 +398,13 @@ async function save(b) {
 // 다 먹이고 나서 목록에서 눌러 양·메모를 고쳐요. 처음(최근 기록 없음)·메모는 창을 열어요, 수면은 바로 타이머
 async function quickAdd(k, btn) {
   if (!canWrite()) { toast('보기 전용이라 기록은 엄마·아빠 수사관이 남겨요'); return; }
+  if (k === 'med') {   // 투약: 진행 중인 사건이 있고 지난 투약이 있으면 같은 약·용량으로 지금 시각에 바로 (체온은 값이 달라서 창)
+    const lm = (S.logs || []).filter(x => x.kind === 'med').sort((a, b) => (a.at < b.at ? 1 : -1))[0], ep = typeof activeEp === 'function' && activeEp();
+    if (!lm || !ep) { openLog('med'); return; }
+    const now = new Date(), res = await write('saveItem', 'log', { ep: ep.id, kind: 'med', at: ymdOf(now) + 'T' + hmOf(now), value: lm.value, dose: lm.dose || '', site: '', memo: '', by: myRole() });
+    if (!res) return; D.mode = 'day'; D.sub.day = 'log'; D.date = today(); D.flash = res.id; render(); setTimeout(() => { if (D.flash === res.id) D.flash = ''; }, 2600);
+    toast(`💊 ${hmOf(now)} ${lm.value}${lm.dose ? ' ' + lm.dose : ''} 바로 남겼어요\n다르면 목록에서 눌러 고쳐요`); return;
+  }
   if (k === 'sleep') { startTimer('sleep'); return; }
   const last = (S.cares || []).filter(c => c.k === k && !c.live).sort((a, b) => (b.date + b.t).localeCompare(a.date + a.t))[0];
   if (k === 'memo' || !last) { openForm(k, null); return; }
@@ -596,7 +603,7 @@ document.addEventListener('click', async e => {
   if (a === 'add') {
     const k = b.dataset.k;
     if (k === 'solid') { openMeal(null, { date: D.date, tm: D.date === today() ? hmOf(new Date()) : '12:00' }); return; }
-    if (k === 'temp' || k === 'med') { openLog(k); return; }
+    if (k === 'temp') { openLog(k); return; }
     quickAdd(k, b); return;
   }
   if (a === 'edit') { const c = (S.cares || []).find(x => x.id === b.dataset.id); if (c) openForm(c.k, c); return; }
@@ -754,5 +761,5 @@ css.textContent = `
 .dypoo.off{opacity:.4;pointer-events:none}
 .dyamt.sm input{width:90px;font-size:42px}.dyamt.sm small{font-size:18px}`;
 document.head.appendChild(css);
-window.DAY = { render: render_, afterRender, summary, stats, open: (k) => { S.tab = 'day'; S.view = ''; render(); if (k) openForm(k, null); } };
+window.DAY = { render: render_, afterRender, summary, stats, tpick, open: (k) => { S.tab = 'day'; S.view = ''; render(); if (k) openForm(k, null); } };
 })();
