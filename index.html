@@ -328,6 +328,7 @@ body{background:radial-gradient(rgba(185,150,105,.22) 1.3px,transparent 1.6px) 0
 .vhead .seg{margin:12px 0 4px}.vhead h1{font-size:clamp(24px,7.4vw,30px)}
 .seg button.on::after{content:"";position:absolute;left:28%;right:28%;bottom:5px;height:3px;border-radius:99px;background:var(--red);opacity:.75}
 .seg button:not(.on):active{transform:scale(.96);background:rgba(255,253,247,.5)}
+.sseg button.er{color:var(--red)}
 .seg button i{display:block;font-style:normal;font-size:18px;line-height:1.15;margin-bottom:1px}   /* 그림 한 줄 + 글자 한 줄 */
 .seg button:has(i){padding:7px 2px 9px}
 .cnt button,.stepper>button{border-radius:16px}
@@ -885,7 +886,7 @@ function renderSick(){
   const closed=S.eps.filter(e=>e.end).sort((a,b)=>a.start<b.start?1:-1);
   const closedHtml=closed.length?'<h2 class="subh">종결된 사건</h2>'+closed.map(e=>{const L=logsOf(e.id),tm=L.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x)),mc=L.filter(l=>l.kind==='med').length;
     return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><span class="stamp" style="font-size:16px;top:14px">해결</span><b>${esc(e.title)}</b><small>${fmtK(e.start,true)} ~ ${fmtK(e.end,true)}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
-  return `${HOSP.quickHtml()}<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1><p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1><div class="seg sseg"><button class="on"><i>🌡️</i>기록</button><button class="er" data-h="open" data-p="ernight"><i>🚑</i>응급실</button><button data-h="open" data-k="hosp"><i>🏥</i>병원</button><button data-h="open" data-k="ph"><i>💊</i>약국</button></div><p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
   <section><h2 class="sh" style="align-items:center"><span>진료 기록</span><button class="ghost" data-act="editvisit" data-id="">+ 진료 추가</button></h2>${visits}</section>
   ${closedHtml}`;
