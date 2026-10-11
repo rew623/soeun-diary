@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1F2A44">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -30,7 +30,7 @@ html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;o
 input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 img{-webkit-user-drag:none}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}   /* 줄은 낱말(어절) 사이에서만 바꿔요 ('붙이/기'처럼 끊기지 않게), 너무 긴 낱말만 끊어요 */
 button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2.5px solid var(--red);outline-offset:2px}
@@ -183,7 +183,7 @@ section{margin-top:26px}
 /* 보기 전용(할머니 등): 남기는 단추 숨기기 */
 body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,body.viewer [data-al=pick],body.viewer [data-fam=up],body.viewer [data-fa=up],body.viewer [data-fam=add],body.viewer .gcard,body.viewer .gguess .ghost,body.viewer [data-act=addmom],body.viewer [data-act=addmonth],body.viewer .rpick[data-al]{display:none!important}
 .vban{background:#FFFDF7;border-radius:14px}
-.rpick{min-height:40px;border-radius:99px;padding:6px 16px}
+.rpick{min-height:40px;border-radius:99px;padding:6px 16px;white-space:normal;line-height:1.25}
 .atools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
 .atools button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:16px;padding:10px 4px;font-size:13px;color:var(--ink);box-shadow:0 2px 0 var(--line);min-width:0;word-break:keep-all}
 .atools i{font-style:normal;font-size:22px;line-height:1.2}
@@ -244,7 +244,7 @@ body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,bod
 .onb{padding-top:10vh}
 .onb .big{font-family:var(--display);font-size:2.3rem;line-height:1.2;margin:0 0 8px;color:var(--navy)}
 .onb p{color:var(--muted);margin:0 0 26px}
-.toast{position:fixed;left:50%;bottom:0;margin-bottom:calc(160px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:4px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:0;margin-bottom:calc(160px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:4px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:100;white-space:nowrap}
 .toast.show{opacity:1}
 /* 급식 수사 (이유식) */
 .stages{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:14px 0 4px}
@@ -434,6 +434,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="capsule.js"></script>
 <script src="paper.js"></script>
 <script src="explore.js"></script>
+<script src="walk.js"></script>
 <script src="push-key.js"></script>
 <script>
 // WHO Child Growth Standards, girls 0–24 months: [L, M, S] per month
@@ -485,7 +486,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 
 // ---------- storage (Google Sheets via Apps Script) ----------
-const S={me:{role:''},looks:[],capsules:[],eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
+const S={me:{role:''},looks:[],capsules:[],walks:[],townView:'',eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
 const PHOTOS={};let busy=false;
 // ---------- 화면 이동 기록 ----------
 // 안쪽 화면(S.view)을 열면 그 전 화면(탭·안쪽 화면·스크롤 위치)을 기억하고, 돌아가기·뒤로가기(goBack)는 그 화면 그 위치로 돌아가요
@@ -500,15 +501,15 @@ Object.defineProperty(S,'view',{enumerable:true,configurable:true,get:()=>_view,
 function goBack(){
   const e=NAV.pop();
   if(!e){if(_view==='play'||_view==='fun'){_view='medals';if(window.GAME&&GAME.hub)GAME.hub('play')}else{if(_view==='hosp')S.tab='sick';else if(_view==='recipe')S.tab='food';_view=''}render();window.scrollTo(0,0);return}
-  S.tab=e.tab;S.albumView=e.albumView;S.vacView=e.vacView;_view=e.view;render();window.scrollTo(0,e.y);requestAnimationFrame(()=>window.scrollTo(0,e.y))}
+  S.tab=e.tab;S.albumView=e.albumView;S.vacView=e.vacView;S.townView=e.townView||'';_view=e.view;render();window.scrollTo(0,e.y);requestAnimationFrame(()=>window.scrollTo(0,e.y))}
 const DEMO=false;
 const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',photo:false,mom:'',dad:'',momPhoto:false,dadPhoto:false},
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
   periods:[{id:'p1',name:'출생',month:0,confirmed:'',hospital:''},{id:'p2',name:'2개월',month:2,confirmed:'',hospital:''},{id:'p3',name:'4개월',month:4,confirmed:'2026-11-10',hospital:'우리동네 소아청소년과'},{id:'p4',name:'6개월',month:6,confirmed:'',hospital:''}],
   foods:[{id:'f1',name:'쌀',start:'2026-09-20',result:'통과',reaction:'',memo:'',by:'엄마'},{id:'f2',name:'소고기',start:'2026-09-23',result:'',reaction:'',memo:'',by:'아빠'}],meals:[{id:'ml1',date:'2026-09-23',slot:'아침',menu:'소고기 쌀미음',amount:'40g',eat:'잘먹음',memo:'',photo:false,by:'아빠'}],cubes:[{id:'c1',name:'소고기',count:'5',made:'2026-09-20',memo:''}],menus:[],
-  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
+  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],walks:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
   vaccines:[{id:'v1',period:'p1',name:'B형간염 1차',sub:'',done:'2026-07-06',memo:''},{id:'v2',period:'p2',name:'DTaP-IPV/Hib 1차',sub:'5가 혼합 백신',done:'2026-09-08',memo:''},{id:'v3',period:'p2',name:'폐렴구균 1차',sub:'',done:'2026-09-08',memo:''},{id:'v4',period:'p3',name:'DTaP-IPV/Hib 2차',sub:'',done:'',memo:''},{id:'v5',period:'p3',name:'폐렴구균 2차',sub:'',done:'',memo:''},{id:'v6',period:'p4',name:'DTaP-IPV/Hib 3차',sub:'',done:'',memo:''}]};
-const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses',look:'looks',capsule:'capsules'};
+const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses',look:'looks',capsule:'capsules',walk:'walks'};
 let dseq=100;const nid=p=>p+(dseq++);
 const MOCK={
   getData:()=>{const d=JSON.parse(JSON.stringify(DB));d.game=Object.assign({},d.game||{},{srv:true});return d},getPhoto:()=>'',getPhotos:()=>({}),
@@ -524,7 +525,7 @@ const MOCK={
   deleteVaccine:id=>{DB.vaccines=DB.vaccines.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people'||k==='capsule')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
-  setGeo:(id,geo)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.geo=geo;return{data:MOCK.getData()}},
+  setGeo:(id,geo)=>{[].concat(id).forEach(i=>{const m=DB.moments.find(x=>x.id===i);if(m)m.geo=geo});return{data:MOCK.getData()}},
   saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={}),k=typeof once==='string'?once:once.key,v=typeof once==='string'?null:once.val;if(v===null?g0[k]:(g0[k]&&String(g0[k])>=v))throw new Error('이미 받은 보상이에요');g0[k]=v===null?((o||{})[k]||true):v;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
@@ -536,14 +537,15 @@ const MOCK={
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
-function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
+function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
 function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;
-let cacheT,cacheD;function saveCache(d){if(DEMO)return;cacheD=d;clearTimeout(cacheT);cacheT=setTimeout(()=>{try{localStorage.setItem(CK,JSON.stringify(cacheD))}catch(e){}},2000)}   // 바뀔 때마다 통째로 쓰지 않고 2초 모아서
+let cacheT,cacheD;function saveCache(d){if(DEMO)return;cacheD=d;clearTimeout(cacheT);cacheT=setTimeout(()=>{try{localStorage.setItem(CK,cacheJSON(cacheD))}catch(e){}},2000)}   // 바뀔 때마다 통째로 쓰지 않고 2초 모아서
+const cacheJSON=d=>JSON.stringify(d,(k,v)=>k==='path'&&typeof v==='string'&&v.length>2000?undefined:v);   // 긴 탐문 경로는 폰 사본에서 빼요 (서버에서 다시 받아요)
 function savePhCache(){if(DEMO)return;try{const first=['profile','mom','dad'],keep={};let size=0;
   const keys=first.concat(Object.keys(PHOTOS).filter(k=>!first.includes(k)).reverse());
   for(const k of keys){const v=PHOTOS[k];if(!v)continue;if(size+v.length>2500000)continue;keep[k]=v;size+=v.length}
@@ -611,6 +613,8 @@ const byDate=(a,b)=>pDate(a)<pDate(b)?-1:pDate(a)>pDate(b)?1:0;
 function caseNo(p){const i=S.periods.slice().sort(byDate).findIndex(x=>x.id===p.id);return String(i+1).padStart(2,'0')}
 function nextPeriod(){return S.periods.filter(p=>!pDone(p)&&vacsOf(p.id).length).sort(byDate)[0]||null}
 const fileNo=()=>S.profile.birth.slice(5).replace('-','');
+// 동네 탐문 탭 위 칸: 탐험 지도(첫 화면) | 날씨·동네 소식
+function townSeg(v){return `<div class="seg tview">${[['','🗺️ 탐험 지도'],['info','☀️ 날씨·동네 소식']].map(([k,l])=>`<button class="${(v||'')===k?'on':''}" data-act="townv" data-v="${k}">${l}</button>`).join('')}</div>`}
 
 // ---------- rendering ----------
 const $app=document.getElementById('app'),$tab=document.getElementById('tabbar');
@@ -630,16 +634,17 @@ function render(){
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';return}
   $tab.innerHTML=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
-  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?TOWN.render():S.tab==='food'?renderFood():renderGrow();
+  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='walk'?WALK.render():S.view==='hosp'?HOSP.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?(S.townView==='info'?TOWN.render():EXPLORE.render('tab')):S.tab==='food'?renderFood():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body;
   if(S.view==='hosp')HOSP.mount();
   if(S.view==='studio')STUDIO.mount();
   if(S.view==='paper')PAPER.mount();
-  if(S.view==='explore')EXPLORE.mount();
+  if(S.view==='explore'||(S.tab==='town'&&!S.view&&S.townView!=='info'))EXPLORE.mount();
+  if(S.view==='walk')WALK.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();
-  NAVcur={tab:S.tab,view:_view,albumView:S.albumView,vacView:S.vacView};
+  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();WALK.afterRender();
+  NAVcur={tab:S.tab,view:_view,albumView:S.albumView,vacView:S.vacView,townView:S.townView};
 }
 
 const REC_SHOW=5;   // 수사 기록은 최근 몇 건만 펼쳐 두고 나머지는 접어요
@@ -1191,7 +1196,8 @@ document.addEventListener('click',async e=>{
   const a=e.target.closest('[data-act]');if(!a)return;
   const act=a.dataset.act,val=id=>{const el=document.getElementById(id);return el?el.value.trim():''},err=(id,m)=>{document.getElementById(id).textContent=m};
   switch(act){
-  case 'tab':S.tab=a.dataset.v;S.view='';render();window.scrollTo(0,0);break;
+  case 'tab':if(a.dataset.v==='town'&&S.tab!=='town')S.townView='';S.tab=a.dataset.v;S.view='';render();window.scrollTo(0,0);break;   // 동네 탐문은 들어올 때마다 탐험 지도부터
+  case 'townv':S.townView=a.dataset.v||'';render();window.scrollTo(0,0);break;
   case 'recall':S.recAll=!S.recAll;render();if(!S.recAll){const h=document.getElementById('rec-head');if(h)h.scrollIntoView({block:'start'})}break;
   case 'aview':S.albumView=a.dataset.v;render();window.scrollTo(0,0);break;
   case 'report':S.view='report';render();window.scrollTo(0,0);break;
@@ -1325,7 +1331,7 @@ document.addEventListener('click',async e=>{
 window.__app={apply,toast,isBusy:()=>busy,sheetOpen:()=>$sheet.classList.contains('open'),closeSheet,openSheet,refresh,CK};
 // ---------- 새로고침해도 보던 탭 그대로 (이 창에서만 기억, 앱을 새로 열면 첫 화면) ----------
 const STAY='soeun-stay';let stayY=null,stayT,stayT0=0;
-function staySave(){if(S.mode!=='ok')return;try{sessionStorage.setItem(STAY,JSON.stringify({tab:S.tab,view:S.view,vacView:S.vacView,albumView:S.albumView,menuMonth:S.menuMonth,recAll:!!S.recAll,y:Math.round(window.scrollY)}))}catch(e){}}
+function staySave(){if(S.mode!=='ok')return;try{sessionStorage.setItem(STAY,JSON.stringify({tab:S.tab,view:S.view,vacView:S.vacView,albumView:S.albumView,townView:S.townView,menuMonth:S.menuMonth,recAll:!!S.recAll,y:Math.round(window.scrollY)}))}catch(e){}}
 function stayAfterRender(){
   if(S.mode!=='ok')return;
   // 내용이 늦게 채워지는 탭(동네 탐문 등)은 그 위치까지 실제로 내려갈 수 있을 때까지 다시 시도해요 (최대 5초)
@@ -1333,12 +1339,12 @@ function stayAfterRender(){
   clearTimeout(stayT);stayT=setTimeout(staySave,300);   // 바로 읽으면 화면 전체 배치를 억지로 다시 계산해서 느려져요
 }
 try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
-  if(st&&['grow','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
+  if(st&&['grow','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['hosp','recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.townView=st.townView==='info'?'info':'';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
 }catch(e){}
 window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
 window.addEventListener('pagehide',staySave);
 // 폰에 저장해 두는 사본(saveCache)은 2초 모아 쓰니까, 앱을 내리거나 닫을 땐 바로 써요
-const flushCache=()=>{if(cacheD&&!DEMO){clearTimeout(cacheT);try{localStorage.setItem(CK,JSON.stringify(cacheD))}catch(e){}}};
+const flushCache=()=>{if(cacheD&&!DEMO){clearTimeout(cacheT);try{localStorage.setItem(CK,cacheJSON(cacheD))}catch(e){}}};
 window.addEventListener('pagehide',flushCache);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushCache()});
 window.addEventListener('touchstart',()=>{stayY=null},{passive:true,once:true});   // 손으로 움직이기 시작하면 위치 되돌리기는 그만
 loadCache();
@@ -1374,7 +1380,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
     const dx=sw.dx,v=Math.abs(dx)/Math.max(1,Date.now()-sw.t),i=ORDER.indexOf(S.tab),j=i+(dx<0?1:-1);sw=null;
     if(j<0||j>=ORDER.length||!(Math.abs(dx)>W()*0.22||(v>0.45&&Math.abs(dx)>40))){setX(0,220);return}
     // 새 탭을 바로 그려서 미는 쪽 반대편에서 미끄러져 들어오게 (예전엔 끝까지 밀어낸 뒤 그려서 잠깐 빈 화면이 보였어요)
-    const dir=dx<0?-1:1;S.tab=ORDER[j];S.view='';render();window.scrollTo(0,0);
+    const dir=dx<0?-1:1;if(ORDER[j]==='town')S.townView='';S.tab=ORDER[j];S.view='';render();window.scrollTo(0,0);
     setX(-dir*W()*0.28,0);requestAnimationFrame(()=>requestAnimationFrame(()=>setX(0,260)));
   };
   $app.addEventListener('touchend',end);$app.addEventListener('touchcancel',end);

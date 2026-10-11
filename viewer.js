@@ -10,7 +10,7 @@ lb.innerHTML = `<div class="lb-stage">
     <div class="lb-card" hidden></div>
     <button class="lb-nav prev" data-lb="prev" aria-label="이전 사진" hidden>‹</button><button class="lb-nav next" data-lb="next" aria-label="다음 사진" hidden>›</button></div>
   <div class="lb-top"><span class="lb-cap"></span><button class="lb-x" data-lb="close" aria-label="닫기">✕</button></div>
-  <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn deco" data-lb="deco">🎨 꾸미기</button><button class="lb-btn edit" data-lb="edit">편집</button></div>`;
+  <div class="lb-bar"><button class="lb-btn" data-lb="board" hidden></button><button class="lb-btn deco" data-lb="deco"><i>🎨</i><span>꾸미기</span></button><button class="lb-btn edit" data-lb="edit"><i>✏️</i><span>편집</span></button></div>`;
 document.body.appendChild(lb);
 const $stage = lb.querySelector('.lb-stage'), $track = lb.querySelector('.lb-track'), $card = lb.querySelector('.lb-card');
 const slides = () => [...$track.children];                       // [이전, 현재, 다음] (넘길 때 순서를 돌려요)
@@ -60,7 +60,7 @@ function boardBtn() {
   const b = lb.querySelector('[data-lb=board]');
   if (!cur || !cur.boardId) { b.hidden = true; return; }
   const m = S.moments.find(x => x.id === cur.boardId);
-  b.hidden = false; b.textContent = m && m.board ? '보드에서 떼기' : '📌 보드에 붙이기';
+  b.hidden = false; b.innerHTML = m && m.board ? '<i>📤</i><span>보드에서 떼기</span>' : '<i>📌</i><span>보드에 붙이기</span>';
 }
 // 칸 하나에 사진 넣기 (아직 안 받아졌으면 로딩 표시)
 function fill(slide, key) {
@@ -81,7 +81,7 @@ function header() {
   lb.querySelector('.prev').hidden = !many || idx <= 0;
   lb.querySelector('.next').hidden = !many || idx >= seq.length - 1;
   const e = lb.querySelector('[data-lb=edit]');
-  e.textContent = (cur && cur.editLabel) || '편집'; e.hidden = !(cur && cur.edit);
+  e.innerHTML = `<i>${cur && cur.editLabel ? '👉' : '✏️'}</i><span>${esc((cur && cur.editLabel) || '편집')}</span>`; e.hidden = !(cur && cur.edit);
   lb.querySelector('[data-lb=deco]').hidden = !(cur && cur.key && window.STUDIO);
   boardBtn();
 }
@@ -148,7 +148,7 @@ lb.addEventListener('click', async e => {
   if (b.dataset.lb === 'prev') go(-1);
   if (b.dataset.lb === 'next') go(1);
   if (b.dataset.lb === 'edit') { const f = cur && cur.edit; close(); if (f) f(); }
-  if (b.dataset.lb === 'deco') { const k = cur && cur.key; close(); if (k && window.STUDIO) STUDIO.open(k); }   // 기념 사진관으로 이 사진 꾸미기
+  if (b.dataset.lb === 'deco') { const k = cur && cur.key; close(); closeSheet(); if (k && window.STUDIO) STUDIO.open(k); }   // 기념 사진관으로 이 사진 꾸미기 (지도 핀 창 같은 아래 창은 닫고)
   if (b.dataset.lb === 'board' && cur && cur.boardId) {
     const m = S.moments.find(x => x.id === cur.boardId), on = !(m && m.board);
     b.disabled = true;
@@ -237,6 +237,7 @@ window.addEventListener('popstate', () => {
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리
   if (window.POSECAM && POSECAM.close()) { guard(); return; }                      // 같은 포즈 촬영기
   if (window.MOVIE && MOVIE.close()) { guard(); return; }                          // 성장 영상 만드는 창
+  if (window.WALK && WALK.close()) { guard(); return; }                            // 탐문 중 화면 → 작게 (기록은 계속)
   if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }   // 3) 크게 본 병원 지도
   if (typeof S !== 'undefined' && S.view) {                            // 3) 안쪽 화면 → 열기 전 화면, 그 스크롤 위치로 (goBack, index.html)
     goBack(); guard(); return;
@@ -273,7 +274,8 @@ html.lb-open,html.lb-open body{overflow:hidden}
 .lb-cap{flex:1;font-size:14px;line-height:1.4}
 .lb-x{pointer-events:auto;width:44px;height:44px;border:0;border-radius:50%;background:rgba(233,220,195,.15);color:var(--paper);font-size:20px}
 .lb-bar{display:flex;gap:10px;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));justify-content:center}
-.lb-btn{flex:1;max-width:220px;min-height:48px;border-radius:4px;border:1.5px solid var(--paper);background:none;color:var(--paper);font-family:var(--display);font-size:16px}
+.lb-btn{flex:1;max-width:220px;min-height:56px;border-radius:4px;border:1.5px solid var(--paper);background:none;color:var(--paper);font-family:var(--display);font-size:clamp(13px,3.8vw,15px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 6px;line-height:1.2;white-space:nowrap;word-break:keep-all}
+.lb-btn i{font-style:normal;font-size:18px;line-height:1}
 .lb-btn.edit{background:var(--red);border-color:var(--red);color:#fff}
 .lb-btn[hidden]{display:none}
 .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:64px;border:0;border-radius:4px;background:rgba(233,220,195,.14);color:var(--paper);font-size:30px;line-height:1;z-index:2}

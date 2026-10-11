@@ -148,7 +148,7 @@ const FX = {
   RADIO: () => toggleRadio(),
   BOOK: () => go(() => { S.view = 'book'; }),
   MAIL: () => go(() => { S.view = 'posts'; }),
-  WEATHER: () => go(() => { S.tab = 'town'; S.view = ''; }),
+  WEATHER: () => go(() => { S.tab = 'town'; S.view = ''; S.townView = 'info'; }),
   TREE: () => { const t = today(), y = +t.slice(0, 4), x = t > `${y}-12-25` ? `${y + 1}-12-25` : `${y}-12-25`, n = daysBetween(t, x);
     R.tree = Date.now() + 8000; render(); setTimeout(() => render(), 8100); toast(n ? `🎄 크리스마스까지 ${n}일 남았어요!` : '🎄 메리 크리스마스! 🎅'); }
 };

@@ -26,10 +26,11 @@ const TBL = {
   dev: ['at', 'by'],                        // 발달 체크 (문서 id = 항목 id, at = 확인한 날)
   guess: ['role', 'value', 'at', 'base', 'by'],  // 몸무게 예측 대결 (예측한 날 at, kg value, base = 그때 마지막 측정 기록 id)
   look: ['date', 'pick', 'parts', 'by'],          // 닮은꼴 판정단 (문서 id = 날짜_mom|dad, pick: mom·dad·both, parts: 닮은 곳 쉼표로)
-  capsule: ['title', 'body', 'open', 'occ', 'sealed', 'photo', 'by']   // 봉인된 증거물 (open: 열리는 날, occ: 첫 돌 같은 이름, sealed: 봉인한 날)
+  capsule: ['title', 'body', 'open', 'occ', 'sealed', 'photo', 'by'],   // 봉인된 증거물 (open: 열리는 날, occ: 첫 돌 같은 이름, sealed: 봉인한 날)
+  walk: ['date', 'kind', 'title', 'place', 'geo', 'start', 'end', 'dist', 'path', 'pics', 'memo', 'who', 'wx', 'mood', 'by']   // 탐문 기록 (산책·나들이, path: 경로 글자, pics: 같이 올린 사진 id)
 };
-const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules' };
-const LIM = { body: 5000 };       // 칸별 글자 수 (나머지는 300)
+const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks' };
+const LIM = { body: 5000, path: 60000, pics: 4000 };       // 칸별 글자 수 (나머지는 300)
 const OPT = { mom: ['geo', 'tm'] };   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각은 고쳐 저장해도 안 지워지게)
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
 const SCHEDULE = [
@@ -81,7 +82,7 @@ function build() {
   const item = k => list(k).map(o => {
     const c = { id: o.id };
     TBL[k].forEach(key => { c[key] = key === 'photo' ? !!o.photoUrl : (o[key] == null ? '' : String(o[key])); });
-    if (k === 'mom') { c.board = !!o.board; c.geo = o.geo ? String(o.geo) : ''; c.tm = o.tm ? String(o.tm) : ''; }   // 수사 보드에 붙인 사진, 찍은 곳 "위도,경도", 찍은 시각 HH:MM
+    if (k === 'mom') { c.board = !!o.board; c.geo = o.geo ? String(o.geo) : ''; c.tm = o.tm ? String(o.tm) : ''; }   // 수사 보드에 붙인 사진, 찍은 곳 "위도,경도"(빼기는 -), 찍은 시각 HH:MM(:SS)
     c.t = +o._o > 1e12 ? +o._o : 0;                 // 남긴 때 (이번 주 수배범 계산용, 예전에 옮겨 온 기록은 0)
     return c;
   });
@@ -276,12 +277,14 @@ const H = {
     return { data: data() };
   },
 
-  // 사진 찍은 곳 (탐험 지도에서 직접 꽂기): 앨범 문서에 geo 칸만 "위도,경도"로
+  // 사진 찍은 곳 (탐험 지도에서 직접 꽂기): 앨범 문서에 geo 칸만 "위도,경도"로. 여러 장이면 id 목록, '-'는 "위치 빼기"(탐문 경로 자리도 안 씀)
   async setGeo(id, geo) {
-    id = String(id); if (!M.col.mom.has(id)) throw new Error('없는 사진이에요');
-    geo = String(geo || ''); if (geo && !/^-?\d{1,2}\.\d{1,6},-?\d{1,3}\.\d{1,6}$/.test(geo)) throw new Error('위치 형식이 올바르지 않아요');
-    localSet('mom', id, { geo });
-    await commit(setDoc(dref('mom', id), { geo }, { merge: true }));
+    const ids = [...new Set((Array.isArray(id) ? id : [id]).map(String))].filter(x => M.col.mom.has(x)).slice(0, 450);
+    if (!ids.length) throw new Error('없는 사진이에요');
+    geo = String(geo || ''); if (geo && geo !== '-' && !/^-?\d{1,2}\.\d{1,6},-?\d{1,3}\.\d{1,6}$/.test(geo)) throw new Error('위치 형식이 올바르지 않아요');
+    const b = writeBatch(db);
+    ids.forEach(x => { localSet('mom', x, { geo }); b.set(dref('mom', x), { geo }, { merge: true }); });
+    await commit(b.commit());
     return { data: data() };
   },
 

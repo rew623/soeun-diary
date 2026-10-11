@@ -41,6 +41,7 @@ function openPhoto(id) {
     <img class="bigimg" src="${safeImg(PHOTOS[id]) || ''}" alt="" style="max-height:38vh;object-fit:contain">
     <label class="field"><span>설명 (선택)</span><input id="ff-title" maxlength="30" value="${esc(m.title || '')}" placeholder="예: 첫 가족 나들이"></label>
     <label class="field"><span>날짜</span><input id="ff-date" type="date" value="${m.date}" min="${S.profile.birth}" max="${today()}"></label>
+    ${window.EXPLORE ? EXPLORE.whereHtml(m.id) : ''}
     <p class="err" id="ff-err"></p>
     <div class="actions"><button class="danger" data-act="delmom" data-id="${id}">삭제</button><button class="secondary" data-act="close">취소</button><button class="primary" data-fa="fsave" data-id="${id}">저장</button></div>`);
 }

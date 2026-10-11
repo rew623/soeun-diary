@@ -1,4 +1,4 @@
-// 동네 탐문 탭(S.tab='town') — 산책 지수(날씨+미세먼지·특보), 강원 행사·축제 / 어린이 감염병 동향은 예방접종 탭 맨 아래(기본 접힘)
+// 동네 탐문 탭의 '날씨·동네 소식' 칸(S.tab='town', S.townView='info', 첫 화면은 탐험 지도 explore.js) — 산책 지수(날씨+미세먼지·특보), 강원 행사·축제 / 어린이 감염병 동향은 예방접종 탭 맨 아래(기본 접힘)
 // 데이터는 Actions(town.yml)가 data/town.json · events.json · disease.json 으로 만들어 둬요 (시·군은 병원 수사와 같은 칸을 써요)
 (function () {
 const T = { town: null, events: null, dis: null, at: 0, loading: false, evAll: false, evKid: false, evMore: 12 };
@@ -327,9 +327,11 @@ function render_() {
   const dust = A ? `<section><h2 class="sh"><span>지금 미세먼지</span><span>${esc(A.t || '')}${A.near ? ` · ${esc(A.near)} 측정소 값` : ''}</span></h2>
     <div class="dust">${[['미세먼지', A.pm10, g10(A.pm10), '㎍/㎥'], ['초미세먼지', A.pm25, g25(A.pm25), '㎍/㎥']].map(([n, v, g, u]) => `<div><small>${n}</small><b style="color:${g != null ? GC[g] : 'var(--muted)'}">${g != null ? GN[g] : '—'}</b><span>${v != null ? v + u : '측정 중'}</span></div>`).join('')}</div>
     ${fcLine(code)}</section>` : '';
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${CHARS.guide('town')}
+  // 동네 탐문 탭에선 위 칸으로 탐험 지도(첫 화면)와 오가요. 빨간 '+ 탐문 기록'은 여기서도 (walk.js)
+  const inTab = S.tab === 'town' && !S.view;
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1><p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${inTab ? townSeg('info') : ''}${CHARS.guide('town')}
     <div class="treg"><span>탐문 지역</span>${sel}</div>
-    ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}${window.EXPLORE ? EXPLORE.townCard() : ''}`;
+    ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}${inTab && !(S.me && S.me.viewer) ? '<button class="fab" data-wk="add">+ 탐문 기록</button>' : ''}`;
 }
 function fcLine(code) {
   const f = T.town.air.fc || {}, side = (T.town.air.east || []).includes(code) ? 'e' : 'w', d0 = today(), d1 = addDays(d0, 1);

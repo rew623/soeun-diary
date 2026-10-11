@@ -117,6 +117,7 @@ const POOL = [
   { id: 'photo', t: '오늘 사진 한 장 남기기', ok: () => S.moments.some(m => m.date === today() && m.photo) || S.records.some(r => r.date === today() && r.photo), when: () => true, tab: 'album' },
   { id: 'meal', t: '급식 기록 하나 남기기', ok: () => S.meals.some(m => m.date === today()), when: () => S.meals.length > 0 || monthsDays(S.profile.birth, today())[0] >= 4, tab: 'food' },
   { id: 'town', t: '동네 탐문에서 산책 지수 보기', ok: () => played('town'), when: () => true, tab: 'town' },
+  { id: 'walk', t: '🐾 산책·나들이 탐문 기록 남기기', ok: () => (S.walks || []).some(w => w.date === today()), when: () => (S.walks || []).length > 0, tab: 'town' },
   { id: 'post', t: '📚 육아 글 하나 읽기', ok: () => { let r = {}; try { r = JSON.parse(localStorage.getItem('soeun-posts-read') || '{}'); } catch (e) {} const t0 = Date.parse(today() + 'T00:00:00+09:00'); return Object.values(r).some(v => v >= t0); }, when: () => true, view: 'posts' },
   { id: 'quiz', t: '놀이터: 생후 며칠 퀴즈 한 판', ok: () => played('quiz'), when: () => photoPool().length >= 4, view: 'play' },
   { id: 'mem', t: '놀이터: 사진 짝맞추기 한 판', ok: () => played('mem'), when: () => true, view: 'play' },

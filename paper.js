@@ -36,6 +36,7 @@ function issue(ym) {
   const wanted = []; if (window.WANTED) { for (let ws = WANTED.monday(d0); ws <= d1; ws = addDays(ws, 7)) { const e = addDays(ws, 6); if (inM(e) || (inM(ws) && e > d1)) { const s = WANTED.stat(ws); if (ws <= t) wanted.push(s); } } }
   const look = window.LOOK ? LOOK.monthStat(ym) : null, verdict = look && LOOK.verdict(look);
   const places = window.EXPLORE ? EXPLORE.places().filter(p => !p.home && inM(p.first)) : [];
+  const walks = (S.walks || []).filter(w => inM(w.date));
   // 기념일
   const ann = []; for (let k = 100; k <= 1500; k += 100) { const d = addDays(b, k - 1); if (inM(d)) ann.push([d, `생후 ${k}일`]); }
   for (let y = 1; y <= 5; y++) { const d = addMonths(b, 12 * y); if (inM(d)) ann.push([d, y === 1 ? '첫 돌' : `${y}돌`]); }
@@ -48,7 +49,7 @@ function issue(ym) {
   const rest = pool.filter(p => !main || p.id !== main.id), strip = [];
   if (rest.length) { const n = Math.min(4, rest.length); for (let i = 0; i < n; i++) strip.push(rest[Math.floor(i * rest.length / n)]); }
   const kg = v => (+v).toFixed(2).replace(/0$/, '');
-  return { ym, d0, d1, no: issueNo(ym), w1, w0, h1, h0, wIn, hIn, kg, firsts, photos, phBy, vacs, chks, foods, devs, caps, days, wanted, look, verdict, places, ann, memo: memos[0] || null, main: main && ok(main.id) ? main : null, strip: strip.filter(p => ok(p.id)), partial: d1 < end };
+  return { ym, d0, d1, no: issueNo(ym), w1, w0, h1, h0, wIn, hIn, kg, firsts, photos, phBy, vacs, chks, foods, devs, caps, days, wanted, look, verdict, places, walks, ann, memo: memos[0] || null, main: main && ok(main.id) ? main : null, strip: strip.filter(p => ok(p.id)), partial: d1 < end };
 }
 function headline(I) {
   const n = nm(), sub = josa(n + ' 탐정', '은', '는');
@@ -75,6 +76,7 @@ function articles(I) {
   const caught = I.wanted.filter(s => s.caught), gone = I.wanted.filter(s => s.over && !s.caught);
   if (I.wanted.length) A.push(['🚨 수배 소식', caught.length ? `이달 수배범 ${caught.length}명 체포: ${caught.map(s => s.v[3]).join(', ')}.${gone.length ? ` ${gone.map(s => s.v[3]).join(', ')}은(는) 아직 도주 중.` : ''}` : `${I.wanted.map(s => s.v[3]).join(', ')}을(를) 추적 중. 수사관들의 분발이 요구된다.`]);
   if (I.look && I.look.n) A.push(['🔍 닮은꼴 판결', `${I.look.n}표 중 엄마 닮음 ${I.look.pm}%, 아빠 닮음 ${I.look.pd}%, 반반 ${I.look.pb}%.${I.verdict ? ` 판결: '${I.verdict.title}'.` : ''}`]);
+  if (I.walks.length && window.WALK) { const m = I.walks.reduce((t, w) => t + WALK.km(w), 0), top = I.walks.slice().sort((x, y) => WALK.km(y) - WALK.km(x))[0]; A.push(['🐾 탐문 소식', `이달 산책·나들이 ${I.walks.length}번${m >= 100 ? `, 걸은 거리 ${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'}` : ''}. ${top && WALK.km(top) >= 100 ? `가장 멀리 간 날은 ${fmtK(top.date, true)}${top.place ? ` (${top.place})` : ''}.` : ''} 탐정은 유모차에서 동네를 샅샅이 살폈다.`]); }
   if (I.places.length) A.push(['🗺️ 탐험 소식', `처음 가 본 곳 ${I.places.length}곳: ${I.places.slice(0, 4).map(p => EXPLORE.label(p)).join(', ')}${I.places.length > 4 ? ' 등' : ''}.`]);
   if (I.foods.length) A.push(['🥄 급식 면', `새 식재료 ${I.foods.length}가지 무혐의 통과: ${I.foods.map(f => f.name).join(', ')}.`]);
   if (I.devs.length) A.push(['✅ 발달 소식', `발달 체크 ${I.devs.length}개 확인. 수사관들 감탄 연발.`]);

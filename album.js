@@ -11,7 +11,8 @@ const frees = () => S.moments.filter(m => isFree(m) && m.photo).sort((a, b) => a
 
 // ---------- 사진 찍은 날짜·곳 (JPEG EXIF) ----------
 // 줄이기 전 원본 파일에서 읽어요 (줄이면 EXIF가 사라져요). 못 읽으면 ''
-// 찍은 시각(tm 'HH:MM')과 찍은 곳(GPS)은 탐험 지도용 "위도,경도" (소수 4자리, 약 10m). 폰·올리는 방법에 따라 위치가 지워져 있을 수 있어요
+// 찍은 시각(tm 'HH:MM:SS')과 찍은 곳(GPS)은 탐험 지도용 "위도,경도" (소수 4자리, 약 10m)
+// 안드로이드는 갤러리에서 고른 사진의 위치를 지워서 넘겨줘요(개인정보 보호, 웹앱은 못 바꿈) → 찍은 시각으로 탐문 경로 위 자리를 찾아요(walk.js)
 async function photoMeta(file) {
   try {
     const v = new DataView(await file.slice(0, 256 * 1024).arrayBuffer());
@@ -37,9 +38,9 @@ function tiff(v, t) {
   try {
     i0 = scan(t + u32(t + 4), [0x8769, 0x8825, 0x0132]);
     const ex = i0[0x8769] ? scan(sub(i0[0x8769]), [0x9003, 0x9004]) : {};
-    const m = /^(\d{4}):(\d\d):(\d\d)(?: (\d\d):(\d\d))?/.exec((ex[0x9003] && str(ex[0x9003])) || (ex[0x9004] && str(ex[0x9004])) || (i0[0x0132] && str(i0[0x0132])) || '');
+    const m = /^(\d{4}):(\d\d):(\d\d)(?: (\d\d):(\d\d)(?::(\d\d))?)?/.exec((ex[0x9003] && str(ex[0x9003])) || (ex[0x9004] && str(ex[0x9004])) || (i0[0x0132] && str(i0[0x0132])) || '');
     date = m && m[1] > '1990' ? `${m[1]}-${m[2]}-${m[3]}` : '';
-    if (date && m[4] && +m[4] < 24 && +m[5] < 60) tm = `${m[4]}:${m[5]}`;
+    if (date && m[4] && +m[4] < 24 && +m[5] < 60) tm = `${m[4]}:${m[5]}${m[6] && +m[6] < 60 ? ':' + m[6] : ''}`;
   } catch (x) {}
   try {
     const g = i0[0x8825] ? scan(sub(i0[0x8825]), [1, 2, 3, 4]) : {};
@@ -118,7 +119,7 @@ async function pump() {
       try { photo = await readPhoto(it.file, true); } catch (x) { await qDel(it.id); toast('읽지 못한 사진 1장은 건너뛰었어요'); items = await qAll(); continue; }
       const date = clampDay(it.date || it.fb || (it.lm ? localDay(it.lm) : ''));
       // 줄 번호를 문서 id로 써서, 올린 뒤 앱이 꺼져 다시 올려도 같은 사진이 두 장 생기지 않아요
-      const res = await run('saveItem', 'mom', Object.assign({ id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date, memo: '', photo, by: it.by || myRole() }, it.geo ? { geo: it.geo, tm: it.tm || '' } : {}));
+      const res = await run('saveItem', 'mom', Object.assign({ id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date, memo: '', photo, by: it.by || myRole() }, it.geo ? { geo: it.geo } : {}, it.tm ? { tm: it.tm } : {}));   // 찍은 시각은 위치가 없어도 (탐문 경로 위 자리 찾기)
       PHOTOS[res.id] = photo; last = res; Q.done++;
       await qDel(it.id);
       items = await qAll();
@@ -149,16 +150,19 @@ document.body.appendChild(exPicker);
 let exFor = null;
 exPicker.addEventListener('change', () => { const files = [...exPicker.files]; exPicker.value = ''; const m = S.moments.find(x => x.id === exFor); if (m) queue(files, { type: 'extra', of: m.id, fb: m.date }); });
 // 원본을 먼저 폰 안에 줄 세워 둬요 (찍은 날짜도 이때 읽어요). more: { type:'extra', of, fb(날짜 없을 때) }
-async function queue(list, more) {
+// fill: { geo, tm, date } 사진에 없을 때만 채울 값 (탐문 기록의 장소·탐문 중 찍은 때 위치). 줄 번호(=앨범 문서 id)들을 돌려줘요
+async function queue(list, more, fill) {
   const files = [...list].filter(f => /^image\//.test(f.type));
-  if (!files.length) return;
+  if (!files.length) return [];
+  const F = fill || {};
   const by = myRole(), base = Date.now(), rows = [];
-  for (let i = 0; i < files.length; i++) { const meta = await photoMeta(files[i]); rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: meta.date, geo: meta.geo, tm: meta.tm, lm: files[i].lastModified || 0, by }, more || {})); }
+  for (let i = 0; i < files.length; i++) { const meta = await photoMeta(files[i]); rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: meta.date || F.date || '', geo: meta.geo || F.geo || '', tm: meta.tm || (meta.date ? '' : F.tm || ''), lm: files[i].lastModified || 0, by }, more || {})); }
   try { await qdo('readwrite', st => { rows.forEach(r => st.put(r)); }); }
   catch (x) { mem.push(...rows); }
   Q.total += rows.length; Q.left += rows.length; showProg();
   toast(`${rows.length}장을 올리기 시작해요`);
   if (mem.length) pumpMem(); else pump();
+  return rows.map(r => r.id);
 }
 // ---------- 갤러리 앱에서 공유로 받은 사진 (sw.js가 share-in 캐시에 넣어 둠) ----------
 let SH = null;
@@ -186,7 +190,7 @@ async function pumpMem() {
     while (mem.length) {
       const it = mem[0]; showProg();
       const photo = await readPhoto(it.file, true);
-      const res = await run('saveItem', 'mom', Object.assign({ id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date: clampDay(it.date || it.fb || localDay(it.lm)), memo: '', photo, by: it.by }, it.geo ? { geo: it.geo, tm: it.tm || '' } : {}));
+      const res = await run('saveItem', 'mom', Object.assign({ id: it.id, type: it.type || 'free', of: it.of || '', who: it.who || '', title: '', date: clampDay(it.date || it.fb || localDay(it.lm)), memo: '', photo, by: it.by }, it.geo ? { geo: it.geo } : {}, it.tm ? { tm: it.tm } : {}));
       PHOTOS[res.id] = photo; mem.shift(); Q.done++; Q.left = mem.length; apply(res.data);
     }
     toast(`사진 ${Q.done}장을 보관했어요`); Q.done = Q.total = Q.left = 0;
@@ -297,6 +301,7 @@ function openFree(id) {
     ${photoField(safeImg(PHOTOS[id]), '사진', true)}
     <label class="field"><span>설명 (선택)</span><input id="af-title" maxlength="30" value="${esc(m.title || '')}" placeholder="예: 할머니 댁 첫 방문"></label>
     <label class="field"><span>날짜</span><input id="af-date" type="date" value="${m.date}" min="${S.profile.birth}" max="${today()}"></label>
+    ${window.EXPLORE ? EXPLORE.whereHtml(id) : ''}
     <label class="field"><span>메모 (선택)</span><textarea id="af-memo" maxlength="200" placeholder="예: 처음으로 까르르 웃은 날">${esc(m.memo || '')}</textarea></label>
     <p class="err" id="af-err"></p>
     <div class="actions"><button class="danger" data-act="delmom" data-id="${id}">삭제</button><button class="secondary" data-act="close">취소</button><button class="primary" data-al="save" data-id="${id}">저장</button></div>`);
