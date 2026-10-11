@@ -296,7 +296,7 @@ const clL = ids => ids.map(id => [id, (CLN[id] || ['', '기본'])[1], (CLN[id] |
 const KIT = {
   baby: { hat: hatL(['det', 'none', 'bunny', 'bear', 'flower', 'beanie', 'party', 'antler', 'elfhat', 'santa', 'crown'], [0, 0, 6, 6, 5, 7, 8, 8, 9, 12, 15]),
     cloth: clL(['', 'conan', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'rudolph', 'elf', 'santa', 'hanbok']),
-    prop: [['lens', '돋보기', 0], ['skate', '스케이트보드 (코난)', 0], ['rattle', '딸랑이', 3], ['bottle', '젖병', 3], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
+    prop: [['lens', '돋보기', 0], ['skate', '스케이트보드 (코난)', 0], ['bottle', '젖병', 0], ['paci', '쪽쪽이', 0], ['rattle', '딸랑이', 0], ['teddy', '애착 곰인형', 0], ['bunnydoll', '애착 토끼인형', 2], ['teether', '치발기', 2], ['blanket', '애착 이불', 3], ['formula', '분유통', 2], ['diaper', '기저귀', 2], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
   mom: { hat: [['', '빨간 리본', 0], ...hatL(['bowler', 'flower', 'beret', 'bunny', 'beanie', 'straw', 'antler', 'santa', 'tiara'], [0, 5, 7, 6, 7, 9, 8, 12, 14])],
     cloth: clL(['', 'watson', 'stripe', 'pajama', 'apron', 'cardigan', 'knit', 'rain', 'dress', 'trench', 'elf', 'santaDress', 'hanbok']),
     prop: [['heart', '하트', 0], ['note', '수첩', 0], ['bag', '왕진 가방 (왓슨)', 0], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6], ['candy', '지팡이 사탕', 4], ['gift', '선물 상자', 6]] },
