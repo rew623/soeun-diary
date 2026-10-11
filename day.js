@@ -488,7 +488,7 @@ function ocrLines(data, cv, date0, noDate) {
     if (kind === '수면' || kind === '분유' || kind === '유축') { const r = /(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/.exec(det); if (r) { ex += ` ~${p2(r[3])}:${r[4]}`; det = det.replace(r[0], '').trim(); } else if (kind === '수면') { const h = /(\d+)\s*시간/.exec(det), mi = /(\d+)\s*분/.exec(det); if (h || mi) { const e = msOf(date, t) + ((h ? +h[1] * 60 : 0) + (mi ? +mi[1] : 0)) * 60000; ex = '~' + hmOf(new Date(e)); det = ''; } } }
     if (kind === '목욕') { const m = /(\d+)\s*분/.exec(det) || /^\s*(\d{1,2})/.exec(det); if (m) { ex = m[1] + '분'; det = det.replace(m[0], '').replace(/^\d+/, '').trim(); } }
     if (kind === '대변' || kind === '소변대변') { const a = /조금|보통|많이/.exec(det); if (a && det.trim() === a[0]) { ex = a[0]; det = ''; } }
-    memo = det.replace(/^[\s·ㆍ・•\-–—.,。:;|[\]{}()lI1]+/, '').replace(/\s+/g, ' ').trim();
+    memo = det.replace(/^\s*[0-9lI|]{0,3}\s*[·ㆍ・•]\s*/, '').replace(/^[\s·ㆍ・•\-–—.,。:;|[\]{}()lI]+/, '').replace(/\s+/g, ' ').trim();
     const hg = (memo.match(/[가-힣]/g) || []).length; if (memo && (hg < 2 || hg / memo.replace(/\s/g, '').length < .5)) memo = '';   // 깨진 글자(한글이 적은 것)는 버려요
     out.push({ key, memo: !!memo, s: `${date} ${t} ${kind}${ex ? ' ' + ex : ''}${memo ? (kind === '메모' ? ' ' : ' # ') + memo : ''}` }); cur = null;
   };
@@ -496,7 +496,8 @@ function ocrLines(data, cv, date0, noDate) {
     const txt = ln.text.replace(/\s+/g, ' ').trim(); if (!txt) return;
     const dm = /(\d{1,2})\s*월\s*(\d{1,2})\s*일/.exec(txt);
     if (dm && !noDate && +dm[1] >= 1 && +dm[1] <= 12 && +dm[2] >= 1 && +dm[2] <= 31) { let y = +T.slice(0, 4), d = `${y}-${p2(dm[1])}-${p2(dm[2])}`; if (d > T) d = `${y - 1}-${p2(dm[1])}-${p2(dm[2])}`; fin(); date = found = d; return; }
-    const tm = /^\W{0,2}([0-2]?\d)\s*[:;.]\s*([0-5]\d)\b(.*)$/.exec(txt);
+    let tm = /^\W{0,2}([0-2]?\d)\s*[:;.]\s*([0-5]\d)\b(.*)$/.exec(txt);
+    if (!tm) { const t2 = /^\W{0,2}([0-2]\d)[1Il|]?([0-5]\d)\b(.*)$/.exec(txt); if (t2 && OK.some(([w]) => t2[3].replace(/\s/g, '').includes(w))) tm = t2; }   // ':'을 '1'로 잘못 읽은 시각 (17112 → 17:12)
     if (tm && +tm[1] < 24) {
       fin(); const rest = tm[3]; let kind = (OK.find(([w]) => rest.replace(/\s/g, '').includes(w)) || [])[1] || '';
       if (!kind && ln.words && ln.words.length > 1) kind = hueKind(cv, (ln.words.find((w, i) => i > 0 && /[^\d:;.\s]/.test(w.text)) || {}).bbox);
@@ -512,13 +513,18 @@ function ocrLines(data, cv, date0, noDate) {
 async function impOcr(files) {
   const st = m => { const el = $('dy-ocrst'); if (el) el.textContent = m; }, ta = $('dy-imp'); if (!files.length || !ta) return;
   try {
-    const w = await ocrWorker(st); let all = [], sk = [];
+    const w = await ocrWorker(st); let all = [], sk = []; const warn = [];
     for (let i = 0; i < files.length; i++) {
       st(`사진 ${i + 1}/${files.length} 읽는 중…`);
       // 두 번 읽어 합쳐요: 원래 크기(날짜·시각을 잘 읽음) + 크게 키운 것(한글 메모를 잘 읽음)
       const bm = await createImageBitmap(files[i]), mk = sc => { const cv = document.createElement('canvas'); cv.width = Math.round(bm.width * sc); cv.height = Math.round(bm.height * sc); const cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(bm, 0, 0, cv.width, cv.height); return cv; };
       const c1 = mk(1), a = ocrLines((await w.recognize(c1)).data, c1, D.date || today());
-      if (!a.date) st(`사진 ${i + 1}: 날짜를 못 읽어서 ${D.date || today()}로 넣었어요 — 확인해 주세요`);
+      if (!a.date) {   // 날짜를 못 읽었으면 화면 위쪽만 크게 키워서 한 번 더
+        const top = document.createElement('canvas'), h = Math.round(bm.height * .3), k = Math.min(3, 2000 / bm.width); top.width = Math.round(bm.width * k); top.height = Math.round(h * k); top.getContext('2d').drawImage(bm, 0, 0, bm.width, h, 0, 0, top.width, top.height);
+        const tx = ((await w.recognize(top)).data.text || '').replace(/\s+/g, ' '), dm = /(\d{1,2})\s*월\s*(\d{1,2})\s*일/.exec(tx) || /(\d{1,2})\s*\D{1,2}\s*(\d{1,2})\s*\D{0,2}\s*\(/.exec(tx);
+        if (dm && +dm[1] >= 1 && +dm[1] <= 12 && +dm[2] >= 1 && +dm[2] <= 31) { const T = today(), y = +T.slice(0, 4); let d = `${y}-${p2(dm[1])}-${p2(dm[2])}`; if (d > T) d = `${y - 1}-${p2(dm[1])}-${p2(dm[2])}`; a.date = d; a.out.forEach(x => { x.s = d + x.s.slice(10); }); }
+        else warn.push(`사진 ${i + 1}의 날짜를 못 읽어 ${fmtMD(D.date || today())}로 넣었어요 — 고쳐 주세요`);
+      }
       let res = a.out, miss = a.skip; const sc = Math.min(2.5, 1800 / bm.width);
       if (sc > 1.3) {
         st(`사진 ${i + 1}/${files.length} 한 번 더 자세히 읽는 중…`);
@@ -530,7 +536,7 @@ async function impOcr(files) {
       all = all.concat(res.map(x => x.s)); sk = sk.concat(miss.map(m => m.t));
     }
     if (all.length) { ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + all.join('\n'); ta.dispatchEvent(new Event('input', { bubbles: true })); if (window.__app) __app.sheetDirty(); }
-    st(all.length ? `📷 ${all.length}개 읽었어요. 아래 글을 한 번 훑어보고 틀린 곳만 고쳐서 '가져오기'를 눌러요${sk.length ? ` · 못 읽은 기록 ${sk.length}개(${sk.slice(0, 4).join(', ')}) — 직접 적어 주세요` : ''}` : '기록을 찾지 못했어요. 시각(예: 10:23)이 보이는 기록 화면을 캡처해 주세요');
+    st((warn.length ? '⚠️ ' + warn.join(' · ') + '\n' : '') + (all.length ? `📷 ${all.length}개 읽었어요. 아래 글을 한 번 훑어보고 틀린 곳만 고쳐서 '가져오기'를 눌러요${sk.length ? ` · 못 읽은 기록 ${sk.length}개(${sk.slice(0, 4).join(', ')}) — 직접 적어 주세요` : ''}` : '기록을 찾지 못했어요. 시각(예: 10:23)이 보이는 기록 화면을 캡처해 주세요'));
   } catch (e) { st('읽지 못했어요: ' + (e.message || e)); }
 }
 document.addEventListener('change', e => { if (e.target.id === 'dy-impf') { const f = [...(e.target.files || [])]; e.target.value = ''; impOcr(f); } });
