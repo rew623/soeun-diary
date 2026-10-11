@@ -444,11 +444,83 @@ function impSheet() {
 2026-10-05 13:00 수면 ~14:30
 2026-10-05 19:00 목욕 15분
 2026-10-05 20:00 메모 오늘 많이 웃음</pre>
-    <label class="field"><span>붙여 넣을 기록</span><textarea id="dy-imp" rows="8" placeholder="여기에 붙여 넣어요"></textarea></label>
+    <button type="button" class="ghost dyocrb" data-dy="impocr">📷 캡처 사진으로 읽기 <small>(꼬미의 하루·베이비빌리 등 기록 화면, 여러 장 가능)</small></button>
+    <input type="file" id="dy-impf" accept="image/*,application/octet-stream" multiple hidden>
+    <p class="hint" id="dy-ocrst"></p>
+    <label class="field"><span>붙여 넣을 기록 <small>(사진에서 읽은 것도 여기 들어와요 — 틀린 줄은 고쳐 주세요)</small></span><textarea id="dy-imp" rows="8" placeholder="여기에 붙여 넣어요"></textarea></label>
     <p class="hint" id="dy-impn"></p><p class="err" id="dy-err"></p>
     <div class="actions"><button class="secondary" data-act="close">닫기</button><button class="primary" data-dy="impgo">가져오기</button></div>`);
 }
 document.addEventListener('input', e => { if (e.target.id !== 'dy-imp') return; const r = parseImp(e.target.value), n = $('dy-impn'); if (n) n.textContent = `${r.out.length}개 읽음${r.bad.length ? ` · 못 읽은 줄 ${r.bad.slice(0, 8).join(', ')}번` : ''}`; });
+// ---------- 캡처 사진 글자 읽기 (Tesseract.js, 폰 안에서 — 사진은 어디에도 안 올라가요) ----------
+// 처음 한 번 글자 사전(한국어 약 1.5MB)을 받아 두고, 다음부턴 폰에 저장된 걸 써요
+const TJS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let ocrW = null;
+function ocrLoad() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = TJS; sc.onload = res; sc.onerror = () => rej(new Error('글자 읽기 도구를 받지 못했어요. 인터넷을 확인해 주세요')); document.head.appendChild(sc); });
+}
+async function ocrWorker(st) {
+  if (ocrW) return ocrW; await ocrLoad();
+  ocrW = await Tesseract.createWorker('kor+eng', 1, { logger: m => { if (st && m.status && /load|init/.test(m.status)) st(`글자 사전 준비 중… ${Math.round((m.progress || 0) * 100)}%`); } });
+  return ocrW;
+}
+const OK = [['소변대변', '소변대변'], ['소변/대변', '소변대변'], ['모유', '모유'], ['분유', '분유'], ['유축', '유축'], ['소변', '소변'], ['대변', '대변'], ['수면', '수면'], ['낮잠', '수면'], ['밤잠', '수면'], ['목욕', '목욕'], ['메모', '메모'], ['이유식', '이유식']];
+// 글자 색으로 짐작 (글자를 잘못 읽었을 때): 주황=분유, 파랑=소변, 분홍=모유, 초록=이유식
+function hueKind(cv, bb) {
+  if (!cv || !bb) return ''; const x = Math.max(0, bb.x0), y = Math.max(0, bb.y0), w = Math.min(cv.width - x, bb.x1 - bb.x0), h = Math.min(cv.height - y, bb.y1 - bb.y0); if (w < 2 || h < 2) return '';
+  const d = cv.getContext('2d').getImageData(x, y, w, h).data; let sx = 0, sy = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) { const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b); if (mx - mn < .25) continue; let hu = mx === r ? (g - b) / (mx - mn) : mx === g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn); hu = (hu * 60 + 360) % 360; sx += Math.cos(hu * Math.PI / 180); sy += Math.sin(hu * Math.PI / 180); n++; }
+  if (n < 8) return ''; const hu = (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
+  return hu < 15 || hu >= 320 ? '모유' : hu < 55 ? '분유' : hu < 160 ? '이유식' : hu < 260 ? '소변' : '모유';
+}
+function ocrLines(data, cv, date0) {
+  let date = date0, cur = null; const out = [], skip = [];
+  const T = today(), L = (data.lines || []).slice().sort((a, b) => a.bbox.y0 - b.bbox.y0);
+  const fin = () => {
+    if (!cur) return; let { t, kind, det } = cur; det = (det || '').replace(/[>›<‹]/g, '').trim(); if (det === '-' || det === '—') det = '';
+    if (!kind) { skip.push(t); cur = null; return; }
+    if (kind === '이유식') { skip.push(t + ' 이유식'); cur = null; return; }   // 이유식은 급식 기록이라 따로
+    let ex = '', memo = '';
+    if (kind === '분유' || kind === '유축') { const m = /(\d+)\s*m/i.exec(det) || /(\d{2,3})/.exec(det); if (m) { ex = m[1]; det = det.replace(m[0], '').replace(/^\s*l\b/i, '').trim(); } }
+    if (kind === '모유') { const l = /왼\D{0,3}(\d+)/.exec(det), r = /오\D{0,4}(\d+)/.exec(det); if (l || r) { ex = `${l ? '왼' + l[1] : ''} ${r ? '오' + r[1] : ''}`.trim(); det = ''; } else { const m = /(\d+)\s*분/.exec(det); if (m) { ex = m[1] + '분'; det = det.replace(m[0], '').trim(); } } }
+    if (kind === '수면' || kind === '분유' || kind === '유축') { const r = /(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/.exec(det); if (r) { ex += ` ~${p2(r[3])}:${r[4]}`; det = det.replace(r[0], '').trim(); } else if (kind === '수면') { const h = /(\d+)\s*시간/.exec(det), mi = /(\d+)\s*분/.exec(det); if (h || mi) { const e = msOf(date, t) + ((h ? +h[1] * 60 : 0) + (mi ? +mi[1] : 0)) * 60000; ex = '~' + hmOf(new Date(e)); det = ''; } } }
+    if (kind === '목욕') { const m = /(\d+)\s*분/.exec(det); if (m) { ex = m[1] + '분'; det = det.replace(m[0], '').trim(); } }
+    if (kind === '대변' || kind === '소변대변') { const a = /조금|보통|많이/.exec(det); if (a && det.trim() === a[0]) { ex = a[0]; det = ''; } }
+    memo = det.replace(/\s+/g, ' ').trim();
+    out.push(`${date} ${t} ${kind}${ex ? ' ' + ex : ''}${memo ? (kind === '메모' ? ' ' : ' # ') + memo : ''}`); cur = null;
+  };
+  L.forEach(ln => {
+    const txt = ln.text.replace(/\s+/g, ' ').trim(); if (!txt) return;
+    const dm = /(\d{1,2})\s*월\s*(\d{1,2})\s*일/.exec(txt);
+    if (dm) { let y = +T.slice(0, 4), d = `${y}-${p2(dm[1])}-${p2(dm[2])}`; if (d > T) d = `${y - 1}-${p2(dm[1])}-${p2(dm[2])}`; fin(); date = d; return; }
+    const tm = /^\W{0,2}([0-2]?\d)\s*[:;.]\s*([0-5]\d)\b(.*)$/.exec(txt);
+    if (tm && +tm[1] < 24) {
+      fin(); const rest = tm[3]; let kind = (OK.find(([w]) => rest.replace(/\s/g, '').includes(w)) || [])[1] || '';
+      if (!kind && ln.words && ln.words.length > 1) kind = hueKind(cv, (ln.words.find((w, i) => i > 0 && /[^\d:;.\s]/.test(w.text)) || {}).bbox);
+      cur = { t: `${p2(tm[1])}:${tm[2]}`, kind, det: '' };
+      const after = rest.replace(new RegExp((OK.find(([w]) => rest.replace(/\s/g, '').includes(w)) || [''])[0].split('').join('\\s*')), '').replace(/[>›]/g, '').trim();   // 같은 줄에 뒤따르는 내용
+      if (after && /\d|[가-힣]/.test(after) && kind) cur.det = after;
+      return;
+    }
+    if (cur && !cur.det) { cur.det = txt; fin(); }
+  });
+  fin(); return { out, skip };
+}
+async function impOcr(files) {
+  const st = m => { const el = $('dy-ocrst'); if (el) el.textContent = m; }, ta = $('dy-imp'); if (!files.length || !ta) return;
+  try {
+    const w = await ocrWorker(st); let all = [], sk = [];
+    for (let i = 0; i < files.length; i++) {
+      st(`사진 ${i + 1}/${files.length} 읽는 중…`);
+      const bm = await createImageBitmap(files[i]), cv = document.createElement('canvas'); cv.width = bm.width; cv.height = bm.height; cv.getContext('2d').drawImage(bm, 0, 0);
+      const r = await w.recognize(cv), x = ocrLines(r.data, cv, D.date || today()); all = all.concat(x.out); sk = sk.concat(x.skip);
+    }
+    if (all.length) { ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + all.join('\n'); ta.dispatchEvent(new Event('input', { bubbles: true })); if (window.__app) __app.sheetDirty(); }
+    st(all.length ? `📷 ${all.length}개 읽었어요. 아래 글을 한 번 훑어보고 틀린 곳만 고쳐서 '가져오기'를 눌러요${sk.length ? ` · 못 읽은 기록 ${sk.length}개(${sk.slice(0, 4).join(', ')}) — 직접 적어 주세요` : ''}` : '기록을 찾지 못했어요. 시각(예: 10:23)이 보이는 기록 화면을 캡처해 주세요');
+  } catch (e) { st('읽지 못했어요: ' + (e.message || e)); }
+}
+document.addEventListener('change', e => { if (e.target.id === 'dy-impf') { const f = [...(e.target.files || [])]; e.target.value = ''; impOcr(f); } });
 async function impGo(b) {
   const r = parseImp(($('dy-imp') || {}).value), er = $('dy-err');
   if (!r.out.length) { er.textContent = '읽은 기록이 없어요. 형식을 확인해 주세요'; return; }
@@ -535,6 +607,7 @@ document.addEventListener('click', async e => {
   }
   if (a === 'imp') { impSheet(); return; }
   if (a === 'impgo') { impGo(b); return; }
+  if (a === 'impocr') { const f = $('dy-impf'); if (f) f.click(); return; }
   if (a === 'feedset') { feedSheet(); return; }
   if (a === 'feedsave') { feedSave(); return; }
   if (a === 'tip') { const t = $('dy-tip'); if (t && D.tips) t.textContent = D.tips[+v] || ''; return; }
@@ -609,6 +682,7 @@ css.textContent = `
 .dynext>span{font-size:28px}.dynext>div{flex:1;min-width:0}.dynext small{display:block;font-size:12px;color:var(--muted)}
 .dynext b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--navy);margin-right:8px}.dynext b.sm{font-size:15px;display:block}.dynext em{font-style:normal;font-size:14px;color:var(--ink)}
 .dynext.late{border-color:var(--red)}.dynext.late em{color:var(--red);font-weight:700}.dynext>i{font-style:normal;font-size:20px}
+.dyocrb{display:block;width:100%;min-height:48px;margin:0 0 6px;font-size:14.5px}.dyocrb small{display:block;font-size:12px;color:var(--muted)}
 .dyimp{display:block;width:100%;min-height:42px;margin:6px 0 0;font-size:13.5px}
 .dyimpex{background:#FFFDF7;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.6;white-space:pre-wrap;margin:0 0 10px;font-family:var(--body)}
 .dyrow.flash{animation:dyflash 2.4s ease-out}@keyframes dyflash{0%,40%{background:#FFE7A8}100%{background:transparent}}
