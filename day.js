@@ -131,11 +131,12 @@ function stats(date) {
 function line(e) {
   const r = e.raw, k = e.k;
   let name = (K[k] || K.memo).n, det = '';
-  if (k === 'formula' || k === 'pump') det = r.ml ? `${r.ml}ml` : '';
-  else if (k === 'breast') det = r.live ? `수유 중 · <b data-el="${e.id}"></b>` : [r.l ? `왼쪽 ${Math.round(r.l)}분` : '', r.r ? `오른쪽 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · ') || (e.e ? durTxt((e.e - e.s) / 60000) : '');
+  const span = e.e && e.e > e.s ? `⏱ ${durTxt((e.e - e.s) / 60000)} (${r.t}~${hmOf(new Date(e.e))})` : '';   // 걸린 시간 (끝 시각·목욕 분이 있으면)
+  if (k === 'formula' || k === 'pump') det = [r.ml ? `${r.ml}ml` : '', span].filter(Boolean).join(' · ');
+  else if (k === 'breast') det = r.live ? `수유 중 · <b data-el="${e.id}"></b>` : [r.l ? `왼쪽 ${Math.round(r.l)}분` : '', r.r ? `오른쪽 ${Math.round(r.r)}분` : ''].filter(Boolean).concat(span ? [span] : []).join(' · ');
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; det = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
   else if (k === 'sleep') det = r.live ? `자는 중 · <b data-el="${e.id}"></b>` : e.e ? `${durTxt((e.e - e.s) / 60000)} · ${r.t}~${r.e}` : '';
-  else if (k === 'bath') det = r.dur ? `${r.dur}분` : '';
+  else if (k === 'bath') det = span || (r.dur ? `⏱ ${r.dur}분` : '');
   else if (k === 'solid') det = [r.menu, r.amount, r.eat].filter(Boolean).map(esc).join(' · ');
   else if (k === 'temp') det = `${esc(r.value)}℃`;
   else if (k === 'med') det = [r.value, r.dose].filter(Boolean).map(esc).join(' ');
@@ -401,6 +402,7 @@ async function quickAdd(k, btn) {
   if (k === 'memo' || !last) { openForm(k, null); return; }
   const now = new Date(), it = { id: newCid(), k, t: hmOf(now), e: '', memo: '', live: 0, at: Date.now() };
   ['ml', 'l', 'r', 'dur', 'pee', 'poo', 'amt', 'st'].forEach(x => { if (last[x] != null && last[x] !== '') it[x] = last[x]; });
+  if (/^\d\d:\d\d$/.test(last.e || '') && k !== 'breast') { const d = (msOf('2000-01-01', last.e) - msOf('2000-01-01', last.t) + 864e5) % 864e5; if (d && d < 4 * 36e5) it.e = hmOf(new Date(now.getTime() + d)); }   // 걸린 시간도 최근과 같게 (끝 시각 = 지금 + 그만큼)
   if (btn) btn.disabled = true;
   const res = await write('careSave', ymdOf(now), it, '');
   if (btn) btn.disabled = false;
