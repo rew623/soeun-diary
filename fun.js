@@ -60,9 +60,9 @@ function openCookie() {
 }
 
 // ---------- 숨은 도토리 찾기 (하루 한 개, 날짜로 정한 탭 어딘가) ----------
-const TABS = ['grow', 'town', 'album', 'vac', 'food', 'sick'];
-const TAB_N = { grow: '성장 수사', town: '동네 탐문', album: '사건 앨범', vac: '예방접종', food: '급식 수사', sick: '긴급 출동' };
-const huntTab = () => TABS[hash('hunt' + today()) % TABS.length];
+const TABS = ['grow', 'day', 'town', 'album', 'vac', 'food', 'sick'];
+const TAB_N = { grow: '성장 수사', day: '하루 수사', town: '동네 탐문', album: '사건 앨범', vac: '예방접종', food: '급식 수사', sick: '긴급 출동' };
+const huntTab = () => { const H = typeof hiddenTabs === 'function' ? hiddenTabs() : [], T = TABS.filter(k => !H.includes(k)); return T[hash('hunt' + today()) % T.length]; };   // 설정에서 숨긴 탭엔 안 숨겨요
 function afterRender() {
   const old = document.getElementById('hidacorn'); if (old) old.remove();
   if (S.mode !== 'ok' || S.view || S.tab !== huntTab() || GAME.played('hunt')) return;
@@ -126,6 +126,7 @@ function activeDays() {
   const d = new Set();
   (S.records || []).forEach(r => d.add(r.date)); (S.meals || []).forEach(m => d.add(m.date)); (S.logs || []).forEach(l => d.add(String(l.at || '').slice(0, 10)));
   (S.vaccines || []).forEach(v => v.done && d.add(v.done)); (S.foods || []).forEach(f => d.add(f.start)); (S.visits || []).forEach(v => d.add(v.date));
+  (S.cares || []).forEach(c => d.add(c.date));   // 하루 수사 기록한 날 (game.js activeDays와 같게)
   return d;
 }
 function attendHtml() {
@@ -137,7 +138,7 @@ function attendHtml() {
   const prev = (() => { const d = new Date(Date.UTC(y, m - 2, 1)); return d.toISOString().slice(0, 7); })(), next = (() => { const d = new Date(Date.UTC(y, m, 1)); return d.toISOString().slice(0, 7); })();
   return `<section><h2 class="sh"><span>📅 수사 출석부</span><span class="mnav"><button data-fun="cal" data-v="${prev}" ${prev < S.profile.birth.slice(0, 7) ? 'disabled' : ''}>◀</button><b>${y}.${m}</b><button data-fun="cal" data-v="${next}" ${next > today().slice(0, 7) ? 'disabled' : ''}>▶</button></span></h2>
     <div class="acal">${'일월화수목금토'.split('').map(w => `<b>${w}</b>`).join('')}${cells.join('')}</div>
-    <p class="foot" style="margin:6px 0 0">이달 ${cnt}일 출석 · 성장·급식·체온·접종·진료 기록을 남긴 날에 도장이 찍혀요. 도장 찍힌 날 🌰 +2, 7일 연속마다 🌰 +5</p></section>`;
+    <p class="foot" style="margin:6px 0 0">이달 ${cnt}일 출석 · 성장·하루 수사·급식·체온·접종·진료 기록을 남긴 날에 도장이 찍혀요. 도장 찍힌 날 🌰 +2, 7일 연속마다 🌰 +5</p></section>`;
 }
 
 // ---------- 도토리 놀이터에 붙는 칸: 놀이 칸(함께 놀기), 계급·훈장 칸(출석부) ----------

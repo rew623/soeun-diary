@@ -99,6 +99,7 @@ function activeDays() {
   (S.records || []).forEach(r => d.add(r.date)); (S.meals || []).forEach(m => d.add(m.date));
   (S.logs || []).forEach(l => d.add(String(l.at || '').slice(0, 10))); (S.vaccines || []).forEach(v => v.done && d.add(v.done));
   (S.foods || []).forEach(f => d.add(f.start)); (S.visits || []).forEach(v => d.add(v.date));
+  (S.cares || []).forEach(c => d.add(c.date));   // 하루 수사(분유·기저귀·잠…) 기록한 날도 출석
   return d;
 }
 function streak() { const d = activeDays(); let t = today(); if (!d.has(t)) t = addDays(t, -1); let n = 0; while (d.has(t)) { n++; t = addDays(t, -1); } return n; }

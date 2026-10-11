@@ -2,7 +2,7 @@
 import { FIREBASE_CONFIG } from './config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion, runTransaction } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion, runTransaction, deleteField } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, getBlob } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 
 const fb = initializeApp(FIREBASE_CONFIG);
@@ -31,7 +31,7 @@ const TBL = {
 };
 const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks' };
 const LIM = { body: 5000, path: 60000, pics: 4000 };       // 칸별 글자 수 (나머지는 300)
-const OPT = { mom: ['geo', 'tm', 'fp'] };   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각·보여 줄 곳은 고쳐 저장해도 안 지워지게)
+const OPT = { mom: ['geo', 'tm', 'fp'], meal: ['tm'] };   // meal tm: 먹인 시각 HH:MM (하루 수사 타임라인)   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각·보여 줄 곳은 고쳐 저장해도 안 지워지게)
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
 const SCHEDULE = [
   ['출생', 0, [['B형간염 1차', '']]],
@@ -48,7 +48,7 @@ const SCHEDULE = [
 ];
 
 // ---------- 폰 안의 사본 (화면은 여기서 바로 그림) ----------
-const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map(), checkups: new Map(), game: null, gameSrv: false };
+const M = { fid: '', uid: '', family: null, member: null, members: [], col: {}, hosp: new Map(), recipes: new Map(), checkups: new Map(), care: new Map(), game: null, gameSrv: false };
 COLS.forEach(c => { M.col[c] = new Map(); });
 let unsubs = [], lastJSON = '', pendingRemote = false, ready = false;
 
@@ -75,6 +75,15 @@ async function commit(p) {
   await Promise.race([p, sleep(2500).then(() => { late = true; })]);
 }
 function localSet(c, id, data) { const cur = M.col[c].get(id) || { id }; M.col[c].set(id, Object.assign({}, cur, data, { id })); }
+// 하루 수사 기록 한 줄 다듬기 (모든 칸을 늘 같이 보내서 merge 저장이어도 옛 값이 안 남게)
+const CARE_K = ['formula', 'breast', 'pump', 'diaper', 'sleep', 'bath', 'memo'];
+function careRow(it) {
+  it = it || {}; const hm = v => /^\d{2}:\d{2}$/.test(v || '') ? v : '', num = (v, max, dp) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.min(max, Math.round(n * (dp || 1)) / (dp || 1)) : 0; };
+  const id = /^c[a-z0-9]{4,24}$/.test(it.id || '') ? it.id : newId('c').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return { id, k: CARE_K.includes(it.k) ? it.k : 'memo', t: hm(it.t) || '00:00', e: hm(it.e), ml: num(it.ml, 2000), l: num(it.l, 600, 10), r: num(it.r, 600, 10), dur: num(it.dur, 600),
+    pee: it.pee ? 1 : 0, poo: it.poo ? 1 : 0, amt: txt(it.amt, 10), st: txt(it.st, 10), memo: txt(it.memo, 300), live: it.live ? 1 : 0, side: it.side === 'l' || it.side === 'r' ? it.side : '', seg: num(it.seg, 9e15),
+    by: role_(it.by) || myRole(), at: num(it.at, 9e15) || Date.now() };
+}
 
 // ---------- 화면용 데이터 (예전 getData와 같은 모양) ----------
 function build() {
@@ -82,6 +91,7 @@ function build() {
   const item = k => list(k).map(o => {
     const c = { id: o.id };
     TBL[k].forEach(key => { c[key] = key === 'photo' ? !!o.photoUrl : (o[key] == null ? '' : String(o[key])); });
+    if (k === 'meal') c.tm = o.tm ? String(o.tm) : '';
     if (k === 'mom') { c.board = !!o.board; c.geo = o.geo ? String(o.geo) : ''; c.tm = o.tm ? String(o.tm) : ''; c.fp = o.fp ? String(o.fp) : ''; }   // fp: 사진에서 보여 줄 곳 "가로,세로"(0~1, focus.js)   // 수사 보드에 붙인 사진, 찍은 곳 "위도,경도"(빼기는 -), 찍은 시각 HH:MM(:SS)
     c.t = +o._o > 1e12 ? +o._o : 0;                 // 남긴 때 (이번 주 수배범 계산용, 예전에 옮겨 온 기록은 0)
     return c;
@@ -96,6 +106,8 @@ function build() {
   Object.keys(TBL).forEach(k => { d[OUT[k]] = item(k); });
   d.recipes = [...M.recipes.values()].map(r => ({ month: r.id, title: r.title || '', file: r.file || '', stages: r.stages || [], by: r.by || '' }));
   d.checkups = [...M.checkups.values()].map(c => ({ id: c.id, done: c.done || '', hospital: c.hospital || '', memo: c.memo || '', by: c.by || '' }));
+  // 하루 수사: 날짜 문서마다 items 맵 → 한 줄 목록 (날짜 date 붙여서)
+  d.cares = []; M.care.forEach((items, date) => Object.values(items || {}).forEach(it => { if (it && it.id) d.cares.push(Object.assign({}, it, { date })); }));
   // 두 폰이 같이 쓰는 놀이 저장 (도토리·방·옷·모자·스티커·룰렛), srv: 서버에서 한 번이라도 받았는지 (처음 합치기는 그다음에)
   d.game = M.game ? Object.assign({}, GAME_KEYS.reduce((o, k) => { if (M.game[k] !== undefined) o[k] = M.game[k]; return o; }, {}), { srv: M.gameSrv }) : null;
   d.hospitals = [...M.hosp.values()].map(h => ({ hpid: h.id, star: !!h.star, memo: h.memo || '', lunch: h.lunch || '', reserve: h.reserve || '', moonlight: !!h.moonlight, updatedBy: h.updatedBy || '' }));
@@ -332,6 +344,26 @@ const H = {
     return { ok: true };
   },
 
+  // 하루 수사 기록 (분유·모유수유·유축수유·기저귀·수면·목욕·메모): 날짜 문서의 items 맵에 기록 하나씩 (두 폰이 동시에 남겨도 안 겹쳐요, 오프라인에서도 저장)
+  async careSave(date, it, oldDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('날짜 형식이 올바르지 않아요');
+    const row = careRow(it), b = writeBatch(db);
+    if (oldDate && oldDate !== date && /^\d{4}-\d{2}-\d{2}$/.test(oldDate)) {   // 다른 날로 옮기면 그 날 문서에서 빼요
+      const o = Object.assign({}, M.care.get(oldDate) || {}); delete o[row.id]; M.care.set(oldDate, o);
+      b.set(dref('care', oldDate), { items: { [row.id]: deleteField() } }, { merge: true });
+    }
+    M.care.set(date, Object.assign({}, M.care.get(date) || {}, { [row.id]: row }));
+    b.set(dref('care', date), { items: { [row.id]: row }, updatedAt: serverTimestamp() }, { merge: true });
+    await commit(b.commit());
+    return { id: row.id, data: data() };
+  },
+  async careDelete(date, id) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('날짜 형식이 올바르지 않아요');
+    id = String(id); const o = Object.assign({}, M.care.get(date) || {}); delete o[id]; M.care.set(date, o);
+    await commit(setDoc(dref('care', date), { items: { [id]: deleteField() }, updatedAt: serverTimestamp() }, { merge: true }));
+    return { data: data() };
+  },
+
   // 영유아검진 받은 기록 (families/{fid}/checkups/{g1…g8, o1…o3}), 일정은 checkups.js가 태어난 날로 계산
   async saveCheckup(c) {
     const id = String((c && c.id) || '');
@@ -440,7 +472,7 @@ const API = {
 function stopAll() { unsubs.forEach(u => u()); unsubs = []; ready = false; }
 function start(fid) {
   stopAll();
-  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map(); M.checkups = new Map(); M.game = null; M.gameSrv = false;
+  M.fid = fid; M.family = null; M.member = null; COLS.forEach(c => M.col[c].clear()); M.hosp = new Map(); M.recipes = new Map(); M.checkups = new Map(); M.care = new Map(); M.game = null; M.gameSrv = false;
   const need = new Set(['family', 'member', ...COLS]);
   const first = key => { if (!need.has(key)) return; need.delete(key); if (!need.size) { ready = true; hideGate(); window.__resolveAPI(API); setTimeout(refreshPush, 8000); } };
   const fail = e => {
@@ -470,6 +502,11 @@ function start(fid) {
     M.game = s.exists() ? s.data() : {}; if (!s.metadata.fromCache) M.gameSrv = true;
     onRemote();
   }, e => console.warn('놀이 저장을 불러오지 못했어요', e)));
+  // 하루 수사 (families/{fid}/care/{YYYY-MM-DD}: { items: { 기록id: {...} } }) — 하루에 문서 하나라 기록이 많아도 읽기가 적어요
+  unsubs.push(onSnapshot(collection(db, 'families', fid, 'care'), s => {
+    M.care = new Map(s.docs.map(d => [d.id, (d.data() || {}).items || {}]));
+    onRemote();
+  }, e => console.warn('하루 수사 기록을 불러오지 못했어요', e)));
   unsubs.push(onSnapshot(collection(db, 'families', fid, 'checkups'), s => {
     M.checkups = new Map(s.docs.map(d => [d.id, Object.assign({}, d.data(), { id: d.id })]));
     onRemote();

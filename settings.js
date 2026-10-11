@@ -4,7 +4,7 @@
 (function () {
 const get = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
 const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-const TABS = [['town', '동네 탐문', '🗺️'], ['album', '사건 앨범', '📷'], ['vac', '예방접종', '💉'], ['food', '급식 수사', '🥄'], ['sick', '긴급 출동', '🚨']];
+const TABS = [['day', '하루 수사', '🍼'], ['town', '동네 탐문', '🗺️'], ['album', '사건 앨범', '📷'], ['vac', '예방접종', '💉'], ['food', '급식 수사', '🥄'], ['sick', '긴급 출동', '🚨']];
 const CARDS = [['game', '🔥 오늘의 수사 지령·놀이터 카드'], ['thief', '🎩 괴도 깍정이 추적 카드 (방 창밖의 깍정이도)']];
 const V = { ver: '', latest: '', checked: false, est: null, busy: false };
 const sw = () => 'serviceWorker' in navigator;

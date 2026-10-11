@@ -366,6 +366,8 @@ body{background:radial-gradient(rgba(185,150,105,.22) 1.3px,transparent 1.6px) 0
 .tabbar button{border-top:0;border-radius:20px;min-height:56px;padding:7px 0 8px}
 .tabbar button.on{background:rgba(255,255,255,.12)}
 .tabbar button.on svg{color:#F6B4AA}
+.tabbar.t7 button{font-size:clamp(11px,2.9vw,12.5px);letter-spacing:-.02em;word-spacing:-.15em}.tabbar.t7 button span{white-space:nowrap}   /* 탭 7칸: 글자가 두 줄로 꺾이지 않게, 탭 이름 사이는 조금 더 띄워 보이게 */
+@media (max-width:380px){.tabbar.t7{left:6px;right:6px;padding:3px}}
 .fab{border-radius:99px;margin-bottom:calc(84px + env(safe-area-inset-bottom,0px));box-shadow:0 3px 0 #7E1A14,0 8px 16px rgba(43,38,34,.25)}
 body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(40px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(243,230,206,.95));pointer-events:none;z-index:4}
 /* 편집창 */
@@ -461,6 +463,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="paper.js"></script>
 <script src="explore.js"></script>
 <script src="walk.js"></script>
+<script src="day.js"></script>
 <script src="dupes.js"></script>
 <script src="settings.js"></script>
 <script src="focus.js"></script>
@@ -518,7 +521,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 
 // ---------- storage (Google Sheets via Apps Script) ----------
-const S={me:{role:''},sickView:'',looks:[],capsules:[],walks:[],townView:'',eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
+const S={me:{role:''},sickView:'',cares:[],looks:[],capsules:[],walks:[],townView:'',eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
 const PHOTOS={};let busy=false;
 // ---------- 화면 이동 기록 ----------
 // 안쪽 화면(S.view)을 열면 그 전 화면(탭·안쪽 화면·스크롤 위치)을 기억하고, 돌아가기·뒤로가기(goBack)는 그 화면 그 위치로 돌아가요
@@ -539,7 +542,7 @@ const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',pho
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
   periods:[{id:'p1',name:'출생',month:0,confirmed:'',hospital:''},{id:'p2',name:'2개월',month:2,confirmed:'',hospital:''},{id:'p3',name:'4개월',month:4,confirmed:'2026-11-10',hospital:'우리동네 소아청소년과'},{id:'p4',name:'6개월',month:6,confirmed:'',hospital:''}],
   foods:[{id:'f1',name:'쌀',start:'2026-09-20',result:'통과',reaction:'',memo:'',by:'엄마'},{id:'f2',name:'소고기',start:'2026-09-23',result:'',reaction:'',memo:'',by:'아빠'}],meals:[{id:'ml1',date:'2026-09-23',slot:'아침',menu:'소고기 쌀미음',amount:'40g',eat:'잘먹음',memo:'',photo:false,by:'아빠'}],cubes:[{id:'c1',name:'소고기',count:'5',made:'2026-09-20',memo:''}],menus:[],
-  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],walks:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
+  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],walks:[],cares:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
   vaccines:[{id:'v1',period:'p1',name:'B형간염 1차',sub:'',done:'2026-07-06',memo:''},{id:'v2',period:'p2',name:'DTaP-IPV/Hib 1차',sub:'5가 혼합 백신',done:'2026-09-08',memo:''},{id:'v3',period:'p2',name:'폐렴구균 1차',sub:'',done:'2026-09-08',memo:''},{id:'v4',period:'p3',name:'DTaP-IPV/Hib 2차',sub:'',done:'',memo:''},{id:'v5',period:'p3',name:'폐렴구균 2차',sub:'',done:'',memo:''},{id:'v6',period:'p4',name:'DTaP-IPV/Hib 3차',sub:'',done:'',memo:''}]};
 const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses',look:'looks',capsule:'capsules',walk:'walks'};
 let dseq=100;const nid=p=>p+(dseq++);
@@ -559,6 +562,8 @@ const MOCK={
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
   setGeo:(id,geo)=>{[].concat(id).forEach(i=>{const m=DB.moments.find(x=>x.id===i);if(m)m.geo=geo});return{data:MOCK.getData()}},
   setFocus:(id,fp)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.fp=fp;return{data:MOCK.getData()}},
+  careSave:(date,it,old)=>{const id=it.id||('c'+Date.now().toString(36)+(dseq++));DB.cares=DB.cares.filter(x=>x.id!==id);DB.cares.push(Object.assign({k:'memo',t:'00:00',e:'',ml:0,l:0,r:0,dur:0,pee:0,poo:0,amt:'',st:'',memo:'',live:0,side:'',seg:0,by:DB.me.role,at:Date.now()},it,{id,date}));return{id,data:MOCK.getData()}},
+  careDelete:(date,id)=>{DB.cares=DB.cares.filter(x=>x.id!==id);return{data:MOCK.getData()}},
   saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={}),k=typeof once==='string'?once:once.key,v=typeof once==='string'?null:once.val;if(v===null?g0[k]:(g0[k]&&String(g0[k])>=v))throw new Error('이미 받은 보상이에요');Object.keys(o||{}).forEach(x=>{if(x!=='acornSet'&&x!=='acorn')g0[x]=o[x]});g0[k]=v===null?((o||{})[k]||true):v;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
   deleteCheckup:id=>{DB.checkups=DB.checkups.filter(x=>x.id!==id);return{data:MOCK.getData()}},
@@ -570,7 +575,7 @@ const MOCK={
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
-function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
+function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.cares=d.cares||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
 function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
@@ -578,7 +583,7 @@ async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='o
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;
 let cacheT,cacheD;function saveCache(d){if(DEMO)return;cacheD=d;clearTimeout(cacheT);cacheT=setTimeout(()=>{try{localStorage.setItem(CK,cacheJSON(cacheD))}catch(e){}},2000)}   // 바뀔 때마다 통째로 쓰지 않고 2초 모아서
-const cacheJSON=d=>JSON.stringify(d,(k,v)=>k==='path'&&typeof v==='string'&&v.length>2000?undefined:v);   // 긴 탐문 경로는 폰 사본에서 빼요 (서버에서 다시 받아요)
+const cacheJSON=d=>{const cut=addDays(today(),-60);return JSON.stringify(d,(k,v)=>k==='path'&&typeof v==='string'&&v.length>2000?undefined:k==='cares'&&Array.isArray(v)?v.filter(x=>x.date>=cut):v)};   // 하루 수사 기록은 최근 60일만 폰 사본에   // 긴 탐문 경로는 폰 사본에서 빼요 (서버에서 다시 받아요)
 function savePhCache(){if(DEMO)return;try{const first=['profile','mom','dad'],keep={};let size=0;
   const keys=first.concat(Object.keys(PHOTOS).filter(k=>!first.includes(k)).reverse());
   for(const k of keys){const v=PHOTOS[k];if(!v)continue;if(size+v.length>2500000)continue;keep[k]=v;size+=v.length}
@@ -661,16 +666,17 @@ const I_SPOON='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" strok
 const I_CAM='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"></path><circle cx="12" cy="13" r="4"></circle></svg>';
 const I_PIN='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"></path><circle cx="12" cy="11" r="2.2"></circle><path d="M4 21h16"></path></svg>';
 const I_FILE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"></path><path d="M8 14l2.5 2.5L16 11"></path></svg>';
+const I_BOTTLE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 4.5C10.5 3 11.1 2 12 2s1.5 1 1.5 2.5"></path><path d="M8.5 4.5h7V7h-7z"></path><path d="M9 7 8 9.5V20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V9.5L15 7"></path><path d="M8 13h3M8 16.5h3"></path></svg>';
 
 function render(){
   if(S.mode==='loading'){$app.innerHTML=`<div class="loading"><div class="lchase" aria-hidden="true"><span class="lth">${CHARS.svg('thief','acorn',{size:78})}</span><span class="lbb">${CHARS.svg('baby','lens',{size:88})}</span><i class="lpaws"></i></div>사건 파일을 여는 중…<br><small>괴도 깍정이의 발자국을 쫓는 중</small></div>`;$tab.innerHTML='';$tab.__h='';return}
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';$tab.__h='';return}
   if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';$tab.__h='';return}
   const HID=hiddenTabs(),POP=S.tab!==render.lastTab;render.lastTab=S.tab;   // 설정에서 숨긴 탭 (지금 보고 있는 탭은 잠깐 보여요) · 탭을 바꾼 때만 아이콘 톡
-  const TH=[['grow','성장 수사',I_LENS],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].filter(([k])=>k===S.tab||!HID.includes(k)).map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
-  if($tab.__h!==TH){$tab.innerHTML=TH;$tab.__h=TH}   // 그대로면 다시 안 그려요 (톡 애니메이션이 끊기지 않게)
+  const TH=[['grow','성장 수사',I_LENS],['day','하루 수사',I_BOTTLE],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].filter(([k])=>k===S.tab||!HID.includes(k)).map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
+  if($tab.__h!==TH){$tab.innerHTML=TH;$tab.__h=TH;$tab.classList.toggle('t7',TH.split('data-act="tab"').length>7)}   // 그대로면 다시 안 그려요 (톡 애니메이션이 끊기지 않게)
   if(POP){const b=$tab.querySelector('button.on');if(b){b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),700)}}   // 탭이 바뀌면 단추도 새로 그려져서 바로 붙여요
-  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='walk'?WALK.render():S.view==='hosp'?HOSP.render():S.view==='settings'?SETTINGS.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?(S.townView==='info'?TOWN.render():EXPLORE.render('tab')):S.tab==='food'?renderFood():renderGrow();
+  const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='walk'?WALK.render():S.view==='hosp'?HOSP.render():S.view==='settings'?SETTINGS.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?(S.townView==='info'?TOWN.render():EXPLORE.render('tab')):S.tab==='food'?renderFood():S.tab==='day'?DAY.render():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
   $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body+(S.view?'':noteFoot());
   if(S.view==='hosp'||HOSP.on())HOSP.mount();
@@ -679,7 +685,7 @@ function render(){
   if(S.view==='explore'||(S.tab==='town'&&!S.view&&S.townView!=='info'))EXPLORE.mount();
   if(S.view==='walk')WALK.mount();
   if(S.tab==='album'&&!S.view&&S.albumView==='board')BOARD.mount();
-  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();WALK.afterRender();if(window.FOCUS)FOCUS.apply($app);
+  cachePhSoon();stayAfterRender();ALBUM.afterRender();POSTS.sync();GAME.check();WANTED.check();FUN.check();FUN.afterRender();WALK.afterRender();DAY.afterRender();if(window.FOCUS)FOCUS.apply($app);
   NAVcur={tab:S.tab,view:_view,albumView:S.albumView,vacView:S.vacView,townView:S.townView,sickView:S.sickView||''};
 }
 
@@ -1101,12 +1107,13 @@ function openBad(id){const f=S.foods.find(x=>x.id===id);
     <p class="err" id="fb-err"></p>
     <div class="actions"><button class="secondary" data-act="close">취소</button><button class="primary" data-act="savebad" data-id="${id}">혐의 기록</button></div>`);
 }
-function openMeal(id){
-  const m=id?S.meals.find(x=>x.id===id):{date:today(),slot:(()=>{const h=new Date().getHours();return h<11?'아침':h<15?'점심':h<20?'저녁':'간식'})(),menu:'',amount:'',eat:'',memo:''};
+function openMeal(id,preset){   // preset {date, tm}: 하루 수사 탭의 🥣 이유식 단추에서
+  const nowHM=(()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')})();
+  const m=id?S.meals.find(x=>x.id===id):Object.assign({date:today(),tm:nowHM,slot:(()=>{const h=new Date().getHours();return h<11?'아침':h<15?'점심':h<20?'저녁':'간식'})(),menu:'',amount:'',eat:'',memo:''},preset||{});
   pending=undefined;
   const names=tested().map(f=>f.name).concat(S.cubes.filter(c=>+c.count>0).map(c=>c.name)).filter((x,i,a)=>a.indexOf(x)===i).slice(0,12);
   openSheet(`<h3>${id?'급식 기록 수정':'급식 기록'}</h3>
-    <label class="field"><span>날짜</span><input id="ml-date" type="date" value="${m.date}" min="${S.profile.birth}" max="${today()}"></label>
+    <div class="wkf2"><label class="field"><span>날짜</span><input id="ml-date" type="date" value="${m.date}" min="${S.profile.birth}" max="${today()}"></label><label class="field"><span>먹인 시각</span><input id="ml-tm" type="time" value="${esc(m.tm||'')}"></label></div>
     <div class="field"><span>끼니</span><div class="quick" id="ml-slot">${SLOTS.map(x=>`<button data-act="pick1" data-v="${x}" class="${m.slot===x?'on':''}">${x}</button>`).join('')}</div></div>
     <label class="field"><span>메뉴</span><input id="ml-menu" maxlength="60" value="${esc(m.menu)}" placeholder="예: 소고기 애호박 죽">${names.length?`<div class="quick">${names.map(x=>`<button data-act="addmenu1" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:''}</label>
     <label class="field"><span>먹은 양 (선택)</span><input id="ml-amt" maxlength="20" value="${esc(m.amount)}" placeholder="예: 60g"></label>
@@ -1146,7 +1153,7 @@ function viewMenu(id){const m=S.menus.find(x=>x.id===id),ph=safeImg(PHOTOS[id]);
 const NOTES=['작은 단서도 놓치지 말 것. — 탐정 수칙 제1조','기록은 기억보다 힘이 세다.','진실은 언제나 하나, 귀여움은 언제나 무한.','오늘의 증거 사진 한 장이 10년 뒤의 보물.','수사관도 쉬어야 수사가 된다. 엄마·아빠도 꼭 쉬기!','괴도 깍정이는 기록이 없는 날을 노린다.','관찰하라, 그리고 사랑하라.','탐정의 무기는 돋보기, 수사관의 무기는 체력.','울음에도 이유가 있다. 배고픔·졸림·기저귀부터 수사.','첫 순간은 다시 오지 않는다. 최초 목격은 바로 기록!','증거는 사진으로, 감동은 메모로.','범인은 늘 가까이에… 대개 소파 밑에.','오늘 웃은 횟수: 셀 수 없음. 수사 종결.','탐정 사무소 영업시간: 24시간 (특히 새벽 3시).','단서 하나, 웃음 둘, 뽀뽀 셋.','불가능한 걸 지우고 남은 것이 진실. 대개는 졸린 거다.','오늘 못 한 기록은 내일의 단서로.','명탐정은 낮잠도 수사의 일부.'];
 function noteFoot(){if(S.mode!=='ok'||!S.profile||!S.profile.birth)return '';const d=dayNo(today());return `<p class="notefoot"><span>🐾 ${esc(CV.nick())} 탐정 사무소 · 수사 ${d}일째</span><small>오늘의 수첩: “${NOTES[d%NOTES.length]}”</small></p>`}
 // 설정(settings.js)에서 고른 것: 숨긴 탭, 첫 화면 카드 (이 폰에만)
-function hiddenTabs(){try{const v=JSON.parse(localStorage.getItem('soeun-tabs-off')||'[]');return Array.isArray(v)?v.filter(k=>['town','album','vac','food','sick'].includes(k)):[]}catch(e){return[]}}
+function hiddenTabs(){try{const v=JSON.parse(localStorage.getItem('soeun-tabs-off')||'[]');return Array.isArray(v)?v.filter(k=>['day','town','album','vac','food','sick'].includes(k)):[]}catch(e){return[]}}
 function homeOn(k){try{const v=JSON.parse(localStorage.getItem('soeun-home-off')||'[]');return !(Array.isArray(v)&&v.includes(k))}catch(e){return true}}
 // ---------- sheets ----------
 const $sheet=document.getElementById('sheet'),$scrim=document.getElementById('scrim');
@@ -1324,7 +1331,7 @@ document.addEventListener('click',async e=>{
   case 'mealall':S.mealAll=!S.mealAll;render();break;
   case 'savemeal':{const d=val('ml-date'),menu=val('ml-menu');if(!d)return err('ml-err','날짜를 입력해 주세요');if(!menu)return err('ml-err','메뉴를 입력해 주세요');
     const sl=$sheet.querySelector('#ml-slot .on'),ea=$sheet.querySelector('#ml-eat .on');
-    const o={id:a.dataset.id,date:d,slot:sl?sl.dataset.v:'',menu,amount:val('ml-amt'),eat:ea?ea.dataset.v:'',memo:val('ml-memo'),by:myRole()};if(pending!==undefined)o.photo=pending;
+    const o={id:a.dataset.id,date:d,tm:/^\d\d:\d\d$/.test(val('ml-tm'))?val('ml-tm'):'',slot:sl?sl.dataset.v:'',menu,amount:val('ml-amt'),eat:ea?ea.dataset.v:'',memo:val('ml-memo'),by:myRole()};if(pending!==undefined)o.photo=pending;
     const res=await write('saveItem','meal',o);if(res){if(pending)PHOTOS[res.id]=pending;else if(pending===null)delete PHOTOS[res.id];render();closeSheet();toast('급식 기록을 남겼어요')}break}
   case 'addcube':openCube(null);break;
   case 'editcube':openCube(a.dataset.id);break;
@@ -1411,7 +1418,7 @@ function stayAfterRender(){
   clearTimeout(stayT);stayT=setTimeout(staySave,300);   // 바로 읽으면 화면 전체 배치를 억지로 다시 계산해서 느려져요
 }
 try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
-  if(st&&['grow','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.sickView=st.view==='hosp'?'hosp':['hosp','ph'].includes(st.sickView)?st.sickView:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.townView=st.townView==='info'?'info':'';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
+  if(st&&['grow','day','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.sickView=st.view==='hosp'?'hosp':['hosp','ph'].includes(st.sickView)?st.sickView:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.townView=st.townView==='info'?'info':'';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
 }catch(e){}
 window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
 window.addEventListener('pagehide',staySave);
@@ -1426,7 +1433,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 // 좌우로 밀면 옆 탭으로 (손가락을 따라 화면이 움직이고, 충분히 밀면 부드럽게 넘어가요)
 // 지도·수사 보드·입력칸·사진 고르기 중·하위 화면(병원 수사, 보고서 등)에서는 안 해요
 (function(){
-  const ALL=['grow','town','album','vac','food','sick'];   // 아래 메뉴 순서와 같게 (설정에서 숨긴 탭은 건너뛰어요)
+  const ALL=['grow','day','town','album','vac','food','sick'];   // 아래 메뉴 순서와 같게 (설정에서 숨긴 탭은 건너뛰어요)
   let ORDER=ALL;
   let sw=null;
   const W=()=>$app.clientWidth||innerWidth;
