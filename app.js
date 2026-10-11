@@ -820,6 +820,7 @@ if ('serviceWorker' in navigator) {
     show();
     reg.addEventListener('updatefound', () => { const w = reg.installing; w && w.addEventListener('statechange', () => { if (w.state === 'installed') show(); }); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
-    setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+    setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);   // 새 버전은 5분마다·앱으로 돌아올 때마다 확인
+    window.addEventListener('focus', () => reg.update().catch(() => {}));
   }).catch(e => console.warn('SW', e));
 }

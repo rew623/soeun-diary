@@ -914,7 +914,9 @@ function openLog(kind,id){
   const lastT=S.logs.filter(x=>x.kind==='temp').sort((a,b)=>a.at<b.at?1:-1)[0];
   const at=l?l.at:nowLocal(),[d0,t0]=at.split('T');
   const lastMed=S.logs.filter(x=>x.kind==='med').sort((a,b)=>a.at<b.at?1:-1)[0];   // 새 투약 기록은 지난 투약(약 이름·용량)과 같게 미리 채워요
-  const meds=[...new Set(S.logs.filter(x=>x.kind==='med').sort((a,b)=>a.at<b.at?1:-1).map(x=>x.value))].slice(0,5);
+  const medH=[...new Set(S.logs.filter(x=>x.kind==='med').sort((a,b)=>a.at<b.at?1:-1).map(x=>x.value))].slice(0,5);
+  const meds=medH.concat(['해열제','감기약','콧물약','비타민D','유산균'].filter(m=>!medH.includes(m))).slice(0,8);   // 쓴 약 + 흔한 예시
+  const epH=[...new Set(S.eps.map(e=>e.title).filter(Boolean))].slice(-4).reverse(),epNames=epH.concat(['감기','해열','비타민','건강 관리','장염','예방접종 후'].filter(m=>!epH.includes(m))).slice(0,8);   // 사건 이름 예시
   let body='';
   if(kind==='temp'){const v=l?l.value:(lastT?lastT.value:'37.0');
     body=`<div class="stepper"><button data-act="tstep" data-v="-0.1" aria-label="0.1도 내리기">−</button><div><input id="l-val" inputmode="decimal" value="${esc(v)}" aria-label="체온"><small>℃</small></div><button data-act="tstep" data-v="0.1" aria-label="0.1도 올리기">+</button></div>
@@ -923,7 +925,7 @@ function openLog(kind,id){
       <label class="field"><span>용량 (처방, 설명서대로)</span><input id="l-dose" maxlength="20" value="${esc(l?l.dose:(lastMed?lastMed.dose||'':''))}" placeholder="예: 2.5ml"></label>`;
   else body=`<label class="field"><span>증상</span><input id="l-val" maxlength="60" value="${esc(l?l.value:'')}" placeholder="예: 콧물"><div class="quick">${SYMS.map(s=>`<button data-act="addsym" data-v="${s}">${s}</button>`).join('')}</div></label>`;
   openSheet(`<h3>${KIND[kind]} ${l?'수정':'기록'}</h3>
-    ${!ep?`<label class="field"><span>사건 이름 (새 사건 파일이 열려요)</span><input id="l-ep" maxlength="20" value="${esc(kind==='temp'?'발열':(kind==='med'&&lastMed&&(S.eps.find(e=>e.id===lastMed.ep)||{}).title)||'몸 상태 관찰')}"></label>`:`<label class="field"><span>사건 이름 <small>(바꾸면 이 사건 전체 이름이 바뀌어요)</small></span><input id="l-ep" maxlength="20" value="${esc(ep.title)}"></label>`}
+    ${!ep?`<label class="field"><span>사건 이름 (새 사건 파일이 열려요)</span><input id="l-ep" maxlength="20" value="${esc(kind==='temp'?'발열':(kind==='med'&&lastMed&&(S.eps.find(e=>e.id===lastMed.ep)||{}).title)||'건강 관리')}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`:`<label class="field"><span>사건 이름 <small>(바꾸면 이 사건 전체 이름이 바뀌어요)</small></span><input id="l-ep" maxlength="20" value="${esc(ep.title)}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`}
     ${body}
     <div class="row3" style="grid-template-columns:1fr 1fr"><label class="field"><span>날짜</span><input id="l-date" type="date" value="${d0}"></label><div class="field"><span>시각</span>${window.DAY&&DAY.tpick?DAY.tpick('l-time',t0||''):`<input id="l-time" type="time" value="${t0||''}">`}</div></div>
     <label class="field"><span>메모 (선택)</span><input id="l-memo" maxlength="100" value="${esc(l?l.memo:'')}" placeholder="예: 보채고 수유량 줄어듦"></label>
@@ -1296,7 +1298,7 @@ document.addEventListener('click',async e=>{
     if(!d||!t)return err('l-err','날짜와 시각을 입력해 주세요');
     let ep=a.dataset.ep;
     if(ep){const e0=S.eps.find(x=>x.id===ep),nt=val('l-ep');if(e0&&nt&&nt!==e0.title&&!await write('saveItem','ep',Object.assign({},e0,{title:nt})))return}   // 사건 이름을 바꿨으면 사건도 같이
-    if(!ep){const r0=await write('saveItem','ep',{title:val('l-ep')||'몸 상태 관찰',start:d,end:'',memo:''});if(!r0)return;ep=r0.id}
+    if(!ep){const r0=await write('saveItem','ep',{title:val('l-ep')||'건강 관리',start:d,end:'',memo:''});if(!r0)return;ep=r0.id}
     const site=$sheet.querySelector('#l-site .on');
     const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:val('l-memo'),by:myRole()};
     if(await write('saveItem','log',o)){closeSheet();toast(KIND[k]+' 기록을 남겼어요')}break}
