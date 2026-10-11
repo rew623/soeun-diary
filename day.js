@@ -465,7 +465,7 @@ async function ocrWorker(st) {
   ocrW = await Tesseract.createWorker('kor+eng', 1, { logger: m => { if (st && m.status && /load|init/.test(m.status)) st(`글자 사전 준비 중… ${Math.round((m.progress || 0) * 100)}%`); } });
   return ocrW;
 }
-const OK = [['소변대변', '소변대변'], ['소변/대변', '소변대변'], ['모유', '모유'], ['분유', '분유'], ['유축', '유축'], ['소변', '소변'], ['대변', '대변'], ['수면', '수면'], ['낮잠', '수면'], ['밤잠', '수면'], ['목욕', '목욕'], ['메모', '메모'], ['이유식', '이유식']];
+const OK = [['소변+대변', '소변대변'], ['소변대변', '소변대변'], ['소변/대변', '소변대변'], ['대변+소변', '소변대변'], ['모유', '모유'], ['분유', '분유'], ['유축', '유축'], ['소변', '소변'], ['대변', '대변'], ['수면', '수면'], ['낮잠', '수면'], ['밤잠', '수면'], ['목욕', '목욕'], ['메모', '메모'], ['이유식', '이유식']];
 // 글자 색으로 짐작 (글자를 잘못 읽었을 때): 주황=분유, 파랑=소변, 분홍=모유, 초록=이유식
 function hueKind(cv, bb) {
   if (!cv || !bb) return ''; const x = Math.max(0, bb.x0), y = Math.max(0, bb.y0), w = Math.min(cv.width - x, bb.x1 - bb.x0), h = Math.min(cv.height - y, bb.y1 - bb.y0); if (w < 2 || h < 2) return '';
@@ -474,38 +474,40 @@ function hueKind(cv, bb) {
   if (n < 8) return ''; const hu = (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
   return hu < 15 || hu >= 320 ? '모유' : hu < 55 ? '분유' : hu < 160 ? '이유식' : hu < 260 ? '소변' : '모유';
 }
-function ocrLines(data, cv, date0) {
-  let date = date0, cur = null; const out = [], skip = [];
+function ocrLines(data, cv, date0, noDate) {
+  let date = date0, cur = null, found = ''; const out = [], skip = [], seen = {};
   const T = today(), L = (data.lines || []).slice().sort((a, b) => a.bbox.y0 - b.bbox.y0);
   const fin = () => {
     if (!cur) return; let { t, kind, det } = cur; det = (det || '').replace(/[>›<‹]/g, '').trim(); if (det === '-' || det === '—') det = '';
-    if (!kind) { skip.push(t); cur = null; return; }
-    if (kind === '이유식') { skip.push(t + ' 이유식'); cur = null; return; }   // 이유식은 급식 기록이라 따로
+    const key = t + '|' + (seen[t] = (seen[t] || 0) + 1);   // 같은 분에 기록 둘(분유·소변)도 따로
+    if (!kind) { skip.push({ key, t }); cur = null; return; }
+    if (kind === '이유식') { skip.push({ key, t: t + ' 이유식' }); cur = null; return; }   // 이유식은 급식 기록이라 따로
     let ex = '', memo = '';
-    if (kind === '분유' || kind === '유축') { const m = /(\d+)\s*m/i.exec(det) || /(\d{2,3})/.exec(det); if (m) { ex = m[1]; det = det.replace(m[0], '').replace(/^\s*l\b/i, '').trim(); } }
+    if (kind === '분유' || kind === '유축') { const m = /(\d{2,3})\s*m/i.exec(det) || /(\d{2,3})/.exec(det); if (m) { let v = +m[1]; if (v > 400 && v % 10 === 0) v /= 10; ex = String(v); det = det.slice(det.indexOf(m[0]) + m[0].length).replace(/^\s*[lI1|]?\s*/, ''); } }
     if (kind === '모유') { const l = /왼\D{0,3}(\d+)/.exec(det), r = /오\D{0,4}(\d+)/.exec(det); if (l || r) { ex = `${l ? '왼' + l[1] : ''} ${r ? '오' + r[1] : ''}`.trim(); det = ''; } else { const m = /(\d+)\s*분/.exec(det); if (m) { ex = m[1] + '분'; det = det.replace(m[0], '').trim(); } } }
     if (kind === '수면' || kind === '분유' || kind === '유축') { const r = /(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/.exec(det); if (r) { ex += ` ~${p2(r[3])}:${r[4]}`; det = det.replace(r[0], '').trim(); } else if (kind === '수면') { const h = /(\d+)\s*시간/.exec(det), mi = /(\d+)\s*분/.exec(det); if (h || mi) { const e = msOf(date, t) + ((h ? +h[1] * 60 : 0) + (mi ? +mi[1] : 0)) * 60000; ex = '~' + hmOf(new Date(e)); det = ''; } } }
-    if (kind === '목욕') { const m = /(\d+)\s*분/.exec(det); if (m) { ex = m[1] + '분'; det = det.replace(m[0], '').trim(); } }
+    if (kind === '목욕') { const m = /(\d+)\s*분/.exec(det) || /^\s*(\d{1,2})/.exec(det); if (m) { ex = m[1] + '분'; det = det.replace(m[0], '').replace(/^\d+/, '').trim(); } }
     if (kind === '대변' || kind === '소변대변') { const a = /조금|보통|많이/.exec(det); if (a && det.trim() === a[0]) { ex = a[0]; det = ''; } }
-    memo = det.replace(/\s+/g, ' ').trim();
-    out.push(`${date} ${t} ${kind}${ex ? ' ' + ex : ''}${memo ? (kind === '메모' ? ' ' : ' # ') + memo : ''}`); cur = null;
+    memo = det.replace(/^[\s·ㆍ・•\-–—.,。:;|[\]{}()lI1]+/, '').replace(/\s+/g, ' ').trim();
+    const hg = (memo.match(/[가-힣]/g) || []).length; if (memo && (hg < 2 || hg / memo.replace(/\s/g, '').length < .5)) memo = '';   // 깨진 글자(한글이 적은 것)는 버려요
+    out.push({ key, memo: !!memo, s: `${date} ${t} ${kind}${ex ? ' ' + ex : ''}${memo ? (kind === '메모' ? ' ' : ' # ') + memo : ''}` }); cur = null;
   };
   L.forEach(ln => {
     const txt = ln.text.replace(/\s+/g, ' ').trim(); if (!txt) return;
     const dm = /(\d{1,2})\s*월\s*(\d{1,2})\s*일/.exec(txt);
-    if (dm) { let y = +T.slice(0, 4), d = `${y}-${p2(dm[1])}-${p2(dm[2])}`; if (d > T) d = `${y - 1}-${p2(dm[1])}-${p2(dm[2])}`; fin(); date = d; return; }
+    if (dm && !noDate && +dm[1] >= 1 && +dm[1] <= 12 && +dm[2] >= 1 && +dm[2] <= 31) { let y = +T.slice(0, 4), d = `${y}-${p2(dm[1])}-${p2(dm[2])}`; if (d > T) d = `${y - 1}-${p2(dm[1])}-${p2(dm[2])}`; fin(); date = found = d; return; }
     const tm = /^\W{0,2}([0-2]?\d)\s*[:;.]\s*([0-5]\d)\b(.*)$/.exec(txt);
     if (tm && +tm[1] < 24) {
       fin(); const rest = tm[3]; let kind = (OK.find(([w]) => rest.replace(/\s/g, '').includes(w)) || [])[1] || '';
       if (!kind && ln.words && ln.words.length > 1) kind = hueKind(cv, (ln.words.find((w, i) => i > 0 && /[^\d:;.\s]/.test(w.text)) || {}).bbox);
       cur = { t: `${p2(tm[1])}:${tm[2]}`, kind, det: '' };
-      const after = rest.replace(new RegExp((OK.find(([w]) => rest.replace(/\s/g, '').includes(w)) || [''])[0].split('').join('\\s*')), '').replace(/[>›]/g, '').trim();   // 같은 줄에 뒤따르는 내용
+      const after = rest.replace(new RegExp((OK.find(([w]) => rest.replace(/\s/g, '').includes(w)) || [''])[0].split('').map(c => c.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('\\s*')), '').replace(/[>›]/g, '').trim();   // 같은 줄에 뒤따르는 내용
       if (after && /\d|[가-힣]/.test(after) && kind) cur.det = after;
       return;
     }
-    if (cur && !cur.det) { cur.det = txt; fin(); }
+    if (cur && !cur.det) cur.det = txt; else if (cur && cur.det && txt.length < 30 && /[가-힣]/.test(txt) && !/모유수유|이유식|유축수유/.test(txt)) cur.det += ' ' + txt;
   });
-  fin(); return { out, skip };
+  fin(); return { out, skip, date: found };
 }
 async function impOcr(files) {
   const st = m => { const el = $('dy-ocrst'); if (el) el.textContent = m; }, ta = $('dy-imp'); if (!files.length || !ta) return;
@@ -513,8 +515,19 @@ async function impOcr(files) {
     const w = await ocrWorker(st); let all = [], sk = [];
     for (let i = 0; i < files.length; i++) {
       st(`사진 ${i + 1}/${files.length} 읽는 중…`);
-      const bm = await createImageBitmap(files[i]), cv = document.createElement('canvas'); cv.width = bm.width; cv.height = bm.height; cv.getContext('2d').drawImage(bm, 0, 0);
-      const r = await w.recognize(cv), x = ocrLines(r.data, cv, D.date || today()); all = all.concat(x.out); sk = sk.concat(x.skip);
+      // 두 번 읽어 합쳐요: 원래 크기(날짜·시각을 잘 읽음) + 크게 키운 것(한글 메모를 잘 읽음)
+      const bm = await createImageBitmap(files[i]), mk = sc => { const cv = document.createElement('canvas'); cv.width = Math.round(bm.width * sc); cv.height = Math.round(bm.height * sc); const cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(bm, 0, 0, cv.width, cv.height); return cv; };
+      const c1 = mk(1), a = ocrLines((await w.recognize(c1)).data, c1, D.date || today());
+      if (!a.date) st(`사진 ${i + 1}: 날짜를 못 읽어서 ${D.date || today()}로 넣었어요 — 확인해 주세요`);
+      let res = a.out, miss = a.skip; const sc = Math.min(2.5, 1800 / bm.width);
+      if (sc > 1.3) {
+        st(`사진 ${i + 1}/${files.length} 한 번 더 자세히 읽는 중…`);
+        const c2 = mk(sc), z = ocrLines((await w.recognize(c2)).data, c2, a.date || D.date || today(), true), M = new Map(res.map(x => [x.key, x]));
+        z.out.forEach(x => { const o = M.get(x.key); if (!o || (x.memo && !o.memo) || o.s.split(' ')[2] === x.s.split(' ')[2]) M.set(x.key, x); });   // 같은 줄이면 키운 쪽(메모가 잘 읽힘)
+        res = [...M.values()]; miss = a.skip.filter(m => !M.has(m.key)).concat(z.skip.filter(m => !M.has(m.key) && !a.skip.some(q => q.key === m.key)));
+        res.sort((p, q) => q.s.slice(11, 16).localeCompare(p.s.slice(11, 16)));
+      }
+      all = all.concat(res.map(x => x.s)); sk = sk.concat(miss.map(m => m.t));
     }
     if (all.length) { ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + all.join('\n'); ta.dispatchEvent(new Event('input', { bubbles: true })); if (window.__app) __app.sheetDirty(); }
     st(all.length ? `📷 ${all.length}개 읽었어요. 아래 글을 한 번 훑어보고 틀린 곳만 고쳐서 '가져오기'를 눌러요${sk.length ? ` · 못 읽은 기록 ${sk.length}개(${sk.slice(0, 4).join(', ')}) — 직접 적어 주세요` : ''}` : '기록을 찾지 못했어요. 시각(예: 10:23)이 보이는 기록 화면을 캡처해 주세요');
