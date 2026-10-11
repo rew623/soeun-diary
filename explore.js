@@ -4,7 +4,7 @@
 // 동네 이름·시·군은 카카오 지도 주소 변환(coord2RegionCode)으로 찾아 이 폰에 기억(localStorage soeun-geo-rg). 지도 SDK는 병원 수사와 같이 씀(HOSP.sdk)
 // 지도엔 사진 핀(곳)과 탐문 경로(산책길)를 같이 그려요. 위의 단추로 켜고 꺼요(이 폰에 기억 soeun-ex-layer)
 (function () {
-const X = { days: 0, course: null, pick: [], back: null, pickAll: false, more: 30, mapErr: '', fitN: -1, regions: null, regLoading: false, pickPos: null, sel: new Set(), listN: 60, layer: { ph: true, wk: true } };
+const X = { psel: new Set(), days: 0, course: null, pick: [], back: null, pickAll: false, more: 30, mapErr: '', fitN: -1, regions: null, regLoading: false, pickPos: null, sel: new Set(), listN: 60, layer: { ph: true, wk: true } };
 try { Object.assign(X.layer, JSON.parse(localStorage.getItem('soeun-ex-layer') || '{}')); } catch (e) {}
 let map = null, mapEl = null, mapLoading = false, overlays = [], lines = [], lastSig = '', geocoder = null, pickMap = null, pickMarker = null;
 const RGK = 'soeun-geo-rg';
@@ -120,6 +120,7 @@ function mount() {
     mapLoading = false; geocoder = new kakao.maps.services.Geocoder();
     const R = window.WALK ? WALK.routes() : [], c = places()[0] ? places()[0].c : R[0] ? R[0].T.pts[0] : { lat: 37.3422, lng: 127.9202 };
     map = new kakao.maps.Map(mapEl, { center: new kakao.maps.LatLng(c.lat, c.lng), level: 7 });
+    onTap(mapEl, map, ll => pinTap(map, ll) || nearTap(ll));   // 핀 놓기 중이면 누른 곳으로, 아니면 그 근처를 지난 탐문 기록 목록
     lastSig = ''; X.fitN = -1; sync(); resolve();
   }).catch(() => { mapLoading = false; X.mapErr = 'fail'; if (shown()) render(); });
 }
@@ -135,27 +136,53 @@ function sync() {
   const badge = (pos, txt, label, fn) => { const el = document.createElement('button'); el.type = 'button'; el.className = 'exwk'; el.textContent = txt; el.setAttribute('aria-label', label); el.addEventListener('click', ev => { ev.stopPropagation(); fn(); }); lines.push(new kakao.maps.CustomOverlay({ map, position: pos, content: el, yAnchor: .5, clickable: true, zIndex: 3 })); };
   const sel = X.course != null ? CS[X.course] : null;
   if (X.layer.wk && sel) {
-    sel.walks.forEach(w => { const T = WALK.track(w); if (!T || T.pts.length < 2) return; const path = LL(T), line = new kakao.maps.Polyline({ map, path, strokeWeight: 4, strokeColor: '#B3261E', strokeOpacity: .35 }); kakao.maps.event.addListener(line, 'click', () => WALK.open(w.id)); lines.push(line); path.forEach(ll => bounds.extend(ll)); n++; });
+    sel.walks.forEach(w => { const T = WALK.track(w); if (!T || T.pts.length < 2) return; const path = LL(T), line = new kakao.maps.Polyline({ map, path, strokeWeight: 4, strokeColor: '#B3261E', strokeOpacity: .35 }); kakao.maps.event.addListener(line, 'click', ev => { lineHit = Date.now(); const ws = ev && ev.latLng ? nearWalks(ev.latLng).filter(x => sel.walks.includes(x)) : []; if (ws.length > 1) nearSheet(ws); else WALK.open(w.id); }); lines.push(line); path.forEach(ll => bounds.extend(ll)); n++; });
     const path = LL(sel.T); lines.push(new kakao.maps.Polyline({ map, path, strokeWeight: 7, strokeColor: '#1F2A44', strokeOpacity: .85 }));
     badge(path[0], `🐾${sel.n}`, `${sel.name} 코스`, () => WALK.courseSheet(sel.i, X.days));
   } else if (X.layer.wk) CS.forEach(g => {
     const path = LL(g.T), line = new kakao.maps.Polyline({ map, path, strokeWeight: 4 + Math.min(g.n, 6), strokeColor: '#B3261E', strokeOpacity: g.n > 1 ? .8 : .55 });
     const go = () => g.n > 1 ? WALK.courseSheet(g.i, X.days) : WALK.open(g.rep.id);
-    kakao.maps.event.addListener(line, 'click', go); lines.push(line); path.forEach(ll => bounds.extend(ll)); n++;
+    kakao.maps.event.addListener(line, 'click', ev => { lineHit = Date.now(); const ws = ev && ev.latLng ? nearWalks(ev.latLng) : []; if (ws.length > 1 && ws.some(w => !g.walks.includes(w))) nearSheet(ws); else go(); });   // 다른 코스와 겹친 곳이면 겹친 기록 목록 lines.push(line); path.forEach(ll => bounds.extend(ll)); n++;
     badge(path[0], g.n > 1 ? `🐾${g.n}` : WALK.kindOf(g.rep.kind)[1], g.n > 1 ? `${g.name} ${g.n}번` : `${fmtMD(g.rep.date)} 탐문 보기`, go);
   });
   if (X.layer.ph) P.forEach(pl => {
     const el = document.createElement('button'), ph = safeImg(PHOTOS[pl.photos[pl.n - 1].id]);
     el.type = 'button'; el.className = 'expin' + (pl.home ? ' home' : ''); el.setAttribute('aria-label', label(pl));
     el.innerHTML = `${ph ? `<img src="${ph}" alt="">` : '<span>📷</span>'}<b>${pl.home ? '🏠' : pl.n}</b>`;
-    el.addEventListener('click', ev => { ev.stopPropagation(); openPlace(pl.i); });
     const pos = new kakao.maps.LatLng(pl.c.lat, pl.c.lng);
+    el.addEventListener('click', ev => { ev.stopPropagation(); if (pinTap(map, pos)) return; openPlace(pl.i); });   // 핀 자리 정하는 중이면 이곳으로 모아요
     const ov = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 1.15, clickable: true, zIndex: 5 });
     ov.setMap(map); overlays.push(ov); bounds.extend(pos); n++;
   });
   if (P.some(pl => !RG[rkey(pl.c)])) resolve();   // 새로 생긴 곳(탐문 사진 등)의 동네 이름
   const fit = P.length + R.length * 1000 + X.days * 7 + (X.course == null ? 0 : 99 + X.course);
   if (X.fitN !== fit && n) { X.fitN = fit; if (n === 1 && P.length === 1 && !R.length) { map.setCenter(new kakao.maps.LatLng(P[0].c.lat, P[0].c.lng)); map.setLevel(5); } else map.setBounds(bounds, 50, 40, 40, 40); }
+}
+// 지도를 누른 곳 근처(손가락 22px 안)를 지난 탐문 기록 — 길이 겹쳐도 목록으로 골라 들어가요
+let lineHit = 0;
+function segD(a, b) {   // (0,0)에서 선분 a-b까지 거리
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / L2)) : 0;
+  return Math.hypot(a[0] + t * dx, a[1] + t * dy);
+}
+function nearWalks(ll) {
+  if (!map || !window.WALK) return [];
+  const c = { lat: ll.getLat(), lng: ll.getLng() };
+  let tol = 40; try { const pr = map.getProjection(), pt = pr.containerPointFromCoords(ll), q = pr.coordsFromContainerPoint(new kakao.maps.Point(pt.x + 22, pt.y)); tol = Math.max(12, km(c, { lat: q.getLat(), lng: q.getLng() }) * 1000); } catch (e) {}
+  const kx = Math.cos(c.lat * Math.PI / 180) * 111320, P = p => [(p.lng - c.lng) * kx, (p.lat - c.lat) * 110540];
+  const from = X.days ? addDays(today(), -X.days) : '', CS = X.course != null && WALK.courses(X.days)[X.course];
+  return WALK.all().filter(w => {
+    if (w.date < from || (CS && !CS.walks.includes(w))) return false;
+    const T = WALK.track(w);
+    if (T && T.pts.length > 1) { let prev = P(T.pts[0]); for (let i = 1; i < T.pts.length; i++) { const cur = P(T.pts[i]); if (segD(prev, cur) <= tol) return true; prev = cur; } return false; }
+    const g = parse(w.geo); return !!g && km(g, c) * 1000 <= tol * 1.5;
+  });
+}
+function nearSheet(ws) {
+  openSheet(`<h3>🐾 이 근처 탐문 기록 ${ws.length}개</h3><p class="hint">누르면 탐문 보고서로 가요. 사진 핀·길·내용은 거기서 고쳐요.</p><div class="wklist">${ws.slice(0, 40).map(WALK.rowHtml).join('')}</div>${ws.length > 40 ? '<p class="foot">최근 40개만 보여요</p>' : ''}<div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
+}
+function nearTap(ll) {
+  if (!X.layer.wk) return;
+  setTimeout(() => { if (Date.now() - lineHit < 600) return; const ws = nearWalks(ll); if (ws.length) nearSheet(ws); }, 90);   // 길을 눌렀으면 길 쪽이 먼저
 }
 function focus(i) { const pl = places()[i]; if (!map || !pl) return; closeSheet(); map.setCenter(new kakao.maps.LatLng(pl.c.lat, pl.c.lng)); map.setLevel(4); const w = $('exmap-slot'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
@@ -196,13 +223,18 @@ function render_(mode) {
 }
 // 지도 핀을 누르면: 그곳 사진 + 핀 옮기기·빼기
 function openPlace(i) {
-  const pl = places()[i]; if (!pl) return;
-  const r = regionOf(pl), cw = canWrite(), nW = pl.photos.filter(ph => ph.walk).length;
+  const pl = places()[i]; if (!pl) return; X.psel = new Set();
+  const r = regionOf(pl), cw = canWrite(), nW = pl.photos.filter(ph => ph.walk).length, ids = new Set(pl.photos.map(ph => ph.id));
+  // 여기 겹친 탐문 기록들: 그 기록 사진이 이곳에 있거나, 기록 장소가 200m 안
+  const recs = window.WALK ? WALK.all().filter(w => WALK.photos(w).some(m => ids.has(m.id)) || (parse(w.geo) && km(parse(w.geo), pl.c) <= .2)) : [];
   openSheet(`<h3>${pl.home ? '🏠 본부 (우리 집)' : '📍 ' + esc(label(pl))}</h3>
     <p class="hint">${r && r.g ? `${esc(sido(r.s))} ${esc(r.g)}${r.d && !pl.home ? ' ' + esc(r.d) : ''} · ` : ''}첫 방문 ${fmtK(pl.first, true)} · ${pl.days.size}번 방문 · 사진 ${pl.n}장</p>
-    <section class="exsheet"><div class="exgrid">${pl.photos.slice().reverse().map(ph => { const u = safeImg(PHOTOS[ph.id]); return `<div class="excell"><button class="exph" data-view="${esc(ph.id)}">${u ? `<img src="${u}" alt="" loading="lazy" decoding="async">` : '<span>사진</span>'}<small>${fmtMD(ph.date)}${ph.tm ? ' ' + ph.tm : ''}${ph.walk ? ' 🐾' : ''}</small></button>${cw ? `<button class="expinb" data-xp="pick" data-v="${esc(ph.id)}" aria-label="이 사진 핀 옮기기·빼기">📍</button>` : ''}</div>`; }).join('')}</div></section>
-    ${cw ? `<p class="foot" style="margin:0 0 8px">사진을 누르면 크게 보고, 📍를 누르면 그 사진 핀만 옮기거나 빼요.${nW ? ' 🐾는 탐문 경로에서 찍은 시각으로 찾은 자리예요.' : ''}</p>
-      <div class="explact"><button class="ghost" data-xp="plmove" data-v="${i}">📍 이곳 핀 모두 옮기기</button><button class="ghost exdanger" data-xp="plunpin" data-v="${i}">이곳 핀 모두 빼기</button></div>` : ''}
+    ${recs.length ? `<h4 class="exsub">🐾 이곳의 탐문 기록 <span>${recs.length}</span></h4><p class="foot" style="margin:0 0 6px">누르면 탐문 보고서로 가요. 사진 핀·내용은 거기서 고쳐요.</p><div class="wklist exrecs">${recs.slice(0, 8).map(WALK.rowHtml).join('')}</div>` : ''}
+    <h4 class="exsub">📷 이곳 사진 <span>${pl.n}</span></h4>
+    <section class="exsheet" data-vpin="place"><div class="exgrid">${pl.photos.slice().reverse().map(ph => { const u = safeImg(PHOTOS[ph.id]); return `<div class="excell"><button class="exph" data-view="${esc(ph.id)}">${u ? `<img src="${u}" alt="" loading="lazy" decoding="async">` : '<span>사진</span>'}<small>${fmtMD(ph.date)}${ph.tm ? ' ' + ph.tm : ''}${ph.walk ? ' 🐾' : ''}</small></button>${cw ? `<button class="expinb" data-xp="pchk" data-v="${esc(ph.id)}" aria-label="고르기"><i>✓</i></button>` : ''}</div>`; }).join('')}</div></section>
+    ${cw ? `<p class="foot" style="margin:0 0 8px">사진을 누르면 크게 보고, 오른쪽 위 동그라미로 골라요. 고른 사진만 옮기거나 빼요.${nW ? ' 🐾는 탐문 경로에서 찍은 시각으로 찾은 자리예요.' : ''}</p>
+      <div class="explact" data-pl="${i}"><button class="ghost" data-xp="plmove" data-v="${i}">📍 이곳 핀 모두 옮기기</button><button class="ghost exdanger" data-xp="plunpin" data-v="${i}">이곳 핀 모두 빼기</button></div>
+      <p class="foot" style="margin:0 0 6px">옮기기를 누르면 이 창이 닫히고, 지도에서 새 자리를 누르면 돼요.</p>` : ''}
     <div class="actions"><button class="secondary" data-act="close">닫기</button>${map ? `<button class="ghost" data-xp="focus" data-v="${i}">지도에서 보기</button>` : ''}</div>`);
 }
 
@@ -220,6 +252,7 @@ function pinList() {
     <div class="actions"><button class="secondary" data-act="close">닫기</button><button class="primary" data-xp="pnext" ${X.sel.size ? '' : 'disabled'}>${X.sel.size ? `고른 ${X.sel.size}장 꽂기 ›` : '사진을 골라요'}</button></div>`;
 }
 const sheetEl = () => document.getElementById('sheet');
+function plBtns() { const box = document.querySelector('.explact[data-pl]'); if (!box) return; const n = X.psel.size, [mv, un] = box.querySelectorAll('button'); mv.textContent = n ? `📍 고른 ${n}장 옮기기` : '📍 이곳 핀 모두 옮기기'; un.textContent = n ? `고른 ${n}장 빼기` : '이곳 핀 모두 빼기'; }
 function reopenList() { const sh = sheetEl(), y = sh ? sh.scrollTop : 0; openSheet(pinList()); if (sh) sh.scrollTop = y; }
 function nextBtn() { const b = document.querySelector('[data-xp="pnext"]'); if (b) { b.disabled = !X.sel.size; b.textContent = X.sel.size ? `고른 ${X.sel.size}장 꽂기 ›` : '사진을 골라요'; } }
 // ids: 사진 하나 또는 여럿, back: { place: 곳 번호 } (핀 창에서 왔으면 돌아가기)
@@ -253,7 +286,7 @@ function mapPick() {
     pickMap = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(c.lat, c.lng), level: X.pickPos ? 4 : 6 });
     pickMarker = new kakao.maps.Marker({ position: new kakao.maps.LatLng(c.lat, c.lng) });
     if (X.pickPos) { pickMarker.setMap(pickMap); const sv = $('xp-save'); if (sv) sv.hidden = false; }
-    kakao.maps.event.addListener(pickMap, 'click', ev => { const ll = ev.latLng; X.pickPos = { lat: ll.getLat(), lng: ll.getLng() }; pickMarker.setPosition(ll); pickMarker.setMap(pickMap); const sv = $('xp-save'); if (sv) sv.hidden = false; });
+    onTap(el, pickMap, ll => { X.pickPos = { lat: ll.getLat(), lng: ll.getLng() }; pickMarker.setPosition(ll); pickMarker.setMap(pickMap); const sv = $('xp-save'); if (sv) sv.hidden = false; });
   }).catch(() => { const el = $('expick-map'); if (el) el.innerHTML = '<p class="vempty" style="padding:12px">지도를 불러오지 못했어요. "지금 내 위치로"를 써 주세요.</p>'; });
 }
 // 사진 편집창의 '찍은 곳' 한 줄 (album.js 현장 사진)
@@ -263,6 +296,61 @@ function whereHtml(id) {
   const txt = p ? `${wp ? '🐾 탐문 경로에서 찾은 자리' : '📍 ' + (r && (r.d || r.g) ? esc([r.g, r.d].filter(Boolean).join(' ')) : `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`)}` : '위치 없음';
   return `<div class="field"><span>찍은 곳</span><div class="exwhere"><small>${txt}</small>${canWrite() ? `<button type="button" class="ghost" data-xp="pick" data-v="${esc(id)}">${p ? '옮기기·빼기' : '📍 꽂기'}</button>` : ''}</div></div>`;
 }
+
+// ---------- 지도를 '톡' 누른 곳 ----------
+// 카카오 click이 폰(스크롤되는 창 안 등)에서 안 올 때가 있어, 손가락을 거의 안 움직이고 뗀 순간도 같이 봐요 (먼저 온 하나만)
+function onTap(el, m, fn) {
+  let last = 0, lastP = null, st = null;
+  const px = ll => { try { const p = m.getProjection().containerPointFromCoords(ll); return [p.x, p.y]; } catch (e) { return [ll.getLat() * 1e5, ll.getLng() * 1e5]; } };
+  // 같은 '톡'이 두 길(카카오 click·손가락 뗌)로 오면 하나만: 0.45초 안 + 14px 안이면 같은 톡 (빨리 다른 곳을 연달아 누른 건 따로)
+  const fire = ll => { if (!ll) return; const p = px(ll); if (Date.now() - last < 450 && lastP && Math.hypot(p[0] - lastP[0], p[1] - lastP[1]) < 14) return; last = Date.now(); lastP = p; fn(ll); };
+  kakao.maps.event.addListener(m, 'click', ev => fire(ev && ev.latLng));
+  el.addEventListener('pointerdown', e => { st = e.isPrimary && !e.target.closest('button,a,.wkfpin') ? { x: e.clientX, y: e.clientY, t: Date.now() } : null; }, true);
+  el.addEventListener('pointerup', e => {
+    const s0 = st; st = null; if (!s0 || Math.hypot(e.clientX - s0.x, e.clientY - s0.y) > 10 || Date.now() - s0.t > 600) return;
+    const pr = m.getProjection && m.getProjection(); if (!pr || !pr.coordsFromContainerPoint) return;
+    const r = el.getBoundingClientRect(), pt = new kakao.maps.Point(e.clientX - r.left, e.clientY - r.top);
+    setTimeout(() => fire(pr.coordsFromContainerPoint(pt)), 40);
+  }, true);
+}
+// ---------- 지도에서 바로 핀 놓기: 고른 사진들 → 지도를 누른 곳으로 (탐험 지도·탐문 보고서 지도 같이) ----------
+const PM = { ids: [], m: null, el: null, done: null, opt: null };
+let pbar = null;
+// opt.auto: '경로 자리로' 같은 이름이 있으면 '직접 꽂은 자리 지우기'(geo '') 단추도 — 탐문 경로·장소 자리로 돌아가요
+function pinMode(ids, m, el, done, opt) {
+  if (!m || !ids || !ids.length) return;
+  if (PM.done && PM.ids.length) { const f = PM.done; PM.done = null; f(); }
+  PM.ids = [...new Set(ids)]; PM.m = m; PM.el = el; PM.done = done || null; PM.opt = opt || null;
+  if (!pbar) {
+    pbar = document.createElement('div'); pbar.className = 'pinbar'; pbar.hidden = true; pbar.setAttribute('role', 'status');
+    document.body.appendChild(pbar);
+    pbar.addEventListener('click', e => { const t = e.target.closest('[data-pm]'); if (!t) return; const k = t.dataset.pm; if (k === 'x') pinOff(); else if (k === 'here') pinHere(); else if (k === 'un') pinWrite('-', `사진 ${PM.ids.length}장 핀을 뺐어요`); else if (k === 'auto') pinWrite('', `사진 ${PM.ids.length}장을 ${PM.opt && PM.opt.auto ? PM.opt.auto.replace(/로$/, '') : '처음 자리'}에 다시 꽂았어요 📍`); });
+  }
+  const n = PM.ids.length;
+  pbar.innerHTML = `<b>📍 지도에서 ${n > 1 ? `사진 ${n}장의` : '이 사진의'} 새 자리를 눌러요</b><small>다른 사진 핀을 누르면 그 자리로 모여요</small><span><button data-pm="here">📍 지금 위치</button>${opt && opt.auto ? `<button data-pm="auto">↩ ${esc(opt.auto)}</button>` : ''}<button data-pm="un">핀 빼기</button><button data-pm="x">취소</button></span>`;
+  pbar.hidden = false; document.documentElement.classList.add('pin-on');
+  if (el && !el.closest('.mapfull')) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function pinOff() { PM.ids = []; PM.m = null; PM.el = null; PM.opt = null; if (pbar) pbar.hidden = true; document.documentElement.classList.remove('pin-on'); const f = PM.done; PM.done = null; if (f) f(); }
+function pinCheck() { if (PM.m && PM.el && !PM.el.isConnected) pinOff(); }
+// 고른 사진들 geo를 한꺼번에 ('-' 빼기, '' 직접 꽂은 자리 지우기)
+async function pinWrite(geo, msg) {
+  const ids = PM.ids.slice(); if (!ids.length) return;
+  if (pbar) pbar.querySelectorAll('button').forEach(b => b.disabled = true);
+  let ok = true;
+  for (let i = 0; i < ids.length; i += 400) { if (!(await write('setGeo', ids.length === 1 ? ids[0] : ids.slice(i, i + 400), geo))) { ok = false; break; } }
+  pinOff(); if (ok) toast(msg);
+}
+const pinSave = p => pinWrite(`${p.lat.toFixed(4)},${p.lng.toFixed(4)}`, `사진 ${PM.ids.length}장 핀을 옮겼어요 📍`);
+function pinTap(m, ll) { if (!PM.ids.length || PM.m !== m) return false; pinSave({ lat: ll.getLat(), lng: ll.getLng() }); return true; }
+const pinOn = () => PM.ids.length > 0;
+function pinHere() {
+  if (!PM.ids.length) return; if (!navigator.geolocation) { toast('이 폰에서는 위치를 쓸 수 없어요'); return; }
+  toast('지금 위치 찾는 중…');
+  navigator.geolocation.getCurrentPosition(p => pinSave({ lat: p.coords.latitude, lng: p.coords.longitude }), () => toast('위치를 가져오지 못했어요. 위치 권한을 확인해 주세요'), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
+// 사진 크게 보기의 '📍 핀 위치'(탐험 지도 핀 창에서 연 사진)
+function pinPhoto(id) { closeSheet(); if (map && mapEl && shown()) pinMode([id], map, mapEl); else pinStep(id); }
 
 // ---------- 지도 도구: 내 위치 · 크게 보기 (탐문 보고서 지도도 같이 씀) ----------
 const ME = new WeakMap();
@@ -313,8 +401,10 @@ document.addEventListener('click', async e => {
   if (a === 'pmore') { X.listN += 60; reopenList(); return; }
   if (a === 'pnext') { if (X.sel.size) pinStep([...X.sel]); return; }
   if (a === 'pick') { const pl = document.querySelector('[data-xp="plmove"]'); pinStep(b.dataset.v, pl ? { place: +pl.dataset.v } : null); return; }
-  if (a === 'plmove') { const pl = places()[+b.dataset.v]; if (pl) pinStep(pl.photos.map(ph => ph.id), { place: pl.i }); return; }
-  if (a === 'plunpin') { const pl = places()[+b.dataset.v]; if (pl && await ask(`이곳 사진 ${pl.n}장의 위치를 뺄까요?\n사진은 그대로 남아요.`, { ok: '빼기', danger: true })) await saveGeo(pl.photos.map(ph => ph.id), null); return; }
+  if (a === 'pmhere') { pinHere(); return; }
+  if (a === 'pchk') { const id = b.dataset.v; if (X.psel.has(id)) X.psel.delete(id); else X.psel.add(id); b.classList.toggle('on', X.psel.has(id)); plBtns(); return; }
+  if (a === 'plmove') { const pl = places()[+b.dataset.v]; if (!pl) return; const ids = X.psel.size ? [...X.psel] : pl.photos.map(ph => ph.id); if (map && mapEl) { closeSheet(); pinMode(ids, map, mapEl, () => X.psel.clear()); } else pinStep(ids, { place: pl.i }); return; }
+  if (a === 'plunpin') { const pl = places()[+b.dataset.v]; if (!pl) return; const ids = X.psel.size ? [...X.psel] : pl.photos.map(ph => ph.id); if (await ask(`${X.psel.size ? '고른' : '이곳'} 사진 ${ids.length}장의 위치를 뺄까요?\n사진은 그대로 남아요.`, { ok: '빼기', danger: true })) await saveGeo(ids, null); return; }
   if (a === 'pback') { if (X.back && X.back.place != null) openPlace(X.back.place); else openSheet(pinList()); return; }
   if (a === 'mappick') { mapPick(); return; }
   if (a === 'here') {
@@ -391,7 +481,9 @@ html.mf-open #scrim{z-index:56}html.mf-open #sheet{z-index:57}   /* 크게 본 �
 .exgrid img{width:100%;height:100%;object-fit:cover;display:block}
 .exgrid span{display:grid;place-items:center;height:100%;font-size:12px;color:var(--muted)}
 .exgrid small{position:absolute;left:4px;bottom:4px;font-size:11px;color:#fff;background:rgba(0,0,0,.45);border-radius:99px;padding:0 6px}
-.excell .expinb{position:absolute;right:4px;top:4px;width:36px;height:36px;border-radius:50%;background:rgba(255,253,247,.95);border:1.5px solid var(--line);font-size:16px;aspect-ratio:auto;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.excell .expinb{position:absolute;right:2px;top:2px;width:44px;height:44px;border:0;background:none;aspect-ratio:auto;display:grid;place-items:center}
+.excell .expinb i{width:28px;height:28px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.3);color:transparent;font-style:normal;font-size:15px;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.excell .expinb.on i{background:var(--red);color:#fff}.excell:has(.expinb.on){outline:3px solid var(--red);outline-offset:-3px}
 .explact{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}.explact .ghost{min-height:44px;font-size:13.5px;word-break:keep-all}.exdanger{color:var(--red)!important}
 .expd{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px}.expd b{font-size:14px;color:var(--navy)}
 .expd button{border:1.5px solid var(--line);background:#FFFDF7;border-radius:99px;font-size:12.5px;padding:3px 12px;min-height:32px}
@@ -405,7 +497,14 @@ html.mf-open #scrim{z-index:56}html.mf-open #sheet{z-index:57}   /* 크게 본 �
 .exwhere{display:flex;align-items:center;gap:8px}.exwhere small{flex:1;font-size:13px;color:var(--ink)}.exwhere .ghost{min-height:38px;font-size:13px;padding:0 12px;white-space:nowrap}
 .exnum{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:99px;background:#fff;border:2px solid var(--red);color:var(--red);font-size:11px;font-weight:700;box-shadow:0 2px 4px rgba(0,0,0,.25)}
 .exnum.s{background:#2E7D5B;border-color:#2E7D5B;color:#fff}.exnum.e{background:var(--navy);border-color:var(--navy);color:#fff}
-.tview{margin:12px 0 0}`;
+.tview{margin:12px 0 0}
+.exsub{display:flex;align-items:center;gap:6px;margin:12px 0 6px;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}.exsub span{font-family:var(--body);font-size:12px;color:var(--muted)}
+.exrecs{margin-bottom:6px}
+.pinbar{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:59;display:flex;flex-direction:column;gap:6px;background:var(--navy);color:#fff;border-radius:16px;padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:540px;margin:0 auto}
+.pinbar[hidden]{display:none}.pinbar b{font-family:var(--display);font-weight:400;font-size:16px}.pinbar small{font-size:12px;opacity:.8;margin-top:-4px}
+.pinbar span{display:flex;flex-wrap:wrap;gap:6px}.pinbar button{flex:1 1 auto;min-width:64px;min-height:40px;padding:0 10px;white-space:nowrap;border-radius:99px;border:1.5px solid rgba(255,255,255,.5);background:none;color:#fff;font-size:13px}.pinbar button:disabled{opacity:.5}
+html.pin-on .exmapwrap::after,html.pin-on .wkmapwrap::after,html.pin-on .mapfull::after{content:'';position:absolute;inset:0;border:4px solid var(--red);border-radius:inherit;pointer-events:none;z-index:8;animation:pinglow 1.2s ease-in-out infinite alternate}
+@keyframes pinglow{from{opacity:.45}to{opacity:1}}`;
 document.head.appendChild(css);
-window.EXPLORE = { locate, fullMap, closeFull: () => fullClose(), render: render_, mount, places, label, regionOf, prepare, whereHtml, sync: () => { if (map && shown()) sync(); } };
+window.EXPLORE = { onTap, pinMode, pinTap, pinOff, pinCheck, pinPhoto, pinOn, pinPick: ids => pinStep(ids), locate, fullMap, closeFull: () => fullClose(), render: render_, mount, places, label, regionOf, prepare, whereHtml, sync: () => { if (map && shown()) sync(); } };
 })();

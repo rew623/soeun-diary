@@ -79,6 +79,7 @@ function sectionHtml() {
     <p class="foot" style="margin:0 0 10px">여러 장을 한 번에 올리면 찍은 날짜별로 나눠서 보관해요. 사진을 길게 누르면 여러 장 골라서 지우거나 날짜를 바꿀 수 있어요.</p>
     <button class="solve" data-al="pick" style="width:100%;min-height:50px">+ 사진 올리기 (여러 장 가능)</button>
     <button class="ghost apick2" data-al="pick2">📁 갤러리 앱·파일에서 고르기 <small>(앨범 폴더째 · 위치 그대로)</small></button>
+    ${L.length > 1 && window.DUPES ? '<button class="ghost apick2" data-al="dupes">🔍 중복 사진 찾기</button>' : ''}
     ${progHtml()}
     ${groups.map((g, gi) => `<div class="amon${isFold('m-' + g.ym, gi >= 1) ? ' folded' : ''}"><h3 class="agh" data-fold="m-${g.ym}">${head(g.ym)} · ${cnt(g.ym)}장</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}<button class="afold" data-al="foldm" data-k="m-${g.ym}">▴ ${+g.ym.slice(5)}월 사진 접기</button></div>`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
     ${L.length > shown.length ? `<button class="addperiod" data-al="more">더 보기 (${L.length - shown.length}장 남음)</button>` : ''}
@@ -164,13 +165,22 @@ async function queue(list, more, fill) {
   const F = fill || {};
   const by = myRole(), base = Date.now(), rows = [];
   for (let i = 0; i < files.length; i++) { const meta = await photoMeta(files[i]); rows.push(Object.assign({ id: 'f' + base.toString(36) + i.toString(36).padStart(2, '0') + Math.random().toString(36).slice(2, 6), at: base + i, file: files[i], date: meta.date || F.date || '', geo: meta.geo || F.geo || '', tm: meta.tm || (meta.date ? '' : F.tm || ''), lm: files[i].lastModified || 0, by }, more || {})); }
+  // 중복 거르기: 같이 고른 똑같은 파일(이름·크기·수정 시각), 이미 올린 사진과 찍은 시각이 초까지 같은 사진
+  const seen = new Set(), same = new Map(), dupIn = [];
+  rows.forEach(r => { const k = r.file.name + '|' + r.file.size + '|' + r.lm; if (seen.has(k)) dupIn.push(r); else seen.add(k); });
+  rows.forEach(r => { if (r.tm && r.tm.length === 8 && !dupIn.includes(r)) { const m = (S.moments || []).find(x => x.photo && x.date === r.date && x.tm === r.tm); if (m) same.set(r.id, m.id); } });
+  let skip = new Set(dupIn.map(r => r.id));
+  if (same.size && await ask(`이미 올린 사진과 찍은 시각이 초까지 같은 사진이 ${same.size}장 있어요.\n같은 사진 같아요. 빼고 올릴까요?`, { ok: '빼고 올리기', no: '다 올리기' })) same.forEach((v, k) => skip.add(k));
+  const out = rows.map(r => same.has(r.id) && skip.has(r.id) ? same.get(r.id) : r.id).filter((id, i) => !dupIn.includes(rows[i]));
+  rows.splice(0, rows.length, ...rows.filter(r => !skip.has(r.id)));
+  if (!rows.length) { toast('모두 이미 올린 사진이라 건너뛰었어요'); return out; }
   try { await qdo('readwrite', st => { rows.forEach(r => st.put(r)); }); }
   catch (x) { mem.push(...rows); }
   Q.total += rows.length; Q.left += rows.length; showProg();
   const ng = rows.filter(r => r.geo && !(fill && fill.geo === r.geo)).length;
   toast(`${rows.length}장을 올리기 시작해요${ng ? ` · 📍 위치 있는 사진 ${ng}장` : ''}`);
   if (mem.length) pumpMem(); else pump();
-  return rows.map(r => r.id);
+  return out;   // 건너뛴 중복은 이미 있는 사진 id로 (탐문 기록에 그대로 붙어요)
 }
 // ---------- 갤러리 앱에서 공유로 받은 사진 (sw.js가 share-in 캐시에 넣어 둠) ----------
 let SH = null;
@@ -324,6 +334,7 @@ document.addEventListener('click', async e => {
   switch (b.dataset.al) {
     case 'pick': selOff(); picker.click(); break;
     case 'pick2': selOff(); picker2.click(); break;
+    case 'dupes': selOff(); DUPES.open(); break;
     case 'shfree': case 'shfam': {
       if (!SH) return; const fam = b.dataset.al === 'shfam', files = SH.files;
       closeSheet(); S.tab = 'album'; S.view = ''; S.albumView = fam ? 'family' : 'album'; render(); window.scrollTo(0, 0);
