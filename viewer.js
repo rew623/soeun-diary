@@ -237,6 +237,7 @@ window.addEventListener('popstate', () => {
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리
   if (window.POSECAM && POSECAM.close()) { guard(); return; }                      // 같은 포즈 촬영기
   if (window.MOVIE && MOVIE.close()) { guard(); return; }                          // 성장 영상 만드는 창
+  if (window.EXPLORE && EXPLORE.closeFull && EXPLORE.closeFull()) { guard(); return; }   // 크게 본 탐험·탐문 지도
   if (window.WALK && WALK.close()) { guard(); return; }                            // 탐문 중 화면 → 작게 (기록은 계속)
   if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }   // 3) 크게 본 병원 지도
   if (typeof S !== 'undefined' && S.view) {                            // 3) 안쪽 화면 → 열기 전 화면, 그 스크롤 위치로 (goBack, index.html)

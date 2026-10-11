@@ -4,7 +4,7 @@
 // 동네 이름·시·군은 카카오 지도 주소 변환(coord2RegionCode)으로 찾아 이 폰에 기억(localStorage soeun-geo-rg). 지도 SDK는 병원 수사와 같이 씀(HOSP.sdk)
 // 지도엔 사진 핀(곳)과 탐문 경로(산책길)를 같이 그려요. 위의 단추로 켜고 꺼요(이 폰에 기억 soeun-ex-layer)
 (function () {
-const X = { pick: [], back: null, pickAll: false, more: 30, mapErr: '', fitN: -1, regions: null, regLoading: false, pickPos: null, sel: new Set(), listN: 60, layer: { ph: true, wk: true } };
+const X = { days: 0, course: null, pick: [], back: null, pickAll: false, more: 30, mapErr: '', fitN: -1, regions: null, regLoading: false, pickPos: null, sel: new Set(), listN: 60, layer: { ph: true, wk: true } };
 try { Object.assign(X.layer, JSON.parse(localStorage.getItem('soeun-ex-layer') || '{}')); } catch (e) {}
 let map = null, mapEl = null, mapLoading = false, overlays = [], lines = [], lastSig = '', geocoder = null, pickMap = null, pickMarker = null;
 const RGK = 'soeun-geo-rg';
@@ -112,7 +112,7 @@ const BADGES = [
 function mount() {
   const slot = $('exmap-slot'); if (!slot) return;
   if (!mapEl) { mapEl = document.createElement('div'); mapEl.className = 'exmap'; }
-  slot.appendChild(mapEl);
+  if (!mapEl.closest('.mapfull')) slot.appendChild(mapEl);   // 크게 보기 중이면 그대로
   if (map) { map.relayout(); sync(); return; }
   if (mapLoading || X.mapErr || !window.HOSP || !HOSP.sdk) return;
   mapLoading = true;
@@ -125,18 +125,24 @@ function mount() {
 }
 function sync() {
   if (!map) return;
-  const P = places(), R = window.WALK ? WALK.routes() : [];
-  const sig = `${X.layer.ph ? 1 : 0}${X.layer.wk ? 1 : 0}|` + P.map(p => `${p.c.lat},${p.c.lng},${p.n},${safeImg(PHOTOS[p.photos[p.n - 1].id]) ? 1 : 0}`).join('|') + '|' + R.map(r => r.w.id + r.T.pts.length).join(',');
+  const P = places(), R = window.WALK ? WALK.routes() : [], CS = window.WALK ? WALK.courses(X.days) : [];
+  const sig = `${X.layer.ph ? 1 : 0}${X.layer.wk ? 1 : 0}${X.days}${X.course}|` + P.map(p => `${p.c.lat},${p.c.lng},${p.n},${safeImg(PHOTOS[p.photos[p.n - 1].id]) ? 1 : 0}`).join('|') + '|' + R.map(r => r.w.id + r.T.pts.length).join(',');
   if (sig === lastSig) return; lastSig = sig;
   overlays.forEach(o => o.setMap(null)); overlays = []; lines.forEach(o => o.setMap(null)); lines = [];
   const bounds = new kakao.maps.LatLngBounds(); let n = 0;
-  if (X.layer.wk) R.forEach(({ w, T }) => {
-    const path = T.pts.map(p => new kakao.maps.LatLng(p.lat, p.lng)), line = new kakao.maps.Polyline({ map, path, strokeWeight: 5, strokeColor: '#B3261E', strokeOpacity: .6 });
-    kakao.maps.event.addListener(line, 'click', () => WALK.open(w.id));
-    lines.push(line); path.forEach(ll => bounds.extend(ll)); n++;
-    const el = document.createElement('button'); el.type = 'button'; el.className = 'exwk'; el.textContent = WALK.kindOf(w.kind)[1]; el.setAttribute('aria-label', `${fmtMD(w.date)} 탐문 보기`);
-    el.addEventListener('click', ev => { ev.stopPropagation(); WALK.open(w.id); });
-    lines.push(new kakao.maps.CustomOverlay({ map, position: path[0], content: el, yAnchor: .5, clickable: true, zIndex: 3 }));
+  // 산책길: 거의 같은 길은 한 코스로 묶어 대표 길 하나만 (많이 걸을수록 굵게). 코스를 고르면 그 코스의 길만 겹쳐서
+  const LL = T => T.pts.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+  const badge = (pos, txt, label, fn) => { const el = document.createElement('button'); el.type = 'button'; el.className = 'exwk'; el.textContent = txt; el.setAttribute('aria-label', label); el.addEventListener('click', ev => { ev.stopPropagation(); fn(); }); lines.push(new kakao.maps.CustomOverlay({ map, position: pos, content: el, yAnchor: .5, clickable: true, zIndex: 3 })); };
+  const sel = X.course != null ? CS[X.course] : null;
+  if (X.layer.wk && sel) {
+    sel.walks.forEach(w => { const T = WALK.track(w); if (!T || T.pts.length < 2) return; const path = LL(T), line = new kakao.maps.Polyline({ map, path, strokeWeight: 4, strokeColor: '#B3261E', strokeOpacity: .35 }); kakao.maps.event.addListener(line, 'click', () => WALK.open(w.id)); lines.push(line); path.forEach(ll => bounds.extend(ll)); n++; });
+    const path = LL(sel.T); lines.push(new kakao.maps.Polyline({ map, path, strokeWeight: 7, strokeColor: '#1F2A44', strokeOpacity: .85 }));
+    badge(path[0], `🐾${sel.n}`, `${sel.name} 코스`, () => WALK.courseSheet(sel.i, X.days));
+  } else if (X.layer.wk) CS.forEach(g => {
+    const path = LL(g.T), line = new kakao.maps.Polyline({ map, path, strokeWeight: 4 + Math.min(g.n, 6), strokeColor: '#B3261E', strokeOpacity: g.n > 1 ? .8 : .55 });
+    const go = () => g.n > 1 ? WALK.courseSheet(g.i, X.days) : WALK.open(g.rep.id);
+    kakao.maps.event.addListener(line, 'click', go); lines.push(line); path.forEach(ll => bounds.extend(ll)); n++;
+    badge(path[0], g.n > 1 ? `🐾${g.n}` : WALK.kindOf(g.rep.kind)[1], g.n > 1 ? `${g.name} ${g.n}번` : `${fmtMD(g.rep.date)} 탐문 보기`, go);
   });
   if (X.layer.ph) P.forEach(pl => {
     const el = document.createElement('button'), ph = safeImg(PHOTOS[pl.photos[pl.n - 1].id]);
@@ -148,7 +154,7 @@ function sync() {
     ov.setMap(map); overlays.push(ov); bounds.extend(pos); n++;
   });
   if (P.some(pl => !RG[rkey(pl.c)])) resolve();   // 새로 생긴 곳(탐문 사진 등)의 동네 이름
-  const fit = P.length + R.length * 1000;
+  const fit = P.length + R.length * 1000 + X.days * 7 + (X.course == null ? 0 : 99 + X.course);
   if (X.fitN !== fit && n) { X.fitN = fit; if (n === 1 && P.length === 1 && !R.length) { map.setCenter(new kakao.maps.LatLng(P[0].c.lat, P[0].c.lng)); map.setLevel(5); } else map.setBounds(bounds, 50, 40, 40, 40); }
 }
 function focus(i) { const pl = places()[i]; if (!map || !pl) return; closeSheet(); map.setCenter(new kakao.maps.LatLng(pl.c.lat, pl.c.lng)); map.setLevel(4); const w = $('exmap-slot'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -161,14 +167,19 @@ function render_(mode) {
   const firsts = P.filter(p => !p.home).sort((a, b) => a.first < b.first ? 1 : a.first > b.first ? -1 : 0);
   const got = BADGES.map(b => ({ b, on: (() => { try { return b[4](P, st, h); } catch (e) { return false; } })() }));
   const nStamp = st.gw.filter(x => x.on).length, nWalk = (S.walks || []).length;
-  const layers = P.length && R.length ? `<div class="exlayer">${[['ph', '📷 사진'], ['wk', '🐾 산책길']].map(([k, l]) => `<button class="${X.layer[k] ? 'on' : ''}" data-xp="layer" data-v="${k}" aria-pressed="${X.layer[k]}">${l}</button>`).join('')}</div>` : '';
+  const CS = window.WALK ? WALK.courses(X.days) : [], sel = X.course != null ? CS[X.course] : null;
+  const layers = `<div class="exlayer">${P.length && R.length ? [['ph', '📷 사진'], ['wk', '🐾 산책길']].map(([k, l]) => `<button class="${X.layer[k] ? 'on' : ''}" data-xp="layer" data-v="${k}" aria-pressed="${X.layer[k]}">${l}</button>`).join('') : ''}${R.length ? `<button class="${X.days ? 'on' : ''}" data-xp="days">${X.days ? '최근 30일' : '전체 기간'}</button>` : ''}${sel ? `<button class="on" data-xp="course" data-v="">${esc(sel.name)} ✕</button>` : ''}</div>`;
+  const tools = '<div class="mtools"><button data-xp="loc" aria-label="내 위치">◎</button><button data-xp="full" aria-label="크게 보기">⛶</button></div>';
+  const AC = window.WALK ? WALK.courses(0).filter(g => g.n > 1) : [];
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>${esc(CV.nick())} 탐험 지도</h1><p>산책·나들이로 다녀간 곳을 모아요. 처음 가 본 시·군엔 도장 꽝!</p></header>
   ${tab ? townSeg('') : ''}${window.WALK ? WALK.heroHtml() : ''}
   <div class="exsum"><span><b>${P.length}</b>곳 탐험</span><span><b>${nStamp}</b>/18 시·군 도장</span><span><b>${nWalk}</b>번 탐문</span></div>
-  ${P.length || R.length ? `<div class="exmapwrap" data-noswipe><div id="exmap-slot"></div>${layers}${X.mapErr ? '<p class="vempty" style="padding:12px">지도를 불러오지 못했어요. 아래 목록으로 볼 수 있어요.</p>' : ''}</div>`
+  ${P.length || R.length ? `<div class="exmapwrap" data-noswipe><div id="exmap-slot"></div>${layers}${tools}${X.mapErr ? '<p class="vempty" style="padding:12px">지도를 불러오지 못했어요. 아래 목록으로 볼 수 있어요.</p>' : ''}</div>`
     : `<div class="exempty">${CHARS.svg('baby', 'lens', { size: 88 })}<p>아직 지도에 꽂힌 곳이 없어요.<br>산책할 땐 <b>🚶 탐문 출동</b>! 걸은 길과 찍은 사진이 지도에 꽂혀요.${noGeo && canWrite() ? '<br>이미 올린 사진은 아래 "사진 위치 직접 꽂기"로 꽂아요.' : ''}</p></div>`}
   ${tab ? CHARS.guide('walk') : ''}
   ${window.WALK ? WALK.sectionHtml() : ''}
+  ${AC.length ? `<section><h2 class="sh"><span>🔁 단골 코스</span><span>${AC.length}개</span></h2><p class="foot" style="margin:0 0 8px">거의 같은 길로 여러 번 걸은 탐문은 한 코스로 묶어요. 지도에선 코스마다 길 하나만 그리고 많이 걸을수록 굵게, 🐾 숫자는 걸은 횟수예요.</p>
+    <div class="wklist">${AC.map(g => `<button class="wkrow" data-xp="csheet" data-v="${g.i}"><span class="wkart">${WALK.routeSvg(g.T.pts, 60, 60)}</span><span class="wkrt"><b>${esc(g.name)}</b><small>${g.n}번 · 평균 ${g.m >= 1000 ? (g.m / 1000).toFixed(1) + 'km' : g.m + 'm'} · 마지막 ${fmtK(g.last, true)}</small></span><em>›</em></button>`).join('')}</div></section>` : ''}
   ${firsts.length || h ? `<section><h2 class="sh"><span>처음 가 본 곳</span><span>${firsts.length}곳</span></h2>
     <div class="exlist">${firsts.slice(0, X.more).map(pl => { const r = regionOf(pl), ph = safeImg(PHOTOS[pl.photos[pl.n - 1].id]); return `<button class="exrow" data-xp="place" data-v="${pl.i}">${ph ? `<img src="${ph}" alt="" loading="lazy" decoding="async">` : '<span class="exnoph">📷</span>'}<span class="exrt"><b>${esc(label(pl))}</b><small>${r && r.g ? `${esc(sido(r.s))} ${esc(r.g)}${r.guess ? ' (짐작)' : ''} · ` : ''}첫 방문 ${fmtK(pl.first, true)} · 사진 ${pl.n}장${pl.days.size > 1 ? ` · ${pl.days.size}번 방문` : ''}</small></span><em>›</em></button>`; }).join('')}
     ${h ? `<button class="exrow home" data-xp="place" data-v="${h.i}"><span class="exnoph">🏠</span><span class="exrt"><b>본부 (우리 집)</b><small>사진이 가장 많은 곳 · 사진 ${h.n}장</small></span><em>›</em></button>` : ''}</div>
@@ -253,6 +264,34 @@ function whereHtml(id) {
   return `<div class="field"><span>찍은 곳</span><div class="exwhere"><small>${txt}</small>${canWrite() ? `<button type="button" class="ghost" data-xp="pick" data-v="${esc(id)}">${p ? '옮기기·빼기' : '📍 꽂기'}</button>` : ''}</div></div>`;
 }
 
+// ---------- 지도 도구: 내 위치 · 크게 보기 (탐문 보고서 지도도 같이 씀) ----------
+const ME = new WeakMap();
+function locate(m) {
+  if (!navigator.geolocation) { toast('이 폰에서는 위치를 쓸 수 없어요'); return; }
+  toast('지금 위치 찾는 중…');
+  navigator.geolocation.getCurrentPosition(p => {
+    const ll = new kakao.maps.LatLng(p.coords.latitude, p.coords.longitude);
+    let ov = ME.get(m); if (!ov) { const el = document.createElement('span'); el.className = 'wkme'; ov = new kakao.maps.CustomOverlay({ map: m, position: ll, content: el, yAnchor: .5, zIndex: 8 }); ME.set(m, ov); } else { ov.setPosition(ll); ov.setMap(m); }
+    if (m.getLevel && m.getLevel() > 5) m.setLevel(4); m.panTo(ll);
+  }, () => toast('위치를 가져오지 못했어요. 위치 권한을 확인해 주세요'), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
+let FULL = null;
+function fullMap(el, m, title, slotId) {
+  if (FULL) return;
+  let box = document.querySelector('.mapfull');
+  if (!box) { box = document.createElement('div'); box.className = 'mapfull'; box.hidden = true; box.setAttribute('role', 'dialog'); box.innerHTML = '<div class="mfhead"><b></b><button data-mf="x" aria-label="닫기">✕</button></div><div class="mfbody"><button class="mfx" data-mf="loc" aria-label="내 위치">◎</button></div>'; document.body.appendChild(box);
+    box.addEventListener('click', e => { const t = e.target.closest('[data-mf]'); if (!t) return; if (t.dataset.mf === 'x') fullClose(); else if (FULL) locate(FULL.m); }); }
+  FULL = { el, m, slotId }; box.querySelector('.mfhead b').textContent = title; box.querySelector('.mfbody').prepend(el);
+  box.hidden = false; document.documentElement.classList.add('mf-open'); setTimeout(() => m.relayout(), 50);
+}
+function fullClose() {
+  if (!FULL) return false;
+  const { el, m, slotId } = FULL; FULL = null;
+  const box = document.querySelector('.mapfull'); box.hidden = true; document.documentElement.classList.remove('mf-open');
+  const slot = $(slotId); if (slot) slot.appendChild(el); setTimeout(() => m.relayout(), 50);
+  return true;
+}
+
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-xp]'); if (!b || b.disabled) return;
   const a = b.dataset.xp;
@@ -261,6 +300,11 @@ document.addEventListener('click', async e => {
   if (a === 'place') { openPlace(+b.dataset.v); return; }
   if (a === 'focus') { focus(+b.dataset.v); return; }
   if (a === 'more') { X.more += 30; render(); return; }
+  if (a === 'loc') { if (map) locate(map); return; }
+  if (a === 'full') { if (map && mapEl) fullMap(mapEl, map, `${CV.nick()} 탐험 지도`, 'exmap-slot'); return; }
+  if (a === 'days') { X.days = X.days ? 0 : 30; X.course = null; X.fitN = -1; render(); return; }
+  if (a === 'csheet') { if (X.days) { X.days = 0; X.course = null; render(); } WALK.courseSheet(+b.dataset.v, 0); return; }
+  if (a === 'course') { closeSheet(); X.course = b.dataset.v === '' ? null : +b.dataset.v; X.layer.wk = true; X.fitN = -1; render(); if (X.course != null) { const w = $('exmap-slot'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } return; }
   if (a === 'layer') { const k = b.dataset.v; X.layer[k] = !X.layer[k]; try { localStorage.setItem('soeun-ex-layer', JSON.stringify(X.layer)); } catch (er) {} X.fitN = -1; render(); return; }
   if (!canWrite()) { toast('보기 전용이라 위치는 엄마·아빠 수사관만 꽂을 수 있어요'); return; }
   if (a === 'pin') { X.sel.clear(); X.listN = 60; openSheet(pinList()); return; }
@@ -291,8 +335,18 @@ css.textContent = `
 .exsum span{background:#FFFDF7;border:1.5px solid var(--line);border-radius:16px;padding:8px 4px;text-align:center;font-size:12px;color:var(--muted)}
 .exsum b{display:block;font-family:var(--display);font-weight:400;font-size:24px;color:var(--navy);line-height:1.1}
 .exmapwrap{position:relative;margin-top:12px;border-radius:20px;overflow:hidden;border:1.5px solid var(--line);background:var(--card2)}
-.exmap{width:100%;height:360px}
-.exlayer{position:absolute;left:8px;top:8px;z-index:3;display:flex;gap:4px}
+.exmap{width:100%;height:240px}
+.mtools{position:absolute;right:8px;bottom:8px;z-index:3;display:flex;flex-direction:column;gap:6px}
+.mtools button,.mfx{width:42px;height:42px;border-radius:50%;border:0;background:#fff;color:var(--navy);font-size:20px;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+.mapfull{position:fixed;inset:0;z-index:55;background:#0E1424;display:flex;flex-direction:column;padding:max(8px,env(safe-area-inset-top)) 0 max(8px,env(safe-area-inset-bottom))}
+.mapfull[hidden]{display:none}
+.mfhead{display:flex;align-items:center;gap:10px;padding:0 12px 8px;color:#fff}.mfhead b{flex:1;font-family:var(--display);font-weight:400;font-size:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mfhead button{width:44px;height:40px;border-radius:12px;border:1.5px solid rgba(255,255,255,.35);background:none;color:#fff;font-size:20px}
+.mfbody{position:relative;flex:1;margin:0 8px;border-radius:18px;overflow:hidden;background:#1C2640}
+.mfbody>.exmap,.mfbody>.wkmap{position:absolute;inset:0;width:100%;height:100%}
+.mfbody .mfx{position:absolute;right:10px;bottom:10px;z-index:3}
+html.mf-open,html.mf-open body{overflow:hidden}
+.exlayer{position:absolute;left:8px;top:8px;right:56px;z-index:3;display:flex;flex-wrap:wrap;gap:4px}
 .exlayer button{border:1.5px solid var(--line);background:rgba(255,253,247,.92);border-radius:99px;padding:4px 10px;font-size:12.5px;min-height:32px;color:var(--muted);box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .exlayer button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .expin{position:relative;display:block;width:52px;height:52px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--card2);box-shadow:0 3px 8px rgba(0,0,0,.35);overflow:visible}
@@ -352,5 +406,5 @@ css.textContent = `
 .exnum.s{background:#2E7D5B;border-color:#2E7D5B;color:#fff}.exnum.e{background:var(--navy);border-color:var(--navy);color:#fff}
 .tview{margin:12px 0 0}`;
 document.head.appendChild(css);
-window.EXPLORE = { render: render_, mount, places, label, regionOf, prepare, whereHtml, sync: () => { if (map && shown()) sync(); } };
+window.EXPLORE = { locate, fullMap, closeFull: () => fullClose(), render: render_, mount, places, label, regionOf, prepare, whereHtml, sync: () => { if (map && shown()) sync(); } };
 })();

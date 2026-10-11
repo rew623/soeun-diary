@@ -40,7 +40,13 @@
         {
           "name": "photos",
           "accept": [
-            "image/*"
+            "image/*",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            ".jpg",
+            ".jpeg",
+            ".png"
           ]
         }
       ]

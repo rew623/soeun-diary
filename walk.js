@@ -122,6 +122,35 @@ function photoPos() {
   PP = { m: S.moments, w: S.walks, map }; return map;
 }
 const routes = () => all().map(w => ({ w, T: track(w) })).filter(x => x.T && x.T.pts.length > 1);
+// ---------- 단골 코스: 거의 같은 길을 여러 번 걸으면 한 코스로 묶어요 ----------
+// 길을 약 45m 칸으로 나눠, 지나간 칸이 절반쯤 겹치면(자카드 0.45 이상) 같은 코스. 지도엔 코스마다 대표 길 하나만(많이 걸을수록 굵게)
+const cellsOf = T => {
+  const C = new Set(), P = T.pts, key = p => Math.round(p.lat / 0.0004) + ':' + Math.round(p.lng / 0.0005);
+  for (let i = 0; i < P.length; i++) { C.add(key(P[i])); if (i) { const a = P[i - 1], b = P[i], n = Math.min(60, Math.floor(km(a, b) * 1000 / 20)); for (let k = 1; k < n; k++) C.add(key({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n })); } }
+  return C;
+};
+let CC = null;
+function courses(days) {
+  const key = (days || 0) + '|' + (S.walks || []).map(w => w.id + (w.path || '').length).join(',');
+  if (CC && CC.key === key) return CC.list;
+  const from = days ? addDays(today(), -days) : '', list = [];
+  routes().filter(x => x.w.date >= from).forEach(x => {   // 최근 것부터
+    const c = cellsOf(x.T); let best = null, bj = 0;
+    for (const g of list) { let inter = 0; c.forEach(k => { if (g.cells.has(k)) inter++; }); const j = inter / (c.size + g.cells.size - inter || 1); if (j > bj) { bj = j; best = g; } }
+    if (best && bj >= .45) best.walks.push(x.w); else list.push({ rep: x.w, T: x.T, cells: c, walks: [x.w] });
+  });
+  list.forEach((g, i) => { g.i = i; g.n = g.walks.length; g.name = g.rep.title || (g.rep.place ? g.rep.place + ' 코스' : `코스 ${i + 1}`); g.m = Math.round(g.walks.reduce((t, w) => t + distM(w), 0) / g.n); g.min = Math.round(g.walks.reduce((t, w) => t + dur(w), 0) / g.n); g.first = g.walks[g.n - 1].date; g.last = g.walks[0].date; });
+  list.sort((a, b) => b.n - a.n || (a.last < b.last ? 1 : -1)); list.forEach((g, i) => { g.i = i; });
+  CC = { key, list }; return list;
+}
+function courseSheet(i, days) {
+  const g = courses(days)[i]; if (!g) return;
+  openSheet(`<h3>🐾 ${esc(g.name)}</h3>
+    <div class="wksum">${routeSvg(g.T.pts, 72, 72)}<span><b>${g.n}번 걸었어요</b><small>평균 ${kmText(g.m)}${g.min ? ' · ' + durText(g.min) : ''} · 처음 ${fmtK(g.first, true)} · 마지막 ${fmtK(g.last, true)}</small></span></div>
+    <p class="foot" style="margin:0 0 8px">거의 같은 길로 걸은 탐문을 한 코스로 묶었어요. 지도엔 코스마다 길 하나만 그리고, 많이 걸을수록 굵게 보여요.</p>
+    <div class="wklist">${g.walks.map(rowHtml).join('')}</div>
+    <div class="actions"><button class="secondary" data-act="close">닫기</button><button class="primary" data-xp="course" data-v="${i}">지도에서 이 코스만</button></div>`);
+}
 
 // ---------- 통계·배지 ----------
 const monday = d => addDays(d, -((new Date(pd(d)).getUTCDay() + 6) % 7));
@@ -225,7 +254,7 @@ function render_() {
     return `<div class="wktl"><span class="wktn">${i + 1}</span><button class="wktph" data-view="${esc(x.id)}">${u ? `<img src="${u}" alt="" loading="lazy" decoding="async">` : '<span>사진</span>'}</button><span class="wktx"><b>${x.tm ? x.tm.slice(0, 5) : fmtMD(x.date)}</b><small>${rel != null && rel >= 0 ? `출발 ${durText(rel)} 뒤 · ` : ''}${where}</small></span>${p ? `<button class="wktpan" data-wk="pan" data-v="${esc(x.id)}" aria-label="지도에서 보기">📍</button>` : ''}</div>`;
   }).join('');
   return `<header class="vhead"><span class="no">탐문 보고서 No.${no}</span><h1>${k[1]} ${esc(w.title || (w.place ? `${w.place} ${k[2]}` : k[2]))}</h1><p>${fmtK(w.date)}${timeText(w) ? ' · ' + timeText(w) : ''}${w.place ? ` · 📍 ${esc(w.place)}` : ''}</p></header>
-  ${hasMap ? `<div class="wkmapwrap" data-noswipe><div id="wkmap-slot"></div></div>` : ''}
+  ${hasMap ? `<div class="wkmapwrap" data-noswipe><div id="wkmap-slot"></div><div class="mtools"><button data-wk="mloc" aria-label="내 위치">◎</button><button data-wk="mfull" aria-label="크게 보기">⛶</button></div></div>` : ''}
   <div class="wkdst"><span><i>🚶</i><b>${m ? kmText(m) : '-'}</b><small>거리</small></span><span><i>⏱️</i><b>${mins ? durText(mins) : '-'}</b><small>시간</small></span><span><i>📷</i><b>${P.length}장</b><small>사진</small></span><span><i>${mo ? mo[1] : '🙂'}</i><b>${mo ? mo[2] : '-'}</b><small>${esc(CV.nick())} 반응</small></span></div>
   ${spd || w.wx || w.who ? `<p class="wkwx">${[w.wx ? esc(w.wx) : '', w.who ? '🕵️ ' + esc(w.who.split(',').map(r => r + ' 수사관').join('·')) : '', spd ? spd.slice(3) : ''].filter(Boolean).join(' · ')}</p>` : ''}
   ${w.memo ? `<div class="wkmemo"><b>수사 메모</b><p>${esc(w.memo).replace(/\n/g, '<br>')}</p></div>` : ''}
@@ -237,7 +266,7 @@ function render_() {
 function mount() {
   const slot = $('wkmap-slot'); if (!slot) return;
   if (!dEl) { dEl = document.createElement('div'); dEl.className = 'wkmap'; }
-  slot.appendChild(dEl);
+  if (!dEl.closest('.mapfull')) slot.appendChild(dEl);
   if (dMap) { dMap.relayout(); drawDetail(); return; }   // 같은 기록이면 다시 안 그려요 (보던 지도 위치 그대로)
   if (!window.HOSP || !HOSP.sdk) return fallback(slot);
   HOSP.sdk().then(() => {
@@ -690,6 +719,8 @@ document.addEventListener('click', async e => {
   if (a === 'cal') { const [y, m] = (W.cal || today().slice(0, 7)).split('-').map(Number), d = new Date(Date.UTC(y, m - 1 + (+v), 1)); W.cal = d.toISOString().slice(0, 7); render(); return; }
   if (a === 'day') { const X = all().filter(w => w.date === v); if (X.length === 1) return open(X[0].id); openSheet(`<h3>${fmtK(v)} 탐문</h3><div class="wklist">${X.map(rowHtml).join('')}</div><div class="actions"><button class="secondary" data-act="close">닫기</button></div>`); return; }
   if (a === 'pan') return pan(v);
+  if (a === 'mloc') { if (dMap) EXPLORE.locate(dMap); return; }
+  if (a === 'mfull') { if (dMap && dEl) { const w = byId(W.cur); EXPLORE.fullMap(dEl, dMap, w ? (w.title || w.place || kindOf(w.kind)[2]) : '탐문 지도', 'wkmap-slot'); } return; }
   if (a === 'card') return openCard(v);
   if (a === 'cshare' && W.card) { const r = await CV.share(W.card.blob, W.card.name, '탐문 보고서'); if (r === 'saved') toast('폰에 저장했어요'); return; }
   if (a === 'csave' && W.card) { CV.save(W.card.blob, W.card.name); toast('폰에 저장했어요'); return; }
@@ -751,7 +782,7 @@ css.textContent = `
 .wkd b{font-weight:400;font-size:12px;color:var(--muted)}.wkd i{font-style:normal;font-size:13px;line-height:1.2}
 .wkd.on{background:#FFF0EC;border:1.5px solid #E6B9B4}.wkd.on b{color:var(--red);font-weight:700}.wkd.td b{text-decoration:underline}.wkd.fu{opacity:.35}
 .wkmapwrap{margin-top:12px;border-radius:20px;overflow:hidden;border:1.5px solid var(--line);background:var(--card2)}
-.wkmap{width:100%;height:340px}
+.wkmapwrap{position:relative}.wkmap{width:100%;height:260px}
 .wkmapfb{display:flex;flex-direction:column;align-items:center;padding:12px;background:#F7EBD3}.wkmapfb small{font-size:12px;color:var(--muted)}
 .wkpin{position:relative;display:block;width:46px;height:46px;padding:0;border:3px solid #fff;border-radius:50%;background:var(--card2);box-shadow:0 3px 8px rgba(0,0,0,.35)}
 .wkpin img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}.wkpin span{display:grid;place-items:center;height:100%;font-size:18px}
@@ -815,5 +846,5 @@ html.wk-open,html.wk-open body{overflow:hidden}
 .wkpill{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:6px;border:0;border-radius:99px;background:var(--navy);color:#fff;padding:7px 14px;font-size:13.5px;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .wkpill[hidden],#sheet.open~.wkpill{display:none}.wkpill.done{background:var(--red)}.wkpill i{font-style:normal}`;
 document.head.appendChild(css);
-window.WALK = { render: render_, mount, heroHtml, sectionHtml, afterRender, close, photoPos, photos, routes, track, all, open, start, openAdd, routeSvg, kindOf, stats, km: distM };
+window.WALK = { courses, courseSheet, render: render_, mount, heroHtml, sectionHtml, afterRender, close, photoPos, photos, routes, track, all, open, start, openAdd, routeSvg, kindOf, stats, km: distM };
 })();
