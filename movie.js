@@ -1,7 +1,7 @@
 // 성장 영상 만들기 (S.view='movie') — 앱의 사진과 기록으로 음악이 흐르는 영상을 만들어 폰에 저장하거나 카톡으로 보내요
 // 🕵️ 수사 일지 총정리: 앱에 남긴 기록 전부를 장면으로 (프로필 · 성장 그래프 · 최초 목격 · 월별 사진 보드 · 접종 도장 · 괴도 깍정이 추격전 · 닮은꼴 판결 · 탐험 지도 · 수사관 신분증 · 봉인된 편지 · 사진 몽타주 · 방 엔딩), 소은 탐정 캐릭터가 나와요
 // 📖 성장 스토리 · 💯 100일 · 📷 같은 포즈 · 🗓 이번 달: 사진은 장면마다 폴라로이드 · 수사 보드 · 필름 · 꽉 찬 화면으로 저절로 꾸며요 (테이프 · 스티커 · 낙서 · 캐릭터)
-// 음악은 music.js (7곡, 영상 종류·기념일로 추천, 미리 듣기). canvas에 그리며 MediaRecorder로 녹화 (mp4 되면 mp4, 아니면 webm), 녹화는 body에 붙인 겹침 창에서
+// 음악은 music.js (요즘 느낌 4곡 + 옛날 느낌 7곡 + 📁 내 음악, 영상 종류·기념일로 추천, 미리 듣기). canvas에 그리며 MediaRecorder로 녹화 (mp4 되면 mp4, 아니면 webm), 녹화는 body에 붙인 겹침 창에서
 (function () {
 const M = { tpl: 'recap', speed: 2.6, song: 'auto', sq: false, busy: false, abort: false, url: '', blob: null, ext: 'mp4', el: null, lock: null };
 const TPLS = [['recap', '🕵️ 수사 일지 총정리', '지금까지 남긴 기록 전부를 한 편으로 (성장 그래프·최초 목격·괴도 추격전·탐험…)'], ['story', '📖 성장 스토리', '달마다 대표 사진과 키·몸무게, 최초 목격'], ['d100', '💯 100일의 기록', '태어나서 100일까지 사진으로'], ['pose', '📷 같은 포즈 타임랩스', '월별 증거 사진이 스르륵 자라요'], ['month', '🗓 이번 달 하이라이트', '이번 달에 찍은 사진 모음']];
@@ -540,6 +540,7 @@ async function make() {
   const mime = pickMime(); if (!mime) { toast('이 폰(브라우저)에서는 영상을 만들 수 없어요'); return; }
   if (window.MUSIC) MUSIC.stopPreview();
   const sid = songOf();
+  if (sid === 'mine' && !(window.MUSIC && MUSIC.mine())) { toast('📁 내 음악 파일을 먼저 골라 주세요'); return; }
   let ac = null; if (sid !== 'none' && window.MUSIC) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); } catch (e) { ac = null; } }   // 누른 순간에 만들어야 소리가 나요 (기다리는 일보다 먼저)
   if (M.tpl === 'recap' && window.EXPLORE && EXPLORE.places().length) { M.busy = true; toast('탐험 지도 동네 이름 찾는 중…'); try { await EXPLORE.prepare(3500); } catch (e) {} M.busy = false; }
   const sc = scenes(), photos = sc.filter(s => s.k === 'photo' || s.k === 'pose');
@@ -560,7 +561,7 @@ async function make() {
     await prepAssets(W, H, sc);
     await CV.fonts(...sc.map(s => [s.l1, s.l2, s.l3, s.l4, s.main, s.sub, s.lab, (s.items || []).map(it => it.t).join(' '), (s.lines || []).join(' '), (s.credits || []).flat().join(' ')].join(' ')), '수사 개시 중 To be continued No. 프로필 성장 기록 최초 목격 월별 증거 사진 예방접종 작전 체포한 수배범 닮은꼴 판결 탐험 지도 수사관 활약 봉인된 증거물 완료 면역 요새 WANTED 엄마 아빠 판박이 우세 반반');
     const T = total(sc), ctx = cv.getContext('2d'), stream = cv.captureStream(30);
-    if (ac) { const dest = ac.createMediaStreamDestination(); player = MUSIC.play(ac, [dest, ac.destination], sid, T); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr)); }
+    if (ac) { const dest = ac.createMediaStreamDestination(); player = MUSIC.play(ac, [dest, ac.destination], sid, T); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr)); if (player.ready) { msg('음악 준비 중…', .14); await player.ready; } }
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 3500000, audioBitsPerSecond: 128000 }), chunks = [];
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise(r => { rec.onstop = r; });
@@ -595,13 +596,22 @@ function render_() {
       ${rc ? '<p class="foot" style="margin:6px 0 0">기록이 있는 장면만 들어가요. 기록이 쌓일수록 영상이 길어져요.</p>' : `<div class="mvopt"><span>장면 길이</span>${[[1.8, '빠르게'], [2.6, '보통'], [3.5, '천천히']].map(([v, l]) => `<button class="${M.speed === v ? 'on' : ''}" data-mvset="speed" data-v="${v}">${l}</button>`).join('')}</div>
       <div class="mvopt"><span>화면</span><button class="${M.sq ? '' : 'on'}" data-mvset="sq" data-v="0">세로 (폰 화면)</button><button class="${M.sq ? 'on' : ''}" data-mvset="sq" data-v="1">정사각</button></div>`}</section>
     <section><h2 class="sh"><span>🎵 음악</span><span>${M.song === 'auto' && SG[rec] ? `추천: ${esc(SG[rec].name.replace(/^\S+\s/, ''))}` : ''}</span></h2>
-      <div class="mvsongs">${['auto'].concat(window.MUSIC ? MUSIC.ORDER : [], ['none']).map(id => { const s = SG[id] || {}, nm = id === 'auto' ? '✨ 추천' : id === 'none' ? '🔇 음악 없이' : s.name, ds = id === 'auto' ? (SG[rec] ? SG[rec].name : '') : id === 'none' ? '' : s.desc; return `<button class="${M.song === id ? 'on' : ''}" data-mvset="song" data-v="${id}"><b>${esc(nm || '')}</b>${ds ? `<small>${esc(ds)}</small>` : ''}</button>`; }).join('')}</div>
-      ${cur !== 'none' && SG[cur] ? `<button class="ghost mvpv" data-mvset="pv">${playing ? '■ 미리 듣기 멈추기' : `▶ 미리 듣기 (10초) · ${esc(SG[cur].name)}`}</button>` : ''}
-      <p class="foot" style="margin:8px 0 0">음악은 앱이 직접 연주해요. 직접 만든 곡과 저작권이 끝난 옛 멜로디라 마음껏 공유해도 돼요.</p></section>
+      ${(() => { const mine = window.MUSIC && MUSIC.mine(), btn = id => { const s = SG[id] || {}, nm = id === 'auto' ? '✨ 추천' : id === 'none' ? '🔇 음악 없이' : id === 'mine' ? '📁 내 음악' : s.name, ds = id === 'auto' ? (SG[rec] ? SG[rec].name : '') : id === 'none' ? '' : id === 'mine' ? (mine ? mine.name : '폰의 음악 파일 고르기') : s.desc; return `<button class="${M.song === id ? 'on' : ''}${id === 'mine' ? ' mine' : ''}" data-mvset="song" data-v="${id}"><b>${esc(nm || '')}</b>${ds ? `<small>${esc(ds)}</small>` : ''}</button>`; };
+        const md = window.MUSIC ? MUSIC.MODERN || [] : [], old = window.MUSIC ? MUSIC.ORDER.filter(x => !md.includes(x)) : [];
+        return `<div class="mvsongs">${['auto'].concat(md, ['mine']).map(btn).join('')}</div><p class="mvsub">귀여운 옛날 느낌</p><div class="mvsongs">${old.concat(['none']).map(btn).join('')}</div>${M.song === 'mine' && mine ? '<button class="ghost mvpv" data-mvset="minepick" style="margin-top:6px">📁 다른 음악 파일로 바꾸기</button>' : ''}`; })()}
+      ${cur !== 'none' && (SG[cur] || (cur === 'mine' && window.MUSIC && MUSIC.mine())) ? `<button class="ghost mvpv" data-mvset="pv">${playing ? '■ 미리 듣기 멈추기' : `▶ 미리 듣기 (10초) · ${esc(cur === 'mine' ? '내 음악' : SG[cur].name)}`}</button>` : ''}
+      <p class="foot" style="margin:8px 0 0">위 곡들은 앱이 직접 연주해요(직접 만든 곡·저작권이 끝난 멜로디라 마음껏 공유). 마음에 드는 음악 파일이 있으면 <b>📁 내 음악</b>으로 넣어요 — 유튜브 오디오 보관함·픽사베이 뮤직처럼 무료로 쓸 수 있는 곡을 추천해요. 고른 파일은 이 폰에만 저장돼요.</p></section>
     ${ok ? `<button class="primary mvgo" data-mvset="make" ${can ? '' : 'disabled'}>🎬 영상 만들기</button><p class="foot" style="text-align:center;margin-top:6px">영상 길이(약 ${Math.round(T)}초)만큼 걸려요. 만드는 동안 화면을 켜 두세요.</p>` : '<p class="vempty">이 폰(브라우저)에서는 영상 만들기를 쓸 수 없어요. 크롬이나 사파리 최신 버전에서 해 주세요.</p>'}
     <button class="secondary" data-mvset="close" style="width:100%;margin-top:12px">돌아가기</button>`;
 }
-function open(tpl) { if (tpl) M.tpl = tpl; S.view = 'movie'; render(); window.scrollTo(0, 0); }
+function open(tpl) { if (tpl) M.tpl = tpl; S.view = 'movie'; render(); window.scrollTo(0, 0); if (window.MUSIC && MUSIC.mine() === undefined) MUSIC.mineInfo().then(rerender); }
+// 📁 내 음악 파일 고르기 (파일 칸은 #app 밖에)
+const mfile = document.createElement('input'); mfile.type = 'file'; mfile.accept = 'audio/*'; mfile.hidden = true; document.body.appendChild(mfile);
+mfile.addEventListener('change', async () => {
+  const f = mfile.files && mfile.files[0]; mfile.value = ''; if (!f || !window.MUSIC) return;
+  try { await MUSIC.mineSet(f); M.song = 'mine'; MUSIC.stopPreview(); toast(`🎵 ${f.name} — 영상에 넣을게요`); } catch (e) { toast(e.message || '음악 파일을 넣지 못했어요'); }
+  rerender();
+});
 const rerender = () => { if (S.view === 'movie') render(); };
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-mvset]'); if (!b) return;
@@ -612,7 +622,8 @@ document.addEventListener('click', e => {
     case 'tpl': M.tpl = v; if (window.MUSIC) MUSIC.stopPreview(); render(); break;
     case 'speed': M.speed = +v; render(); break;
     case 'sq': M.sq = v === '1'; render(); break;
-    case 'song': M.song = v; if (window.MUSIC && MUSIC.playing()) { if (songOf() === 'none') MUSIC.stopPreview(); else MUSIC.preview(songOf(), rerender); } render(); break;
+    case 'song': if (v === 'mine' && !(window.MUSIC && MUSIC.mine())) { mfile.click(); break; } M.song = v; if (window.MUSIC && MUSIC.playing()) { if (songOf() === 'none') MUSIC.stopPreview(); else MUSIC.preview(songOf(), rerender); } render(); break;
+    case 'minepick': mfile.click(); break;
     case 'pv': if (!window.MUSIC) break; if (MUSIC.playing()) MUSIC.stopPreview(); else MUSIC.preview(songOf(), rerender); render(); break;
     case 'make': make(); break;
   }
@@ -631,6 +642,7 @@ css.textContent = `
 .mvsb .title img,.mvsb .end img{outline:2px solid var(--butter)}.mvsb small{font-size:11px;color:var(--navy);text-align:center;line-height:1.2;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvopt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}.mvopt span{font-size:13px;color:var(--muted);min-width:62px}
 .mvopt button{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;font-size:13px;color:var(--navy);min-height:36px}.mvopt button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.mvsub{margin:10px 0 4px;font-size:12px;color:var(--muted)}.mvsongs button.mine small{word-break:break-all}
 .mvsongs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .mvsongs button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:8px 9px;border-radius:14px;border:1.5px solid var(--line);background:#FFFDF7;min-height:58px;min-width:0}
 .mvsongs b{font-family:var(--display);font-weight:400;font-size:13.5px;color:var(--navy);line-height:1.25;word-break:keep-all}
