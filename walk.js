@@ -148,7 +148,7 @@ const cellsOf = T => {
 let CC = null;
 function courses(days) {
   const key = (days || 0) + '|' + (S.walks || []).map(w => w.id + (w.path || '').length).join(',');
-  if (CC && CC.key === key) return CC.list;
+  if (CC && CC.key === key && CC.m === S.moments) return CC.list;   // 사진 자리로 그린 길은 사진 핀을 옮기면 달라져요
   const from = days ? addDays(today(), -days) : '', list = [];
   routes().filter(x => x.w.date >= from).forEach(x => {   // 최근 것부터
     const c = cellsOf(x.T); let best = null, bj = 0;
@@ -157,7 +157,7 @@ function courses(days) {
   });
   list.forEach((g, i) => { g.i = i; g.n = g.walks.length; g.name = g.rep.title || (g.rep.place ? g.rep.place + ' 코스' : `코스 ${i + 1}`); g.m = Math.round(g.walks.reduce((t, w) => t + distM(w), 0) / g.n); g.min = Math.round(g.walks.reduce((t, w) => t + dur(w), 0) / g.n); g.first = g.walks[g.n - 1].date; g.last = g.walks[0].date; });
   list.sort((a, b) => b.n - a.n || (a.last < b.last ? 1 : -1)); list.forEach((g, i) => { g.i = i; });
-  CC = { key, list }; return list;
+  CC = { key, list, m: S.moments }; return list;
 }
 function courseSheet(i, days) {
   const g = courses(days)[i]; if (!g) return;
@@ -384,10 +384,15 @@ function openForm(id, preset) {
     : { id: '', kind: p.kind || 'walk', title: p.title || '', date: p.date || today(), start: p.start || '', end: p.end || '', place: p.place || '', geo: p.geo || '', memo: '', mood: '', who: new Set(me ? [me] : []), path: p.path || '', dist: p.dist || '', pics: p.pics || [], wx: p.wx || '', live: !!p.live, touched: !!p.live, gps: !!p.path, pins: p.geo && !p.path ? [parse(p.geo)] : [] };
   W.files.forEach(f => { try { URL.revokeObjectURL(f.url); } catch (e) {} }); W.files = [];
   // 출발지: 새 기록(직접 쓰는 것)이면 기본 출발지를 미리 넣어 둬요. 저장하면 출발지 → 찍은 곳들을 이어 길로 (예전 기록·GPS 기록엔 없음)
-  W.stMode = false; W.form.st = null;
+  W.stMode = false; W.form.st = null; W.form.en = null;   // en: 도착지 ('st' = 출발지로 돌아와요, 점 = 다른 곳, null = 마지막 다녀온 곳에서 끝)
   if (!W.form.live && !W.form.gps) {
-    if (!w) W.form.st = home();
-    else { const h = home(), P0 = W.form.pins; if (h && P0.length > 1 && sameP(P0[0], h)) { W.form.st = Object.assign({}, P0[0], { n: h.n }); P0.shift(); W.form.geo = fmtGeo(P0[0]); } }   // 예전 기록: 길의 첫 곳이 기본 출발지면 출발지로
+    if (!w) { W.form.st = home(); W.form.en = W.form.st ? 'st' : null; }   // 새 기록: 따로 안 정하면 출발지(본부)로 돌아와요 (사용자 요청)
+    else {
+      const h = home(), P0 = W.form.pins;
+      if (h && P0.length > 1 && sameP(P0[0], h)) { W.form.st = Object.assign({}, P0[0], { n: h.n }); P0.shift(); W.form.geo = fmtGeo(P0[0]); }   // 예전 기록: 길의 첫 곳이 기본 출발지면 출발지로
+      const z = P0[P0.length - 1];
+      if (W.form.st && P0.length > 1 && sameP(z, W.form.st)) { W.form.en = 'st'; P0.pop(); }   // 마지막 곳이 출발지면 '출발지로 돌아와요'
+    }
   }
   const f = W.form, T = f.path ? track({ path: f.path }) : null, n = CV.nick();
   const sum = f.live ? `<div class="wksum">${T && T.pts.length > 1 ? routeSvg(T.pts, 72, 72) : '<span class="wkemo">🐾</span>'}<span><b>${kmText(+f.dist || 0)} · ${durText(Math.max(1, p.mins || 0))}</b><small>${f.start}~${f.end} · 사진 ${f.pics.length}장${T && T.pts.length > 1 ? ' · 길을 그려 뒀어요' : ' · 길이 거의 안 그려졌어요'}</small></span></div>` : '';
@@ -400,6 +405,7 @@ function openForm(id, preset) {
     <div class="field"><span>${f.gps ? '장소' : '다녀온 곳'}</span><input id="wf-place" maxlength="40" value="${esc(f.place || '')}" placeholder="예: 샘마루공원, 할머니 댁">
       <div class="wkplb"><button type="button" class="ghost" data-wf="here">📍 지금 위치</button><button type="button" class="ghost" data-wf="search">🔎 장소 찾기</button><button type="button" class="ghost" data-wf="map">🗺️ 지도에서</button></div>
       <div id="wf-geo">${geoLine()}</div><div id="wf-pick"></div></div>
+    ${f.gps ? '' : `<div class="field"><span>도착지</span><div id="wf-en">${enLine()}</div></div>`}
     <div class="field"><span>사진</span><div id="wf-ph">${formPhotos()}</div>
       <button type="button" class="ghost" data-wf="photos" style="width:100%;min-height:46px">📷 사진 붙이기 <small>(현장 사진 · 갤러리 앱)</small></button></div>
     <label class="check" style="margin:-4px 0 12px"><input type="checkbox" id="wf-fill" checked> 위치 없는 사진엔 이 장소 위치를 붙여요</label>
@@ -411,11 +417,21 @@ function openForm(id, preset) {
 }
 function geoLine() {
   const f = W.form; if (!f) return '';
-  if (!f.gps && f.pins.length > 1) return `<small class="wkgeo">📍 ${f.pins.length}곳 · ${f.st ? '🏠 출발지부터 ' : ''}찍은 순서대로 이어서 길로 그려요 (${kmText(pathM((f.st ? [f.st] : []).concat(f.pins)))}) <button type="button" data-wf="ungeo">모두 빼기</button></small><div class="wkpins">${f.pins.map((p, i) => `<button type="button" data-wf="unpin" data-v="${i}" aria-label="${i + 1}번 핀 빼기"><b>${i + 1}</b>${esc(RG(p) || `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`)}<i>✕</i></button>`).join('')}</div>`;
+  if (!f.gps && f.pins.length > 1) return `<small class="wkgeo">📍 ${f.pins.length}곳 · ${f.st ? '🏠 출발지부터 ' : ''}찍은 순서대로 이어서 길로 그려요${enPt(f) ? ' · 🏁 도착지까지' : ''} (${kmText(pathM((f.st ? [f.st] : []).concat(f.pins, enPt(f) ? [enPt(f)] : [])))}) <button type="button" data-wf="ungeo">모두 빼기</button></small><div class="wkpins">${f.pins.map((p, i) => `<button type="button" data-wf="unpin" data-v="${i}" aria-label="${i + 1}번 핀 빼기"><b>${i + 1}</b>${esc(RG(p) || `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`)}<i>✕</i></button>`).join('')}</div>`;
   const g = parse(f.geo); if (!g) return '<small class="wkgeo none">위치를 붙이면 탐험 지도에 꽂혀요. 지도에서 여러 곳을 누르면 길로 이어져요</small>';
   const r = RG(g); return `<small class="wkgeo">📍 ${r ? esc(r) + ' · ' : ''}${g.lat.toFixed(4)}, ${g.lng.toFixed(4)} <button type="button" data-wf="ungeo">빼기</button></small>`;
 }
-const geoSync = () => { const b = $('wf-geo'); if (b) b.innerHTML = geoLine(); const s = $('wf-st'); if (s) s.innerHTML = stLine(); };
+const geoSync = () => { const b = $('wf-geo'); if (b) b.innerHTML = geoLine(); const s = $('wf-st'); if (s) s.innerHTML = stLine(); const e = $('wf-en'); if (e) e.innerHTML = enLine(); };
+const enPt = f => f.en === 'st' ? f.st : f.en && f.en.lat != null ? f.en : null;
+// 도착지: 기본은 출발지로 돌아와요. 다른 곳으로 바꾸거나 빼면(마지막 다녀온 곳에서 끝) 돼요
+function enLine() {
+  const f = W.form; if (!f) return ''; const nm = p => esc(p.n || RG(p) || `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`);
+  if (W.stMode === 'en') return `<div class="wkst on">🏁 도착지를 어떻게 정할까요? <button type="button" data-wf="stcancel">그만</button><div class="wkstb"><button type="button" class="ghost" data-wf="here">📍 지금 위치</button><button type="button" class="ghost" data-wf="search">🔎 장소 찾기</button><button type="button" class="ghost" data-wf="map">🗺️ 지도에서</button></div><small class="wkstn">장소 찾기·지도는 위 '다녀온 곳' 칸 밑에 열려요</small></div>`;
+  if (f.en === 'st' && f.st) return `<p class="wkst">🏁 <b>출발지로 돌아와요</b> <small>${nm(f.st)}</small> <button type="button" data-wf="enset">다른 곳으로</button><button type="button" data-wf="enx">빼기</button></p>`;
+  const e = enPt(f);
+  if (e) return `<p class="wkst">🏁 <b>${nm(e)}</b> <button type="button" data-wf="enset">바꾸기</button>${f.st ? '<button type="button" data-wf="enst">🏠 출발지로</button>' : ''}<button type="button" data-wf="enx">빼기</button></p>`;
+  return `<p class="wkst">마지막 다녀온 곳에서 끝 ${f.st ? '<button type="button" data-wf="enst">🏠 출발지로 돌아오기</button>' : ''}<button type="button" data-wf="enset">도착지 정하기</button></p>`;
+}
 // ---------- 기본 출발지 (두 폰 같이: game/shared whome {g:'위도,경도', n:이름}) ----------
 function home() { const s = window.GAME && GAME.store ? GAME.store.get() : {}, h = s.whome, g = h && parse(h.g); return g ? Object.assign(g, { n: String(h.n || '').slice(0, 30) }) : null; }
 function setHome(p) {
@@ -426,7 +442,7 @@ function setHome(p) {
 const sameP = (a, b) => !!a && !!b && km(a, b) < .01;
 function stLine() {
   const f = W.form; if (!f) return ''; const h = home(), st = f.st, nm = p => esc(p.n || RG(p) || `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`);
-  if (W.stMode) return `<div class="wkst on">🏠 출발지를 어떻게 정할까요? <button type="button" data-wf="stcancel">그만</button><div class="wkstb"><button type="button" class="ghost" data-wf="here">📍 지금 위치</button><button type="button" class="ghost" data-wf="search">🔎 장소 찾기</button><button type="button" class="ghost" data-wf="map">🗺️ 지도에서</button></div><small class="wkstn">장소 찾기·지도는 아래 '다녀온 곳' 칸 밑에 열려요</small></div>`;
+  if (W.stMode === 'st') return `<div class="wkst on">🏠 출발지를 어떻게 정할까요? <button type="button" data-wf="stcancel">그만</button><div class="wkstb"><button type="button" class="ghost" data-wf="here">📍 지금 위치</button><button type="button" class="ghost" data-wf="search">🔎 장소 찾기</button><button type="button" class="ghost" data-wf="map">🗺️ 지도에서</button></div><small class="wkstn">장소 찾기·지도는 아래 '다녀온 곳' 칸 밑에 열려요</small></div>`;
   if (!st) return `<p class="wkst">출발지 없음${h ? ` <button type="button" data-wf="sthome">🏠 본부(${nm(h)}) 넣기</button>` : ''} <button type="button" data-wf="stset">출발지 정하기</button></p>`;
   const isHome = sameP(st, h);
   return `<p class="wkst">🏠 <b>${nm(st)}</b>${isHome ? ' <small>본부</small>' : ''} <button type="button" data-wf="stset">바꾸기</button><button type="button" data-wf="stx">빼기</button>${isHome ? '' : `<button type="button" data-wf="sthomeset">⭐ 본부(기본 출발지)로</button>`}</p>`;
@@ -460,7 +476,8 @@ async function saveForm(btn) {
     const id = f.id || 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
     // 핀 여러 개 → 찍은 순서대로 이은 길(2:). 시간은 출발~도착을 거리 비율로 나눠 둬서, 찍은 시각이 있는 사진은 그 길 위에 놓여요
     if (!f.gps) {
-      const PL = (f.st && f.pins.length && !sameP(f.st, f.pins[0]) ? [f.st] : []).concat(f.pins);   // 출발지 → 찍은 곳들
+      const PL = (f.st && f.pins.length && !sameP(f.st, f.pins[0]) ? [f.st] : []).concat(f.pins), E = f.pins.length ? enPt(f) : null;   // 출발지 → 찍은 곳들 → 도착지
+      if (E && !sameP(E, PL[PL.length - 1])) PL.push({ lat: E.lat, lng: E.lng });
       if (PL.length > 1) {
         const a = at(f.date, f.start) || at(f.date, '12:00'), b = at(f.date, f.end), tot = b && b > a ? (b - a) / 1000 : (PL.length - 1) * 600, D = pathM(PL);
         let acc = 0; const pts = PL.map((p, i) => { if (i) acc += km(PL[i - 1], p) * 1000; return { lat: p.lat, lng: p.lng, t: D ? acc / D * tot : i * tot / (PL.length - 1) }; });
@@ -535,6 +552,7 @@ function regionName(g) {
 // 장소 핀: 지도·지금 위치·장소 찾기로 고를 때마다 하나씩 더해요 (GPS로 그린 길이 있는 기록은 장소 하나만). g=null이면 모두 빼기
 function setGeo(g, name, replace) {
   const f = W.form; if (!f) return;
+  if (W.stMode === 'en' && g) { W.stMode = false; f.en = Object.assign({ lat: g.lat, lng: g.lng }, name ? { n: name } : {}); if (!f.en.n) regionName(g).then(geoSync); drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
   if (W.stMode && g) { W.stMode = false; f.st = Object.assign({ lat: g.lat, lng: g.lng }, name ? { n: name } : {}); if (!home() && canWrite()) { setHome(f.st); toast('🏠 출발지를 기본 출발지로도 저장했어요\n다음 기록부터 저절로 들어가요'); } if (!f.st.n) regionName(g).then(geoSync); drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
   if (!g) f.pins = []; else if (f.gps || replace) f.pins = [g]; else if (!f.pins.some(q => km(q, g) < .005)) f.pins.push(g); else toast('바로 옆에 이미 핀이 있어요');
   f.geo = f.pins[0] ? fmtGeo(f.pins[0]) : ''; if (name) { const el = $('wf-place'); if (el && !el.value.trim()) el.value = name; }
@@ -574,6 +592,12 @@ function drawPins() {
     if (LLs.length) fOv.push(new kakao.maps.Polyline({ map: fMap, path: [sl, LLs[0]], strokeWeight: 4, strokeColor: '#2E7D5B', strokeOpacity: .75, strokeStyle: 'shortdash' }));
   }
   if (LLs.length > 1) fOv.push(new kakao.maps.Polyline({ map: fMap, path: LLs, strokeWeight: 4, strokeColor: '#B3261E', strokeOpacity: .8, strokeStyle: 'shortdash' }));
+  const E = !f.gps && LLs.length ? enPt(f) : null;
+  if (E) {
+    const el2 = new kakao.maps.LatLng(E.lat, E.lng);
+    fOv.push(new kakao.maps.Polyline({ map: fMap, path: [LLs[LLs.length - 1], el2], strokeWeight: 4, strokeColor: '#2E7D5B', strokeOpacity: .75, strokeStyle: 'shortdash' }));
+    if (f.en !== 'st' || !f.st) { const ee = document.createElement('span'); ee.className = 'wkfpin home'; ee.textContent = '🏁'; fOv.push(new kakao.maps.CustomOverlay({ map: fMap, position: el2, content: ee, yAnchor: 1, zIndex: 4 })); }
+  }
   LLs.forEach((ll, i) => {
     const el = document.createElement('button'); el.type = 'button'; el.className = 'wkfpin'; el.textContent = f.pins.length > 1 ? String(i + 1) : '📍'; el.setAttribute('aria-label', `${i + 1}번 핀 빼기`);
     el.addEventListener('click', ev => { ev.stopPropagation(); unpin(i); });
@@ -913,10 +937,13 @@ document.addEventListener('click', async e => {
   if (a === 'unpic') { f.pics = f.pics.filter(x => x !== v); f.no = [...new Set((f.no || []).concat(v))]; if (window.__app) __app.sheetDirty(); $('wf-ph').innerHTML = formPhotos(); return; }   // 시간으로 저절로 들어온 사진도 다시 안 들어오게 '-id'로
   if (a === 'unfile') { const x = W.files.splice(+v, 1)[0]; if (x) try { URL.revokeObjectURL(x.url); } catch (er) {} $('wf-ph').innerHTML = formPhotos(); return; }
   if (a === 'ungeo') { setGeo(null); return; }
-  if (a === 'stset') { W.stMode = true; geoSync(); return; }
+  if (a === 'stset') { W.stMode = 'st'; geoSync(); return; }
+  if (a === 'enset') { W.stMode = 'en'; geoSync(); return; }
+  if (a === 'enst') { f.en = 'st'; drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'enx') { f.en = null; W.stMode = false; drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
   if (a === 'stcancel') { W.stMode = false; geoSync(); return; }
-  if (a === 'stx') { f.st = null; W.stMode = false; drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
-  if (a === 'sthome') { f.st = home(); drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'stx') { f.st = null; if (f.en === 'st') f.en = null; W.stMode = false; drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'sthome') { f.st = home(); if (!f.en && !f.id) f.en = 'st'; drawPins(); geoSync(); if (window.__app) __app.sheetDirty(); return; }
   if (a === 'sthomeset') { if (f.st) { setHome(f.st); geoSync(); toast('🏠 기본 출발지로 저장했어요 (엄마·아빠 폰 같이)'); } return; }
   if (a === 'unpin') { unpin(+v); return; }
   if (a === 'nogps') { if (!(await ask('지도에서 찍는 곳들을 순서대로 이어 길을 그릴까요?\n걸은 길(GPS)은 지우지 않고 간직해 둬서\n탐문 보고서에서 언제든 되돌릴 수 있어요.\n저장을 눌러야 바뀌어요.', { ok: '바꾸기' }))) return;

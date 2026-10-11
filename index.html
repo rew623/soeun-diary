@@ -204,7 +204,8 @@ body.viewer .fab,body.viewer .solve,body.viewer .addperiod,body.viewer .addv,bod
 
 .scrim{position:fixed;inset:0;background:rgba(31,42,68,.45);display:none;z-index:10}
 .scrim.open{display:block}
-.sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-radius:10px 10px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:11;max-height:92%;overflow-y:auto;border-top:3px solid var(--navy)}
+html.shopen,html.shopen body{overflow:hidden}   /* 아래 창이 열려 있는 동안 뒤 화면(지도 등)은 안 움직여요 */
+.sheet{overscroll-behavior:contain;position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-radius:10px 10px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:11;max-height:92%;overflow-y:auto;border-top:3px solid var(--navy)}
 .sheet.open{transform:none}
 .sheet.open.nudge{animation:nudge .4s}@keyframes nudge{0%,100%{transform:none}35%{transform:translateY(22px)}70%{transform:translateY(-4px)}}
 @media (prefers-reduced-motion:reduce){.sheet{transition:none}}
@@ -1159,8 +1160,8 @@ function homeOn(k){try{const v=JSON.parse(localStorage.getItem('soeun-home-off')
 const $sheet=document.getElementById('sheet'),$scrim=document.getElementById('scrim');
 // 같은 창을 다시 그릴 때(제목이 같으면)는 '적던 중' 표시를 그대로 둬요
 const sheetTitle=()=>{const h=$sheet.querySelector('h3');return h?h.textContent.trim():''};
-function openSheet(html){const w=myRole()==='아빠'?'dad':myRole()==='엄마'?'mom':'baby',was=$sheet.classList.contains('open')?sheetTitle():'';$sheet.innerHTML=html.replace('<h3>',`<h3><span class="shc">${CHARS.svg(w,'',{face:1,size:40})}</span>`);if(window.FOCUS)FOCUS.apply($sheet);if(!was||was!==sheetTitle())delete $sheet.dataset.dirty;$sheet.style.transform='';$scrim.style.opacity='';$scrim.classList.add('open');$sheet.classList.add('open');$sheet.scrollTop=0}
-function closeSheet(){$sheet.classList.remove('open','nudge');$scrim.classList.remove('open');$sheet.style.transform='';$scrim.style.opacity='';delete $sheet.dataset.dirty}
+function openSheet(html){const w=myRole()==='아빠'?'dad':myRole()==='엄마'?'mom':'baby',was=$sheet.classList.contains('open')?sheetTitle():'';$sheet.innerHTML=html.replace('<h3>',`<h3><span class="shc">${CHARS.svg(w,'',{face:1,size:40})}</span>`);if(window.FOCUS)FOCUS.apply($sheet);if(!was||was!==sheetTitle())delete $sheet.dataset.dirty;$sheet.style.transform='';$scrim.style.opacity='';$scrim.classList.add('open');$sheet.classList.add('open');$sheet.scrollTop=0;document.documentElement.classList.add('shopen')}
+function closeSheet(){document.documentElement.classList.remove('shopen');$sheet.classList.remove('open','nudge');$scrim.classList.remove('open');$sheet.style.transform='';$scrim.style.opacity='';delete $sheet.dataset.dirty}
 // 적던 창은 바깥 누르기·뒤로가기·끌어내리기로 바로 닫지 않고 한 번 더 확인 (2.5초 안에 한 번 더 하면 닫혀요). 닫기·취소 단추는 바로 닫혀요
 let sheetWarn=0;
 function sheetDirty(){if($sheet.classList.contains('open'))$sheet.dataset.dirty='1'}

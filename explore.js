@@ -38,17 +38,17 @@ const myHome = () => (window.WALK && WALK.home ? WALK.home() : null);
 const hk = () => { const h = myHome(); return h ? h.lat + ',' + h.lng : ''; };
 function places() {
   if (memo && memo.src === S.moments && memo.w === S.walks && memo.hk === hk()) return memo.P;
-  const P = [];
+  const P = [], mh = myHome(), H = mh ? { c: { lat: mh.lat, lng: mh.lng }, photos: [], days: new Set(), first: '', home: true } : null;
   geoPhotos().forEach(ph => {
+    if (H && km(H.c, ph.p) <= 0.3) { H.photos.push(ph); H.days.add(ph.date); if (!H.first || ph.date < H.first) H.first = ph.date; return; }   // 본부 300m 안 사진은 본부로 (핀은 정한 자리에)
     let best = null, bd = 1e9; for (const pl of P) { const d = km(pl.c, ph.p); if (d < bd) { bd = d; best = pl; } }
     if (best && bd <= 0.2) { best.photos.push(ph); best.days.add(ph.date); }
     else P.push({ c: ph.p, photos: [ph], days: new Set([ph.date]), first: ph.date });
   });
+  if (H && H.photos.length) P.unshift(H);
   P.forEach((pl, i) => { pl.i = i; pl.n = pl.photos.length; pl.last = pl.photos[pl.n - 1].date; });
-  // 본부(집): 다녀간 날이 가장 많은 곳 (사진 3장 이상)
-  const mh = myHome();
-  if (mh) { let best = null, bd = 1e9; P.forEach(pl => { const d = km(pl.c, mh); if (d < bd) { bd = d; best = pl; } }); if (best && bd <= 0.3) best.home = true; }
-  else { const home = P.slice().sort((a, b) => b.days.size - a.days.size || b.n - a.n)[0]; if (home && home.n >= 3) home.home = true; }
+  // 본부(집): 내가 정한 곳 → 안 정했으면 다녀간 날이 가장 많은 곳 (사진 3장 이상)
+  if (!mh) { const home = P.slice().sort((a, b) => b.days.size - a.days.size || b.n - a.n)[0]; if (home && home.n >= 3) home.home = true; }
   memo = { src: S.moments, w: S.walks, P, hk: hk() };
   return P;
 }
@@ -131,7 +131,7 @@ function mount() {
 function sync() {
   if (!map) return;
   const P = places(), R = window.WALK ? WALK.routes() : [], CS = window.WALK ? WALK.courses(X.days) : [];
-  const sig = hk() + `${X.layer.ph ? 1 : 0}${X.layer.wk ? 1 : 0}${X.days}${X.course}|` + P.map(p => `${p.c.lat},${p.c.lng},${p.n},${safeImg(PHOTOS[p.photos[p.n - 1].id]) ? 1 : 0}`).join('|') + '|' + R.map(r => r.w.id + r.T.pts.length).join(',');
+  const sig = hk() + `${X.layer.ph ? 1 : 0}${X.layer.wk ? 1 : 0}${X.days}${X.course}|` + P.map(p => `${p.c.lat},${p.c.lng},${p.n},${safeImg(PHOTOS[p.photos[p.n - 1].id]) ? 1 : 0}`).join('|') + '|' + R.map(r => r.w.id + r.T.pts.length + ':' + r.T.pts.reduce((a, p) => a + p.lat + p.lng, 0).toFixed(5)).join(',');
   if (sig === lastSig) return; lastSig = sig;
   overlays.forEach(o => o.setMap(null)); overlays = []; lines.forEach(o => o.setMap(null)); lines = [];
   const bounds = new kakao.maps.LatLngBounds(); let n = 0;
@@ -144,7 +144,9 @@ function sync() {
     const path = LL(sel.T); lines.push(new kakao.maps.Polyline({ map, path, strokeWeight: 7, strokeColor: '#1F2A44', strokeOpacity: .85 }));
     badge(path[0], `🐾${sel.n}`, `${sel.name} 코스`, () => WALK.courseSheet(sel.i, X.days));
   } else if (X.layer.wk) CS.forEach(g => {
-    const path = LL(g.T), line = new kakao.maps.Polyline({ map, path, strokeWeight: 4 + Math.min(g.n, 6), strokeColor: '#B3261E', strokeOpacity: g.n > 1 ? .8 : .55 });
+    const path = LL(g.T), wgt = 4 + Math.min(g.n, 6);
+    lines.push(new kakao.maps.Polyline({ map, path, strokeWeight: wgt + 4, strokeColor: '#FFFFFF', strokeOpacity: .9 }));
+    const line = new kakao.maps.Polyline({ map, path, strokeWeight: wgt, strokeColor: '#B3261E', strokeOpacity: 1 });
     const go = () => g.n > 1 ? WALK.courseSheet(g.i, X.days) : WALK.open(g.rep.id);
     kakao.maps.event.addListener(line, 'click', ev => { lineHit = Date.now(); const ws = ev && ev.latLng ? nearWalks(ev.latLng) : []; if (ws.length > 1 && ws.some(w => !g.walks.includes(w))) nearSheet(ws); else go(); });   // 다른 코스와 겹친 곳이면 겹친 기록 목록 lines.push(line); path.forEach(ll => bounds.extend(ll)); n++;
     badge(path[0], g.n > 1 ? `🐾${g.n}` : WALK.kindOf(g.rep.kind)[1], g.n > 1 ? `${g.name} ${g.n}번` : `${fmtMD(g.rep.date)} 탐문 보기`, go);
@@ -260,11 +262,25 @@ function homeSheet() {
   const h = myHome(), cw = canWrite();
   openSheet(`<h3>🏠 본부 (우리 집)</h3>
     <p class="hint">${h ? `지금 본부: <b>${esc(h.n || `${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}`)}</b>` : '아직 안 정해서 사진을 가장 많이 찍은 곳을 본부로 보여 줘요.'}<br>본부는 탐문 기록의 <b>기본 출발지</b>로도 써요. 엄마·아빠 폰에 같이 보여요.</p>
-    ${cw ? `<div class="exhome col"><button class="ghost" data-xp="homehere">📍 지금 있는 곳을 본부로</button><button class="ghost" data-xp="homemap">🗺️ 지도에서 눌러 정하기</button>${h ? '<button class="ghost exdanger" data-xp="homeoff">본부 지우기 (사진 많은 곳으로)</button>' : ''}</div>
+    ${cw ? `<div class="exhome col"><div class="wksrch"><input id="xp-hq" placeholder="주소나 아파트 이름 (예: 지정로 123)" enterkeyhint="search"><button type="button" class="primary" data-xp="homefind">찾기</button></div><div id="xp-hres"></div><button class="ghost" data-xp="homehere">📍 지금 있는 곳을 본부로</button><button class="ghost" data-xp="homemap">🗺️ 지도에서 눌러 정하기</button>${h ? '<button class="ghost exdanger" data-xp="homeoff">본부 지우기 (사진 많은 곳으로)</button>' : ''}</div>
       <p class="foot" style="margin:6px 0 0">지도의 다른 곳 핀을 눌러 '🏠 여기를 본부로'를 눌러도 돼요.</p>` : '<p class="foot">보기 전용이라 바꿀 수 없어요.</p>'}
     <div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
 }
 
+// 주소(도로명·지번)나 장소 이름으로 찾기 → 고른 자리에 그대로 고정 (지금 위치는 GPS라 매번 조금씩 달라요)
+async function homeFind() {
+  const q = (($('xp-hq') || {}).value || '').trim(), out = $('xp-hres'); if (!q || !out) return;
+  out.innerHTML = '<p class="hint">찾는 중…</p>';
+  try {
+    await HOSP.sdk(); const sv = kakao.maps.services; if (!sv) throw new Error('찾기를 쓸 수 없어요');
+    const one = f => new Promise(r => { try { f((d, st) => r(st === sv.Status.OK ? d : [])); } catch (e) { r([]); } });
+    const ad = await one(cb => new sv.Geocoder().addressSearch(q, cb)), kw = await one(cb => new sv.Places().keywordSearch(q, cb));
+    X.hres = ad.slice(0, 4).map(d => ({ x: d.x, y: d.y, n: (d.road_address && d.road_address.building_name) || d.address_name, sub: d.address_name }))
+      .concat(kw.slice(0, 6).map(d => ({ x: d.x, y: d.y, n: d.place_name, sub: d.road_address_name || d.address_name })));
+    out.innerHTML = X.hres.length ? `<div class="wkres">${X.hres.map((p, i) => `<button type="button" data-xp="homeres" data-v="${i}"><b>${esc(p.n)}</b><small>${esc(p.sub || '')}</small></button>`).join('')}</div>` : '<p class="hint">찾지 못했어요. 도로명 주소로 찾아보세요.</p>';
+  } catch (e) { out.innerHTML = `<p class="hint">${esc(e.message || '찾지 못했어요')}</p>`; }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && e.target.id === 'xp-hq') { e.preventDefault(); homeFind(); } });
 // ---------- 직접 꽂기 (여러 장 한 번에) ----------
 const hasPos = m => !!parse(m.geo) || (m.geo !== '-' && walkPos().has(m.id));
 function pinList() {
@@ -416,6 +432,8 @@ document.addEventListener('click', async e => {
   if (a === 'home') { const h = homeOf(places()); if (h && b.closest('.exlist')) openPlace(h.i); else homeSheet(); return; }
   if (a === 'sethome') { const pl = places()[+b.dataset.v]; if (!pl) return; const r = regionOf(pl); WALK.setHome(Object.assign({}, pl.c, { n: r && r.d ? r.d : '' })); closeSheet(); render(); toast('🏠 여기를 본부로 정했어요\n탐문 기록의 기본 출발지도 여기예요'); return; }
   if (a === 'homeoff') { if (!(await ask('본부를 지울까요?\n사진을 가장 많이 찍은 곳을 본부로 보여 주고,\n탐문 기본 출발지도 없어져요.', { ok: '지우기', danger: true }))) return; WALK.setHome(null); closeSheet(); render(); return; }
+  if (a === 'homefind') { homeFind(); return; }
+  if (a === 'homeres') { const p = (X.hres || [])[+b.dataset.v]; if (!p) return; WALK.setHome({ lat: +p.y, lng: +p.x, n: String(p.n).slice(0, 30) }); closeSheet(); render(); toast(`🏠 ${p.n}${jo(p.n, '을', '를')} 본부로 정했어요\n정확히 그 자리에 고정돼요`); return; }
   if (a === 'homehere') { b.disabled = true; navigator.geolocation.getCurrentPosition(p => { WALK.setHome({ lat: p.coords.latitude, lng: p.coords.longitude }); closeSheet(); render(); toast('🏠 지금 있는 곳을 본부로 정했어요'); }, () => { b.disabled = false; toast('위치를 가져오지 못했어요. 위치 권한을 확인해 주세요'); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }); return; }
   if (a === 'homemap') { closeSheet(); if (!map) { toast('지도를 불러온 뒤 다시 해 주세요'); return; } homePickOn(true); if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   if (a === 'homecancel') { homePickOn(false); return; }
