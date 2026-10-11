@@ -217,7 +217,10 @@ function heroHtml() {
 }
 function rowHtml(w) {
   const k = kindOf(w.kind), T = track(w), P = photos(w), ph = P.map(m => safeImg(PHOTOS[m.id])).find(Boolean), mo = moodOf(w.mood), m = distM(w), mins = dur(w);
-  const art = T && T.pts.length > 1 ? `<span class="wkart">${routeSvg(T.pts, 60, 60)}</span>` : ph ? `<span class="wkart"><img src="${ph}" alt="" loading="lazy" decoding="async"></span>` : `<span class="wkart wkemo">${k[1]}</span>`;
+  // 사진이 있으면 사진(+ 구석에 작은 길 그림), 사진 없이 길만 있으면 지도 같은 바탕 위에 길 (사용자 요청: 길만 달랑 있으면 이상해)
+  const hasT = T && T.pts.length > 1;
+  const art = ph ? `<span class="wkart"><img src="${ph}" alt="" loading="lazy" decoding="async">${hasT ? `<i class="wkartr">${routeSvg(T.pts, 26, 26)}</i>` : ''}${P.length > 1 ? `<b class="wkartn">📷${P.length}</b>` : ''}</span>`
+    : hasT ? `<span class="wkart wkmapart">${routeSvg(T.pts, 60, 60)}<b class="wkartk">${k[1]}</b></span>` : `<span class="wkart wkemo">${k[1]}</span>`;
   const bits = [timeText(w), m ? kmText(m) : '', mins && !w.end ? durText(mins) : '', P.length ? `사진 ${P.length}` : ''].filter(Boolean).join(' · ');
   const name = w.title || (w.place ? `${w.place} ${k[2]}` : k[2]);
   return `<button class="wkrow" data-wk="open" data-v="${esc(w.id)}">${art}<span class="wkrt"><b>${k[1]} ${esc(name)}</b><small>${fmtK(w.date, true)} (${wd(w.date)})${bits ? ' · ' + esc(bits) : ''}</small>${w.place && w.title ? `<small>📍 ${esc(w.place)}</small>` : ''}</span>${mo ? `<em title="${mo[2]}">${mo[1]}</em>` : '<em>›</em>'}</button>`;
@@ -863,7 +866,11 @@ css.textContent = `
 .wklist{display:flex;flex-direction:column;gap:6px}
 .wkrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--line);background:#FFFDF7;border-radius:16px;padding:6px 12px 6px 6px}
 .wkart{flex-shrink:0;width:60px;height:60px;border-radius:12px;overflow:hidden;background:#F2E3C6;display:grid;place-items:center}
-.wkart img{width:100%;height:100%;object-fit:cover}.wkart svg{display:block}.wkemo{font-size:28px}
+.wkart{position:relative}.wkart img{width:100%;height:100%;object-fit:cover}.wkart svg{display:block;position:relative}.wkemo{font-size:28px}
+.wkartr{position:absolute;right:3px;bottom:3px;width:26px;height:26px;border-radius:7px;background:rgba(255,253,247,.92);box-shadow:0 1px 3px rgba(0,0,0,.3);overflow:hidden}
+.wkartn{position:absolute;left:3px;top:3px;font-size:11px;font-weight:400;font-family:var(--display);background:rgba(31,42,68,.78);color:#fff;border-radius:8px;padding:0 5px;line-height:17px}
+.wkmapart{background-color:#EEF0E6;background-image:radial-gradient(ellipse 22px 15px at 18% 78%,#CFE5BF 98%,transparent),radial-gradient(ellipse 14px 10px at 82% 22%,#C9DEF0 98%,transparent),linear-gradient(28deg,transparent 46%,#fff 46%,#fff 54%,transparent 54%),linear-gradient(-62deg,transparent 47%,#fff 47%,#fff 52%,transparent 52%),linear-gradient(90deg,transparent 64%,rgba(255,255,255,.8) 64%,rgba(255,255,255,.8) 67%,transparent 67%),linear-gradient(0deg,transparent 30%,rgba(255,255,255,.8) 30%,rgba(255,255,255,.8) 33%,transparent 33%);border:1px solid #DCD6C4}
+.wkartk{position:absolute;left:3px;top:2px;font-size:13px;font-weight:400;line-height:1}
 .wkrt{flex:1;min-width:0;display:flex;flex-direction:column}.wkrt b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wkrt small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wkrow em{font-style:normal;font-size:20px;color:var(--muted)}
 .wkempty{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:16px;padding:10px 12px}.wkempty p{margin:0;font-size:13px;line-height:1.55}.wkempty b{color:var(--red)}
