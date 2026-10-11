@@ -50,6 +50,8 @@ function render_() {
     <div class="stlist">${TABS.map(([k, l, i]) => sw2(!off.includes(k), `data-stg="tab" data-v="${k}"`, `${i} ${l}`, '')).join('')}</div></section>
   <section class="stsec"><h2 class="sh"><span>첫 화면 카드</span><span>성장 수사</span></h2>
     <div class="stlist">${CARDS.map(([k, l]) => sw2(!home.includes(k), `data-stg="card" data-v="${k}"`, l, '')).join('')}</div></section>
+  ${(() => { const h = window.WALK && WALK.home ? WALK.home() : null; return `<section class="stsec"><h2 class="sh"><span>탐문 기본 출발지</span><span>동네 탐문 · 두 폰 같이</span></h2>
+    <p class="foot" style="margin:0">${h ? `🏠 <b>${esc(h.n || `${h.lat.toFixed(3)}, ${h.lng.toFixed(3)}`)}</b> — 다녀온 곳을 기록하면 출발지로 저절로 들어가요. <button class="ghost" data-stg="whome" style="min-height:34px;margin-left:4px">지우기</button>` : '아직 없어요. 탐문 기록을 쓸 때 출발지를 정하면 기본 출발지로 저장돼요.'}</p></section>`; })()}
   <section class="stsec"><h2 class="sh"><span>떠 있는 단추</span><span>📚 육아 글</span></h2>
     <div class="stlist">${sw2(fab, 'data-stg="fab"', '📚 육아 글 단추 보이기', '숨겨도 방의 우편함이나 아래 단추로 열 수 있어요')}</div>
     <div class="st2"><button class="ghost" data-stg="fabreset">단추 자리 처음대로</button><button class="ghost" data-stg="posts">📚 육아 글 열기</button></div></section>
@@ -76,6 +78,7 @@ document.addEventListener('click', async e => {
   if (a === 'update') return update();
   if (a === 'tab') { const off = hiddenTabs(); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-tabs-off', off); toast(i >= 0 ? `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 다시 보여요` : `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 숨겼어요`); render(); return; }
   if (a === 'card') { const off = get('soeun-home-off', []); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-home-off', off); render(); return; }
+  if (a === 'whome') { if (!(await ask('탐문 기본 출발지를 지울까요?', { ok: '지우기', danger: true }))) return; WALK.setHome(null); render(); toast('기본 출발지를 지웠어요'); return; }
   if (a === 'fab') { put('soeun-posts-hide', !get('soeun-posts-hide', false)); render(); return; }
   if (a === 'fabreset') { if (window.POSTS && POSTS.resetPos) POSTS.resetPos(); toast('📚 단추를 처음 자리로 돌렸어요'); return; }
   if (a === 'posts') { S.view = 'posts'; render(); window.scrollTo(0, 0); if (window.POSTS) POSTS.load(); return; }
