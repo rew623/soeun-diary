@@ -1,6 +1,9 @@
-// 이번 주 수배범 — 매주 월요일 귀여운 수배범 포스터가 붙고, 엄마·아빠가 이번 주에 남긴 기록·사진으로 체력을 깎아 일요일까지 체포해요 (부부 협동)
+// 괴도 깍정이 추적 (예전 '이번 주 수배범') — 매주 월요일 괴도 깍정이가 예고장을 보내요. 그 주엔 아기 월령에 맞는 모습(VILLAINS)으로 변장해 무언가를 노려요
+// 엄마·아빠가 이번 주에 남긴 기록·사진이 단서가 되어 깍정이까지 남은 거리(m)를 줄여요. 0m가 되면 '따라잡음' — 손이 닿기 직전 깍정이는 사라지지만(캐치 미 이프 유 캔처럼 아슬아슬)
+// 노리던 걸 지켜 내고 현상금 도토리를 받아요. 일요일까지 못 따라잡으면 '놓침'
 // 계산은 이미 남긴 기록(남긴 때 t, 없으면 그 기록의 날짜)으로 해서 두 폰에 같게 보여요. 저장하는 건 현상금 받은 주(game/shared의 wanted 칸)뿐
-// 체력은 지난 4주 평균 공격량의 80% (30~150). 현상금은 도토리 10개, 금요일까지 잡으면 5개 더 (두 폰이 두 번 받지 않게 runTransaction)
+// 거리는 지난 4주 평균 단서량의 80% (30~150m). 현상금은 도토리 10개, 금요일까지 따라잡으면 5개 더 (두 폰이 두 번 받지 않게 runTransaction)
+// 안쪽 값 이름(caught·hp·dmg·left·v)은 예전 그대로 (movie.js·paper.js·room.js가 씀)
 (function () {
 const W = { ws: '', more: false, paying: false, tried: {} };
 const hash = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
@@ -39,6 +42,15 @@ const VILLAINS = [
   [12, 60, 'climb', '소파 등반가', '🧗', '소파·식탁 무단 등반', '내려오는 법은 연구 중'],
   [0, 999, 'cute', '귀여움 과다 소지범', '💖', '현장 수사관 전원 심쿵 유발', '가중처벌 대상']
 ];
+// 변장마다 깍정이가 노리는 것
+const TARGET = { dawn: '수사관들의 새벽잠', grumble: '꿀 같은 낮잠 시간', hiccup: '평화로운 수유 시간', burp: '시원한 트림 한 방', hold: '수사관의 팔 힘', bath: '보송보송 목욕 시간', mitten: '손싸개 한 짝', smile: '배냇짓 미소',
+  drool: '뽀송한 턱받이', fist: '주먹 간식', roll: '얌전한 기저귀 갈이 시간', babble: '조용한 새벽', hair: '아빠의 머리카락', paci: '쪽쪽이', spoon: '이유식 숟가락', splash: '깨끗한 바닥', crawl: '현관 앞 신발',
+  taste: '수사관 휴대폰', drawer: '서랍 속 비밀', remote: 'TV 리모컨', tissue: '두루마리 휴지', sock: '양말 한 짝', nope: '"응" 한마디', climb: '소파 꼭대기', cute: '수사관들의 심장' };
+// 아슬아슬하게 사라지는 방법 (주마다 바뀌어요)
+const ESCAPE = ['망토를 행글라이더처럼 펼쳐', '도토리 연막탄을 터뜨리고', '비둘기 떼 사이로', '하늘색 열기구를 타고', '거울 트릭으로 모습을 감추고', '곰 인형인 척 가만히 있다가', '빨래 바구니 속으로', '자장가 오르골 소리에 맞춰 사뿐히', '카드 한 장만 남기고', '커튼 뒤 비밀 통로로', '분유 통 사이로', '유모차 바퀴 자국을 거꾸로 밟고'];
+const josa = (w, a, b) => { const c = String(w).replace(/["'”’)\s]+$/, '').slice(-1).charCodeAt(0); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; };
+const tgt = v => TARGET[v[2]] || '도토리';
+const escOf = ws => ESCAPE[hash('esc' + ws) % ESCAPE.length];
 // 공격: [그림, 이름, 피해, 설명, 세는 말]
 const KIND = {
   photo: ['📷', '사진', 2, '1장마다 (한 사람이 하루 12장까지)', '장'],
@@ -128,7 +140,7 @@ function check() {
     let n = 0;
     for (const s of due) {
       W.tried[s.ws] = true;
-      try { await run('saveGame', {}, s.bounty, undefined, { key: 'wanted', val: s.ws }); S.game.wanted = s.ws; n++; setTimeout(() => { if (window.GAME) GAME.confetti(); toast(`🚨 ${s.v[3]} 체포! 현상금 도토리 🌰 +${s.bounty}${s.early ? ' (주말 전 체포 보너스 포함)' : ''}`); }, 600 + n * 2300); }
+      try { await run('saveGame', {}, s.bounty, undefined, { key: 'wanted', val: s.ws }); S.game.wanted = s.ws; n++; setTimeout(() => { if (window.GAME) GAME.confetti(); toast(`🎩 괴도 깍정이를 따라잡았어요! 아슬아슬하게 놓쳤지만 현상금 🌰 +${s.bounty}${s.early ? ' (금요일 전 보너스 포함)' : ''}`); }, 600 + n * 2300); }
       catch (e) { /* 다른 폰이 먼저 받았거나 인터넷이 안 되면 이번엔 그냥 둬요 (다음에 앱을 열 때 다시) */ }
     }
     if (n && window.__app && __app.refresh) __app.refresh();
@@ -136,61 +148,71 @@ function check() {
 }
 
 // ---------- 성장 수사 탭 카드 ----------
+const face = (who, n) => CHARS.svg(who, '', { face: true, size: n });
+// 탐정이 깍정이를 쫓는 길 (왼쪽 → 오른쪽 끝의 깍정이)
+function track(s, big) {
+  const pct = Math.max(0, Math.min(100, Math.round(s.dmg / s.hp * 100)));
+  return `<div class="wtrack${big ? ' big' : ''}${s.caught ? ' got' : ''}" role="meter" aria-label="괴도 깍정이까지 남은 거리" aria-valuemin="0" aria-valuemax="${s.hp}" aria-valuenow="${s.left}"><i style="width:${pct}%"></i><span class="wtdet" style="left:${pct}%">${face('baby', big ? 40 : 30)}</span><span class="wtthf">${face('thief', big ? 40 : 30)}</span></div>`;
+}
 function card() {
   if (!S.profile || !S.profile.birth) return '';
-  const s = stat(cur()), v = s.v, pct = Math.round(s.left / s.hp * 100), dl = daysBetween(today(), s.end);
-  return `<section class="wcard${s.caught ? ' got' : ''}" data-wt="open" role="button" tabindex="0" aria-label="이번 주 수배범 ${esc(v[3])} 자세히 보기">
-    <div class="wpost" aria-hidden="true"><b>WANTED</b><span class="wface">${v[4]}</span><small>🌰 ${s.caught ? s.bounty : BOUNTY}</small></div>
+  const s = stat(cur()), v = s.v, dl = daysBetween(today(), s.end), t = tgt(v);
+  return `<section class="wcard${s.caught ? ' got' : ''}" data-wt="open" role="button" tabindex="0" aria-label="괴도 깍정이 추적 자세히 보기">
+    <div class="wpost" aria-hidden="true"><b>예고장</b>${CHARS.svg('thief', 'card', { size: 70 })}<small>🌰 ${s.caught ? s.bounty : BOUNTY}</small></div>
     <div class="wbody">
-      <h2 class="sh"><span>🚨 이번 주 수배범</span><span>${s.caught ? md(s.caught) + ' 체포' : dl > 0 ? `D-${dl} · 일요일까지` : '오늘 자정까지!'}</span></h2>
-      <b class="wname">${esc(v[3])}</b>
-      <small class="wcrime">죄목: ${esc(v[5])}</small>
-      <div class="whp" role="meter" aria-label="수배범 남은 체력" aria-valuemin="0" aria-valuemax="${s.hp}" aria-valuenow="${s.left}"><i style="width:${pct}%"></i></div>
-      <small class="whpt">${s.caught ? `체포 완료! 현상금 🌰 ${s.bounty}${s.early ? ' · 주말 전 체포 보너스' : ''}` : `남은 체력 <b>${s.left}</b>/${s.hp} · 엄마 ${s.by['엄마']} · 아빠 ${s.by['아빠']}${s.team ? ` · 🤝 ${s.team * KIND.team[2]}` : ''}`}</small>
+      <h2 class="sh"><span>🎩 괴도 깍정이 추적</span><span>${s.caught ? md(s.caught) + ' 따라잡음' : dl > 0 ? `D-${dl} · 일요일 자정` : '오늘 자정까지!'}</span></h2>
+      <b class="wname">${esc(t)}${josa(t, '을', '를')} 노린다!</b>
+      <small class="wcrime">변장: ${v[4]} ${esc(v[3])}</small>
+      ${track(s)}
+      <small class="whpt">${s.caught ? `아슬아슬하게 놓쳤지만 지켜 냈어요! 현상금 🌰 ${s.bounty}${s.early ? ' · 금요일 전 보너스' : ''}` : `깍정이까지 <b>${s.left}m</b> · 엄마 ${s.by['엄마']} · 아빠 ${s.by['아빠']}${s.team ? ` · 🤝 ${s.team * KIND.team[2]}` : ''}`}</small>
     </div>
-    ${s.caught ? '<span class="wstamp" aria-hidden="true">체포</span>' : ''}
+    ${s.caught ? '<span class="wstamp" aria-hidden="true">아슬아슬!</span>' : ''}
   </section>`;
 }
 
-// ---------- 수배범 화면 (S.view='wanted') ----------
+// ---------- 추적 화면 (S.view='wanted') ----------
 function attackLog(s) {
   const days = {};
   s.L.forEach(e => { const g = days[e.d] = days[e.d] || {}, key = e.who + '|' + e.k; const x = g[key] = g[key] || { who: e.who, k: e.k, n: 0, c: 0 }; x.n += e.n; x.c++; });
   const ds = Object.keys(days).sort().reverse();
-  if (!ds.length) return `<p class="vempty">${s.over ? '이 주에는 공격 기록이 없어요.' : '아직 공격이 없어요. 사진 한 장, 기록 하나가 공격이 돼요!'}</p>`;
-  return ds.map(d => `<div class="wday"><b>${md(d)} (${wd(d)})</b><div class="wchips">${Object.values(days[d]).map(x => { const k = KIND[x.k]; return `<span class="wchip ${x.who === '엄마' ? 'mom' : x.who === '아빠' ? 'dad' : 'all'}">${x.who ? `<em>${x.who}</em>` : ''}${k[0]} ${k[1]}${x.k !== 'team' && x.c > 1 ? ` ${x.c}${k[4]}` : ''} <strong>−${x.n}</strong></span>`; }).join('')}</div></div>`).join('');
+  if (!ds.length) return `<p class="vempty">${s.over ? '이 주에는 단서가 없었어요.' : '아직 단서가 없어요. 사진 한 장, 기록 하나가 단서가 돼요!'}</p>`;
+  return ds.map(d => `<div class="wday"><b>${md(d)} (${wd(d)})</b><div class="wchips">${Object.values(days[d]).map(x => { const k = KIND[x.k]; return `<span class="wchip ${x.who === '엄마' ? 'mom' : x.who === '아빠' ? 'dad' : 'all'}">${x.who ? `<em>${x.who}</em>` : ''}${k[0]} ${k[1]}${x.k !== 'team' && x.c > 1 ? ` ${x.c}${k[4]}` : ''} <strong>${x.n}m</strong></span>`; }).join('')}</div></div>`).join('');
 }
 function render_() {
-  const c = cur(), ws = W.ws && W.ws <= c ? W.ws : c, s = stat(ws), v = s.v, pct = Math.round(s.left / s.hp * 100), dl = daysBetween(today(), s.end);
-  const status = s.caught ? `<span class="wpstamp got">체포 완료<small>${md(s.caught)}</small></span>` : s.over ? '<span class="wpstamp gone">도주</span>' : '';
+  const c = cur(), ws = W.ws && W.ws <= c ? W.ws : c, s = stat(ws), v = s.v, dl = daysBetween(today(), s.end), t = tgt(v), nm = CV.nick();
   const tot = s.by['엄마'] + s.by['아빠'] || 1;
-  // 체포 기록부 (지난 주들)
   const weeks = []; for (let w = c; w >= monday(S.profile.birth) && weeks.length < 104; w = addDays(w, -7)) weeks.push(w);
-  const past = weeks.slice(1).map(stat), nGot = past.filter(x => x.caught).length;
+  const past = weeks.slice(1).map(stat), nGot = past.filter(x => x.caught).length + (ws === c && s.caught ? 1 : 0), nGone = past.filter(x => x.over && !x.caught).length;
   const shown = W.more ? weeks : weeks.slice(0, 9);
-  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>${ws === c ? '이번 주 수배범' : '지난 수배범'}</h1><p>${md(ws)}(월) ~ ${md(s.end)}(일) · 엄마·아빠가 이번 주에 남긴 기록과 사진이 공격이 돼요. 체력을 0으로 만들면 체포!</p></header>
+  // 결말: 따라잡음(아슬아슬하게 사라짐) / 놓침 / 추적 중
+  const story = s.caught ? `<div class="wend got">${CHARS.svg('thief', '', { size: 66 })}<p><b>${md(s.caught)}, 깍정이를 따라잡았어요!</b><br>손이 닿기 직전, 깍정이는 ${escOf(ws)} 사라졌어요. 그래도 ${esc(t)}${josa(t, '은', '는')} 무사히 지켜 냈어요. 현상금 🌰 ${s.bounty}${s.early ? ` (금요일 전 보너스 +${EARLY})` : ''}${String((S.game && S.game.wanted) || '') >= ws ? ' · 받았어요' : ''}</p></div>`
+    : s.over ? `<div class="wend gone">${CHARS.svg('thief', 'acorn', { size: 66 })}<p><b>놓쳤어요…</b><br>깍정이가 ${esc(t)}${josa(t, '을', '를')} 훔쳐 유유히 사라졌어요. 남은 건 예고장 한 장뿐. 다음 주엔 꼭!</p></div>` : '';
+  return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>${ws === c ? '괴도 깍정이 추적' : '지난 추적'}</h1><p>${md(ws)}(월) ~ ${md(s.end)}(일) · 엄마·아빠 수사관이 남긴 기록과 사진이 단서가 돼요. 단서로 거리를 0m로 줄이면 따라잡아요!</p></header>
   <div class="wposter">
-    <div class="wph"><span>현상 수배</span><b>WANTED</b></div>
-    <div class="wmug"><span class="wface">${v[4]}</span></div>
-    <b class="wpname">${esc(v[3])}</b>
-    <p class="wpline"><em>죄목</em>${esc(v[5])}</p>
+    <span class="wseal" aria-hidden="true"></span>
+    <div class="wph"><span>CALLING CARD</span><b>예고장</b></div>
+    <div class="wmug">${CHARS.svg('thief', 'card', { size: 150 })}</div>
+    <p class="wletter">${esc(nm)} 탐정님께.<br>이번 주 일요일 자정, <b>${esc(t)}</b>${josa(t, '을', '를')} 가지러 가겠습니다.<br>잡을 수 있다면 잡아 보시죠.</p>
+    <p class="wsign">— 괴도 깍정이 🎩</p>
+    <p class="wpline"><em>이번 변장</em>${v[4]} ${esc(v[3])}</p>
+    <p class="wpline"><em>수법</em>${esc(v[5])}</p>
     <p class="wpline"><em>특징</em>${esc(v[6])}</p>
-    <div class="wpbounty">현상금 🌰 ${BOUNTY}<small>금요일까지 잡으면 +${EARLY}</small></div>
-    <div class="whp big" role="meter" aria-label="수배범 남은 체력" aria-valuemin="0" aria-valuemax="${s.hp}" aria-valuenow="${s.left}"><i style="width:${pct}%"></i></div>
-    <p class="wphp">남은 체력 <b>${s.left}</b> / ${s.hp}${s.caught ? '' : s.over ? ' · 일요일까지 못 잡았어요' : dl > 0 ? ` · 일요일까지 D-${dl}` : ' · 오늘 자정까지!'}</p>
-    ${status}
+    <div class="wpbounty">현상금 🌰 ${BOUNTY}<small>금요일까지 따라잡으면 +${EARLY}</small></div>
+    ${track(s, true)}
+    <p class="wphp">${s.caught ? '따라잡았어요!' : `깍정이까지 <b>${s.left}m</b> / ${s.hp}m`}${s.caught ? '' : s.over ? ' · 일요일까지 못 따라잡았어요' : dl > 0 ? ` · 일요일까지 D-${dl}` : ' · 오늘 자정까지!'}</p>
+    ${s.caught ? `<span class="wpstamp got">아슬아슬!<small>${md(s.caught)}</small></span>` : s.over ? '<span class="wpstamp gone">놓침</span>' : ''}
   </div>
-  ${s.caught ? `<p class="wgot">🎉 ${md(s.caught)} ${esc(v[3])} 체포! 현상금 도토리 🌰 ${s.bounty}${s.early ? ` (주말 전 체포 보너스 +${EARLY} 포함)` : ''}${String((S.game && S.game.wanted) || '') >= ws ? ' · 받았어요' : ''}</p>` : ''}
-  <section><h2 class="sh"><span>공격 기여도</span><span>총 ${s.dmg}</span></h2>
+  ${story}
+  <section><h2 class="sh"><span>단서 기여도</span><span>총 ${s.dmg}m</span></h2>
     <div class="wshare" aria-hidden="true">${s.by['엄마'] ? `<i class="mom" style="flex:${s.by['엄마']}"></i>` : ''}${s.by['아빠'] ? `<i class="dad" style="flex:${s.by['아빠']}"></i>` : ''}${!s.by['엄마'] && !s.by['아빠'] ? '<i class="none"></i>' : ''}</div>
-    <div class="wlegend"><span><i class="mom"></i>엄마 수사관 <b>${s.by['엄마']}</b> (${Math.round(s.by['엄마'] / tot * 100)}%)</span><span><i class="dad"></i>아빠 수사관 <b>${s.by['아빠']}</b> (${Math.round(s.by['아빠'] / tot * 100)}%)</span>${s.by[''] ? `<span>🤝 협동·함께 <b>${s.by['']}</b></span>` : ''}</div>
+    <div class="wlegend"><span><i class="mom"></i>엄마 수사관 <b>${s.by['엄마']}m</b> (${Math.round(s.by['엄마'] / tot * 100)}%)</span><span><i class="dad"></i>아빠 수사관 <b>${s.by['아빠']}m</b> (${Math.round(s.by['아빠'] / tot * 100)}%)</span>${s.by[''] ? `<span>🤝 협동·함께 <b>${s.by['']}m</b></span>` : ''}</div>
   </section>
-  <section><h2 class="sh"><span>공격 기록</span><span>${s.L.length}번</span></h2>${attackLog(s)}</section>
-  <section${isFold('w-weak', true) ? ' class="folded"' : ''}><h2 class="sh" data-fold="w-weak"><span>수배범의 약점</span><span>공격 방법</span></h2>
-    <div class="wweak">${Object.values(KIND).map(k => `<span><i>${k[0]}</i><b>${k[1]}</b><strong>−${k[2]}</strong>${k[3] ? `<small>${k[3]}</small>` : ''}</span>`).join('')}</div>
-    <p class="foot" style="margin-top:10px">체력은 지난 4주 평균 공격량에 맞춰 정해져요 (30~150). 남긴 날을 기준으로 세요.</p></section>
-  <section><h2 class="sh"><span>체포 기록부</span><span>체포 ${nGot} · 도주 ${past.filter(x => x.over && !x.caught).length}</span></h2>
-    <div class="wminis">${shown.map(w => { const x = stat(w); return `<button class="wmini${x.caught ? ' got' : x.over ? ' gone' : ''}${w === ws ? ' on' : ''}" data-wt="week" data-v="${w}"><span class="wface">${x.v[4]}</span><b>${esc(x.v[3])}</b><small>${x.caught ? md(x.caught) + ' 체포' : w === c ? '추적 중' : '도주'}</small><em>${md(w)}~</em></button>`; }).join('')}</div>
+  <section><h2 class="sh"><span>모은 단서</span><span>${s.L.length}개</span></h2>${attackLog(s)}</section>
+  <section${isFold('w-weak', true) ? ' class="folded"' : ''}><h2 class="sh" data-fold="w-weak"><span>단서가 되는 것</span><span>좁히는 거리</span></h2>
+    <div class="wweak">${Object.values(KIND).map(k => `<span><i>${k[0]}</i><b>${k[1]}</b><strong>${k[2]}m</strong>${k[3] ? `<small>${k[3]}</small>` : ''}</span>`).join('')}</div>
+    <p class="foot" style="margin-top:10px">처음 거리는 지난 4주 평균 단서량에 맞춰 정해져요 (30~150m). 남긴 날을 기준으로 세요.</p></section>
+  <section><h2 class="sh"><span>추적 기록부</span><span>아슬아슬 ${nGot} · 놓침 ${nGone}</span></h2>
+    <div class="wminis">${shown.map(w => { const x = stat(w); return `<button class="wmini${x.caught ? ' got' : x.over ? ' gone' : ''}${w === ws ? ' on' : ''}" data-wt="week" data-v="${w}"><span class="wface">${x.v[4]}</span><b>${esc(x.v[3])}</b><small>${x.caught ? md(x.caught) + ' 따라잡음' : w === c ? '추적 중' : '놓침'}</small><em>${md(w)}~</em></button>`; }).join('')}</div>
     ${weeks.length > 9 ? `<button class="addperiod" data-wt="more">${W.more ? '최근 것만 보기 ▴' : `전체 ${weeks.length}주 보기 ▾`}</button>` : ''}</section>
   <button class="secondary" data-wt="close" style="width:100%;margin-top:16px">돌아가기</button>`;
 }
@@ -209,35 +231,45 @@ document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === 
 const css = document.createElement('style');
 css.textContent = `
 .wcard{position:relative;display:flex;gap:12px;align-items:stretch;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.wpost{flex:0 0 84px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;background:#F3E3BF;border:1.5px solid #C9A86A;border-radius:10px;padding:7px 4px 6px;box-shadow:inset 0 0 0 3px #FBF1DA,0 3px 6px rgba(107,58,30,.15);transform:rotate(-2deg)}
-.wpost b{font-family:var(--display);font-size:13px;letter-spacing:1px;color:#6B3A1E}
-.wpost small{font-size:11px;color:#6B3A1E;font-weight:700}
+.wpost{position:relative;flex:0 0 86px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:0;background:#FFFDF8;border:1.5px solid #E0B341;border-radius:10px;padding:6px 3px 5px;box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 4px #EFE2B8,0 3px 8px rgba(31,42,68,.16);transform:rotate(-2deg)}
+.wpost .chr{margin:-2px 0 -4px}
+.wpost b{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:2px;color:#8E1E17}
+.wpost small{font-size:11px;color:#8E1E17;font-weight:700}
 .wface{font-size:40px;line-height:1.15;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .wbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .wbody .sh{margin-bottom:2px}
 .wname{font-family:var(--display);font-weight:400;font-size:20px;color:var(--navy);line-height:1.2}
 .wcrime{font-size:12px;color:var(--muted)}
+.wtrack{position:relative;height:34px;margin:6px 34px 0 4px}.wtrack::before{content:'';position:absolute;left:0;right:-24px;top:15px;height:5px;border-radius:99px;background:repeating-linear-gradient(90deg,#E6D7BC 0 8px,transparent 8px 13px)}
+.wtrack i{position:absolute;left:0;top:14px;height:7px;border-radius:99px;background:var(--red);transition:width .6s}
+.wtrack .wtdet,.wtrack .wtthf{position:absolute;top:0;transform:translateX(-50%);line-height:0;transition:left .6s}.wtrack .wtthf{left:auto;right:-38px;transform:none}
+.wtrack.big{height:46px;margin:14px 44px 0 8px}.wtrack.big::before{top:20px;right:-30px}.wtrack.big i{top:19px}.wtrack.big .wtthf{right:-48px}
+.wtrack.got i{background:#E0B341}.wtrack .wtthf .chr{animation:wtthf 2.6s ease-in-out infinite}@keyframes wtthf{0%,100%{transform:none}50%{transform:translateY(-3px) rotate(4deg)}}
 .whp{height:12px;border-radius:99px;background:#F3D3CF;overflow:hidden;margin-top:5px}
 .whp i{display:block;height:100%;min-width:0;border-radius:99px;background:var(--red);transition:width .6s}
 .whp.big{height:18px;margin-top:12px}
 .whpt{font-size:12px;color:var(--ink);margin-top:2px}
 .whpt b{color:var(--red)}
 .wcard.got .whp i{background:#C9BFB2}
-.wstamp{position:absolute;right:16px;top:40px;border:3px double var(--red);color:var(--red);font-family:var(--display);font-size:24px;padding:0 12px;border-radius:8px;transform:rotate(-14deg);background:rgba(255,253,247,.75);pointer-events:none;animation:wstamp .5s cubic-bezier(.2,1.6,.4,1) both}
+.wstamp{position:absolute;right:12px;top:40px;border:3px double var(--red);color:var(--red);font-family:var(--display);font-size:21px;padding:0 10px;border-radius:8px;transform:rotate(-14deg);background:rgba(255,253,247,.75);pointer-events:none;animation:wstamp .5s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes wstamp{from{transform:rotate(-14deg) scale(2.2);opacity:0}to{transform:rotate(-14deg) scale(1);opacity:1}}
-.wposter{position:relative;margin:16px auto 0;max-width:360px;background:#F3E3BF;border:2px solid #C9A86A;border-radius:14px;padding:18px 18px 16px;text-align:center;box-shadow:inset 0 0 0 6px #FBF1DA,0 8px 18px rgba(107,58,30,.22);background-image:radial-gradient(rgba(140,100,50,.10) 1px,transparent 1.4px);background-size:9px 9px}
-.wph span{display:block;font-family:var(--display);font-size:18px;color:#6B3A1E;letter-spacing:6px}
-.wph b{display:block;font-family:var(--display);font-weight:400;font-size:44px;line-height:1;color:#6B3A1E;letter-spacing:4px}
-.wmug{margin:12px auto 10px;width:170px;height:150px;display:grid;place-items:center;border:3px solid #6B3A1E;border-radius:6px;background:repeating-linear-gradient(#FFF8EC 0 22px,#E8D7B4 22px 24px)}
+.wposter{position:relative;margin:16px auto 0;max-width:360px;background:#FFFDF8;border:2px solid #E0B341;border-radius:14px;padding:20px 18px 16px;text-align:center;box-shadow:inset 0 0 0 6px #fff,inset 0 0 0 7.5px #EFE2B8,0 10px 22px rgba(31,42,68,.2);background-image:radial-gradient(rgba(224,179,65,.10) 1px,transparent 1.4px);background-size:10px 10px}
+.wseal{position:absolute;right:18px;top:16px;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#E0574E,#9E1F18);box-shadow:0 2px 4px rgba(0,0,0,.25),inset 0 0 0 4px rgba(255,255,255,.12);transform:rotate(-12deg)}.wseal::after{content:'🌰';position:absolute;inset:0;display:grid;place-items:center;font-size:16px;filter:grayscale(.3) brightness(1.2)}
+.wletter{margin:4px 0 0;font-size:15px;line-height:1.7;color:var(--ink);word-break:keep-all}.wletter b{color:var(--red)}
+.wsign{margin:4px 0 10px;text-align:right;font-family:var(--display);font-size:17px;color:#5E5966}
+.wend{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:10px 12px;border-radius:16px;background:#FCE8B4;font-size:14px;line-height:1.6;word-break:keep-all}.wend .chr{flex-shrink:0}.wend p{margin:0}.wend b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}.wend.gone{background:#EEE7DC}
+.wph span{display:block;font-family:var(--display);font-size:13px;color:#B08A3A;letter-spacing:5px}
+.wph b{display:block;font-family:var(--display);font-weight:400;font-size:40px;line-height:1.1;color:#8E1E17;letter-spacing:6px}
+.wmug{margin:8px auto 4px;width:180px;height:160px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(closest-side,#FFF3C9,rgba(255,243,201,0))}
 .wmug .wface{font-size:96px}
 .wpname{display:block;font-family:var(--display);font-weight:400;font-size:28px;color:var(--navy);line-height:1.2;word-break:keep-all}
 .wpline{margin:6px 0 0;font-size:14px;color:var(--ink);word-break:keep-all}
-.wpline em{font-style:normal;font-size:12px;color:#fff;background:#6B3A1E;border-radius:99px;padding:1px 8px;margin-right:6px}
+.wpline em{font-style:normal;font-size:12px;color:#fff;background:#5E5966;border-radius:99px;padding:1px 8px;margin-right:6px}
 .wpbounty{margin-top:10px;font-family:var(--display);font-size:24px;color:var(--red)}
-.wpbounty small{display:block;font-family:var(--body);font-size:12px;color:#6B3A1E}
+.wpbounty small{display:block;font-family:var(--body);font-size:12px;color:#8A6A2A}
 .wphp{margin:6px 0 0;font-size:13px}
 .wphp b{color:var(--red);font-size:16px}
-.wpstamp{position:absolute;right:14px;top:150px;display:flex;flex-direction:column;align-items:center;border:4px double var(--red);color:var(--red);font-family:var(--display);font-size:30px;line-height:1.1;padding:4px 14px;border-radius:10px;transform:rotate(-16deg);background:rgba(255,253,247,.8);animation:wstamp .5s cubic-bezier(.2,1.6,.4,1) both}
+.wpstamp{position:absolute;right:10px;top:170px;display:flex;flex-direction:column;align-items:center;border:4px double var(--red);color:var(--red);font-family:var(--display);font-size:30px;line-height:1.1;padding:4px 14px;border-radius:10px;transform:rotate(-16deg);background:rgba(255,253,247,.8);animation:wstamp .5s cubic-bezier(.2,1.6,.4,1) both}
 .wpstamp small{font-size:13px}
 .wpstamp.gone{border-color:#6B5F52;color:#6B5F52}
 .wgot{margin:14px 0 0;padding:10px 14px;border-radius:14px;background:#FCE8B4;font-size:14px;text-align:center}
@@ -261,14 +293,14 @@ css.textContent = `
 .wweak strong{color:var(--red)}
 .wweak small{grid-column:1/-1;font-size:11px;color:var(--muted);line-height:1.3}
 .wminis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.wmini{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;background:#F3E3BF;border:1.5px solid #C9A86A;border-radius:12px;padding:8px 4px 6px;min-width:0}
+.wmini{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;background:#FFFDF8;border:1.5px solid #E0B341;border-radius:12px;padding:8px 4px 6px;min-width:0}
 .wmini .wface{font-size:30px}
 .wmini b{font-family:var(--display);font-weight:400;font-size:13px;color:var(--navy);line-height:1.2;word-break:keep-all;text-align:center}
-.wmini small{font-size:11px;color:#6B3A1E}
+.wmini small{font-size:11px;color:#8A6A2A}
 .wmini em{font-style:normal;font-size:11px;color:var(--muted)}
-.wmini.got::after{content:"체포";position:absolute;top:6px;right:4px;font-family:var(--display);font-size:13px;color:var(--red);border:2px solid var(--red);border-radius:6px;padding:0 4px;transform:rotate(-12deg);background:rgba(255,253,247,.8)}
+.wmini.got::after{content:"아슬";position:absolute;top:6px;right:4px;font-family:var(--display);font-size:13px;color:var(--red);border:2px solid var(--red);border-radius:6px;padding:0 4px;transform:rotate(-12deg);background:rgba(255,253,247,.8)}
 .wmini.gone{filter:grayscale(.7);opacity:.8}
 .wmini.on{outline:3px solid var(--navy);outline-offset:1px}`;
 document.head.appendChild(css);
-window.WANTED = { card, render: render_, check, stat, monday, events };
+window.WANTED = { card, render: render_, check, stat, monday, events, target: tgt, escape: escOf };
 })();

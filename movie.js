@@ -1,10 +1,10 @@
 // 성장 영상 만들기 (S.view='movie') — 앱의 사진과 기록으로 음악이 흐르는 영상을 만들어 폰에 저장하거나 카톡으로 보내요
-// 🕵️ 수사 일지 총정리: 앱에 남긴 기록 전부를 장면으로 (프로필 · 성장 그래프 · 최초 목격 · 월별 사진 보드 · 접종 도장 · 수배범 · 닮은꼴 판결 · 탐험 지도 · 수사관 신분증 · 봉인된 편지 · 사진 몽타주 · 방 엔딩), 소은 탐정 캐릭터가 나와요
+// 🕵️ 수사 일지 총정리: 앱에 남긴 기록 전부를 장면으로 (프로필 · 성장 그래프 · 최초 목격 · 월별 사진 보드 · 접종 도장 · 괴도 깍정이 추격전 · 닮은꼴 판결 · 탐험 지도 · 수사관 신분증 · 봉인된 편지 · 사진 몽타주 · 방 엔딩), 소은 탐정 캐릭터가 나와요
 // 📖 성장 스토리 · 💯 100일 · 📷 같은 포즈 · 🗓 이번 달: 사진은 장면마다 폴라로이드 · 수사 보드 · 필름 · 꽉 찬 화면으로 저절로 꾸며요 (테이프 · 스티커 · 낙서 · 캐릭터)
 // 음악은 music.js (7곡, 영상 종류·기념일로 추천, 미리 듣기). canvas에 그리며 MediaRecorder로 녹화 (mp4 되면 mp4, 아니면 webm), 녹화는 body에 붙인 겹침 창에서
 (function () {
 const M = { tpl: 'recap', speed: 2.6, song: 'auto', sq: false, busy: false, abort: false, url: '', blob: null, ext: 'mp4', el: null, lock: null };
-const TPLS = [['recap', '🕵️ 수사 일지 총정리', '지금까지 남긴 기록 전부를 한 편으로 (성장 그래프·최초 목격·수배범·탐험…)'], ['story', '📖 성장 스토리', '달마다 대표 사진과 키·몸무게, 최초 목격'], ['d100', '💯 100일의 기록', '태어나서 100일까지 사진으로'], ['pose', '📷 같은 포즈 타임랩스', '월별 증거 사진이 스르륵 자라요'], ['month', '🗓 이번 달 하이라이트', '이번 달에 찍은 사진 모음']];
+const TPLS = [['recap', '🕵️ 수사 일지 총정리', '지금까지 남긴 기록 전부를 한 편으로 (성장 그래프·최초 목격·괴도 추격전·탐험…)'], ['story', '📖 성장 스토리', '달마다 대표 사진과 키·몸무게, 최초 목격'], ['d100', '💯 100일의 기록', '태어나서 100일까지 사진으로'], ['pose', '📷 같은 포즈 타임랩스', '월별 증거 사진이 스르륵 자라요'], ['month', '🗓 이번 달 하이라이트', '이번 달에 찍은 사진 모음']];
 const XF = .6;   // 장면 사이 겹쳐 바뀌는 시간(초)
 const STK = ['💖', '⭐', '🍼', '🧸', '🌸', '🎈', '✨', '🐿️', '🌰', '🎀', '🌙', '💯'];
 const LAYS = { story: ['pola', 'full', 'board', 'film'], d100: ['full', 'pola', 'film', 'pola'], month: ['pola', 'full', 'pola', 'film'] };
@@ -79,7 +79,7 @@ function recap(out) {
   if (MP.length >= 2) { const L = even(MP, 9); out.push({ k: 'rBoard', dur: 2.1 + .42 * L.length, ico: '📌', lab: '월별 사진', items: L.map(m => ({ t: m.title, src: safeImg(PHOTOS[m.id]) })) }); }
   const V = (S.vaccines || []).filter(v => v.done).sort((x, y) => x.done < y.done ? -1 : x.done > y.done ? 1 : 0);
   if (V.length) out.push({ k: 'rVacc', dur: 2.4 + .32 * Math.min(7, V.length), ico: '💉', lab: '예방접종', n: V.length, items: V.slice(-7).map(v => ({ t: v.name, d: v.done })) });
-  if (window.WANTED) { const C = []; for (let ws = WANTED.monday(b); ws <= t; ws = addDays(ws, 7)) { const x = WANTED.stat(ws); if (x.caught) C.push(x); } if (C.length) out.push({ k: 'rWanted', dur: 2.6 + .6 * Math.min(4, C.length), ico: '🚨', lab: '수배범', n: C.length, items: C.slice(-4).map(x => ({ e: x.v[4], t: x.v[3], d: x.caught })) }); }
+  if (window.WANTED) { const C = []; for (let ws = WANTED.monday(b); ws <= t; ws = addDays(ws, 7)) { const x = WANTED.stat(ws); if (x.caught) C.push(x); } if (C.length) out.push({ k: 'rWanted', dur: 2.6 + .6 * Math.min(4, C.length), ico: '🎩', lab: '괴도 깍정이', n: C.length, items: C.slice(-4).map(x => ({ e: x.v[4], t: x.v[3], d: x.caught })) }); }
   if (window.LOOK) { const VV = LOOK.votes(); if (VV.length >= 2) { const c = { mom: 0, dad: 0, both: 0 }; VV.forEach(x => c[x.pick]++); const n = VV.length, pm = Math.round(c.mom / n * 100), pdd = Math.round(c.dad / n * 100); out.push({ k: 'rLook', dur: 4.8, ico: '🔍', lab: '닮은꼴', n, c, pm, pd: pdd, pb: 100 - pm - pdd, title: pm === pdd ? '반반 공동 소유' : `${pm > pdd ? '엄마' : '아빠'} ${Math.abs(pm - pdd) >= 30 ? '판박이' : '우세'}` }); } }
   if (window.EXPLORE) { const PL = EXPLORE.places(); if (PL.length) { const gw = new Set(); PL.forEach(p => { const r = EXPLORE.regionOf(p); if (r && r.g && /강원/.test(r.s || '')) gw.add(r.g); }); out.push({ k: 'rMap', dur: 5.6, ico: '🗺️', lab: '탐험 지도', n: PL.filter(p => !p.home).length, gw: gw.size, pts: PL.slice().sort((x, y) => x.first < y.first ? -1 : 1).map(p => { const l = EXPLORE.label(p); return { lat: p.c.lat, lng: p.c.lng, home: !!p.home, label: p.home ? '우리 집' : l === '이름 모를 곳' ? `${fmtMD(p.first)} 탐험` : l }; }) }); } }
   const ALL = [S.records, S.moments, S.meals, S.foods, S.visits, S.logs, S.devs, S.guesses, S.looks, S.capsules];
@@ -160,11 +160,11 @@ function miniStamp(ctx, cx, cy, t, rot, lt, at, size = 40) {
   ctx.strokeStyle = '#B3261E'; ctx.lineWidth = size * .09; CV.rr(ctx, -w / 2, -h / 2, w, h, size * .22); ctx.stroke(); ctx.lineWidth = size * .04; CV.rr(ctx, -w / 2 + size * .14, -h / 2 + size * .14, w - size * .28, h - size * .28, size * .16); ctx.stroke();
   ctx.fillStyle = '#B3261E'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, 0, size * .05); ctx.restore();
 }
-function poster(ctx, cx, cy, w, h, rot, e, name, sub, sc = 1) {
+function poster(ctx, cx, cy, w, h, rot, e, name, sub, sc = 1, top = 'WANTED') {
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot * Math.PI / 180); ctx.scale(sc, sc);
   ctx.shadowColor = 'rgba(40,20,0,.35)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 8; ctx.fillStyle = '#F3E3BF'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.shadowColor = 'transparent';
   ctx.strokeStyle = '#C9A86A'; ctx.lineWidth = 4; ctx.strokeRect(-w / 2 + 9, -h / 2 + 9, w - 18, h - 18);
-  CV.text(ctx, 'WANTED', 0, -h / 2 + 62, `${Math.round(w * .17)}px Jua`, '#6B3A1E', 'center', w - 30);
+  CV.text(ctx, top, 0, -h / 2 + 62, `${Math.round(w * .17)}px Jua`, top === 'WANTED' ? '#6B3A1E' : '#8E1E17', 'center', w - 30);
   ctx.drawImage(emo(e), -w * .25, -h * .06 - w * .25, w * .5, w * .5);
   CV.text(ctx, name, 0, h / 2 - 66, `${Math.round(w * .1)}px Jua`, '#1F2A44', 'center', w - 30);
   if (sub) CV.text(ctx, sub, 0, h / 2 - 28, `${Math.round(w * .075)}px "Gowun Dodum"`, '#6B3A1E', 'center', w - 30);
@@ -373,11 +373,12 @@ const RC = {
     chr(ctx, 'babyShield', 36, H - 300, 250, lt);
   },
   rWanted(ctx, W, H, s, lt) {
-    bgDraw(ctx, 'cork'); heading(ctx, W, '체포한 수배범', `${s.n}명`, lt, true);
+    bgDraw(ctx, 'cork'); heading(ctx, W, '괴도 깍정이 추격전', `아슬아슬 ${s.n}번`, lt, true);
     const L = s.items, n = L.length, pw = 290, ph = 390;
     const pos = n === 1 ? [[W / 2, 660]] : n === 2 ? [[W / 2 - 160, 660], [W / 2 + 160, 660]] : [[W / 2 - 160, 520], [W / 2 + 160, 520], [W / 2 - 160, 945], [W / 2 + 160, 945]];
-    L.forEach((it, j) => { const at = .5 + j * .6, e = pop(lt, at, .45); if (e <= 0) return; const [x, y] = pos[j]; fade(ctx, e * 1.4, () => poster(ctx, x, y, pw, ph, [-4, 3, 2, -3][j], it.e, it.t, `${fmtMD(it.d)} 체포`, 1.2 - .2 * clamp(e))); pin(ctx, x, y - ph / 2 + 16); miniStamp(ctx, x + 50, y + 30, '체포', -16, lt, at + .45, 50); });
-    if (s.n > n) fade(ctx, fin(lt, .5 + n * .6, .4), () => txt(ctx, `외 ${s.n - n}명 더 체포`, W / 2, H - 60, 34, '#FFFDF7'));
+    L.forEach((it, j) => { const at = .5 + j * .6, e = pop(lt, at, .45); if (e <= 0) return; const [x, y] = pos[j]; fade(ctx, e * 1.4, () => poster(ctx, x, y, pw, ph, [-4, 3, 2, -3][j], it.e, `${it.t} 변장`, `${fmtMD(it.d)} 따라잡음`, 1.2 - .2 * clamp(e), '예고장')); pin(ctx, x, y - ph / 2 + 16); miniStamp(ctx, x + 50, y + 30, '아슬', -16, lt, at + .45, 50); });
+    if (n <= 2) chr(ctx, 'thief', W - 280, H - 330, 260, lt, .8);   // 사진 자리를 안 가리게 두 장 이하일 때만
+    if (s.n > n) fade(ctx, fin(lt, .5 + n * .6, .4), () => txt(ctx, `외 ${s.n - n}번 더 따라잡음`, W / 2, H - 60, 34, '#FFFDF7'));
   },
   rLook(ctx, W, H, s, lt) {
     bgDraw(ctx, 'gingham'); heading(ctx, W, '닮은꼴 판결', `총 ${s.n}표`, lt);
@@ -496,7 +497,7 @@ function mkBg(W, H) {
 }
 async function prepAssets(W, H, sc) {
   A.W = W; A.H = H; A.ch = {}; A.room = null; mkBg(W, H);
-  for (const [k, w, pr, face] of [['babyLens', 'baby', 'lens'], ['babyCam', 'baby', 'camera'], ['babyShield', 'baby', 'shield'], ['babyNote', 'baby', 'note'], ['mom', 'mom', 'heart'], ['dad', 'dad', 'camera'], ['momF', 'mom', '', 1], ['dadF', 'dad', '', 1]]) {
+  for (const [k, w, pr, face] of [['babyLens', 'baby', 'lens'], ['babyCam', 'baby', 'camera'], ['babyShield', 'baby', 'shield'], ['babyNote', 'baby', 'note'], ['mom', 'mom', 'heart'], ['dad', 'dad', 'camera'], ['momF', 'mom', '', 1], ['dadF', 'dad', '', 1], ['thief', 'thief', 'card']]) {
     try { A.ch[k] = await CV.svgImg(CHARS.svg(w, pr, face ? { face: 1, size: 220 } : { size: 260 })); } catch (e) {}
   }
   if (sc.some(s => s.k === 'rEnd') && window.GAME && GAME.roomSvg) {

@@ -1,5 +1,5 @@
 // 월간 소은일보 (S.view='paper') — 달마다 그달 기록으로 신문 한 장을 저절로 만들어요 (canvas 1080×1600 → 카톡 보내기·저장·인쇄)
-// 기사: 성장(키·몸무게), 최초 목격, 예방접종·검진, 수배범, 닮은꼴 판결, 탐험, 이유식, 봉인된 증거물, 독자 투고(그달 메모), 이달의 날씨(data/wx-YYYY-MM.json, 2026.10부터 Actions가 하루 한 번 남김)
+// 기사: 성장(키·몸무게), 최초 목격, 예방접종·검진, 괴도 깍정이, 닮은꼴 판결, 탐험, 이유식, 봉인된 증거물, 독자 투고(그달 메모), 이달의 날씨(data/wx-YYYY-MM.json, 2026.10부터 Actions가 하루 한 번 남김)
 // 제1호는 태어난 달. 매달 1~5일에는 성장 수사 탭에 지난달 호 발행 띠 (본 호는 localStorage soeun-paper-seen)
 (function () {
 const P = { ym: '', tok: 0, wx: {}, drawn: '' };
@@ -32,7 +32,7 @@ function issue(ym) {
   const foods = (S.foods || []).filter(f => f.result === '통과' && inM(f.start)), devs = (S.devs || []).filter(x => inM(x.at));
   const caps = (S.capsules || []).filter(c => inM(c.sealed));
   const days = new Set([...(S.records || []).map(r => r.date), ...(S.moments || []).map(m => m.date), ...(S.meals || []).map(m => m.date), ...(S.vaccines || []).map(v => v.done)].filter(inM));
-  // 수배범: 그달에 끝난(일요일이 그달인) 주
+  // 괴도 깍정이 추적: 그달에 끝난(일요일이 그달인) 주
   const wanted = []; if (window.WANTED) { for (let ws = WANTED.monday(d0); ws <= d1; ws = addDays(ws, 7)) { const e = addDays(ws, 6); if (inM(e) || (inM(ws) && e > d1)) { const s = WANTED.stat(ws); if (ws <= t) wanted.push(s); } } }
   const look = window.LOOK ? LOOK.monthStat(ym) : null, verdict = look && LOOK.verdict(look);
   const places = window.EXPLORE ? EXPLORE.places().filter(p => !p.home && inM(p.first)) : [];
@@ -74,7 +74,7 @@ function articles(I) {
   if (I.firsts.length) A.push(['👀 사건·사고', I.firsts.map(f => `${fmtK(f.date, true)} ${f.title}${f.by ? ` (목격: ${f.by} 수사관)` : ''}`).join('. ') + '.']);
   if (I.vacs.length || I.chks.length) A.push(['💉 보건 면', [I.vacs.length ? `예방접종 ${I.vacs.length}건 완료: ${I.vacs.map(v => v.name).join(', ')}. 울음은 증거 불충분.` : '', I.chks.map(c => `${c.id[0] === 'o' ? '구강검진' : '영유아 건강검진'} ${c.id.slice(1)}차를 받았다${c.hospital ? ` (${c.hospital})` : ''}.`).join(' ')].filter(Boolean).join(' ')]);
   const caught = I.wanted.filter(s => s.caught), gone = I.wanted.filter(s => s.over && !s.caught);
-  if (I.wanted.length) A.push(['🚨 수배 소식', caught.length ? `이달 수배범 ${caught.length}명 체포: ${caught.map(s => s.v[3]).join(', ')}.${gone.length ? ` ${gone.map(s => s.v[3]).join(', ')}은(는) 아직 도주 중.` : ''}` : `${I.wanted.map(s => s.v[3]).join(', ')}을(를) 추적 중. 수사관들의 분발이 요구된다.`]);
+  if (I.wanted.length) A.push(['🎩 괴도 깍정이 소식', caught.length ? `이달 괴도 깍정이를 ${caught.length}번 따라잡았다(변장: ${caught.map(s => s.v[3]).join(', ')}). 번번이 아슬아슬하게 달아났지만 노리던 것은 모두 지켜 냈다.${gone.length ? ` ${gone.length}번은 놓쳐 ${gone.map(s => WANTED.target(s.v)).join(', ')}을(를) 도둑맞았다.` : ''}` : `괴도 깍정이가 ${I.wanted.map(s => s.v[3]).join(', ')}(으)로 변장해 활동 중. 수사관들의 분발이 요구된다.`]);
   if (I.look && I.look.n) A.push(['🔍 닮은꼴 판결', `${I.look.n}표 중 엄마 닮음 ${I.look.pm}%, 아빠 닮음 ${I.look.pd}%, 반반 ${I.look.pb}%.${I.verdict ? ` 판결: '${I.verdict.title}'.` : ''}`]);
   if (I.walks.length && window.WALK) { const m = I.walks.reduce((t, w) => t + WALK.km(w), 0), top = I.walks.slice().sort((x, y) => WALK.km(y) - WALK.km(x))[0]; A.push(['🐾 탐문 소식', `이달 산책·나들이 ${I.walks.length}번${m >= 100 ? `, 걸은 거리 ${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'}` : ''}. ${top && WALK.km(top) >= 100 ? `가장 멀리 간 날은 ${fmtK(top.date, true)}${top.place ? ` (${top.place})` : ''}.` : ''} 탐정은 유모차에서 동네를 샅샅이 살폈다.`]); }
   if (I.places.length) A.push(['🗺️ 탐험 소식', `처음 가 본 곳 ${I.places.length}곳: ${I.places.slice(0, 4).map(p => EXPLORE.label(p)).join(', ')}${I.places.length > 4 ? ' 등' : ''}.`]);

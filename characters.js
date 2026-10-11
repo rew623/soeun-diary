@@ -24,6 +24,7 @@ const PROPS = {
   gift: '<rect x="78" y="80" width="22" height="19" rx="2" fill="#D9473D"/><rect x="87" y="80" width="4" height="19" fill="#F4C542"/><rect x="78" y="87" width="22" height="4" fill="#F4C542"/><ellipse cx="85" cy="78" rx="4.5" ry="3" fill="#F4C542" transform="rotate(-20 85 78)"/><ellipse cx="93" cy="78" rx="4.5" ry="3" fill="#F4C542" transform="rotate(20 93 78)"/><circle cx="89" cy="79" r="1.8" fill="#C99A1E"/>',
   candy: '<path d="M82 100l9-26q3-8 9-6t3 9" stroke="#FFFDF7" stroke-width="5.5" fill="none" stroke-linecap="round"/><path d="M82 100l9-26q3-8 9-6t3 9" stroke="#D9473D" stroke-width="5.5" fill="none" stroke-linecap="butt" stroke-dasharray="3.2 3.2"/>',
   bell: '<path d="M90 70q-9 2-9 15l-3 5h24l-3-5q0-13-9-15z" fill="#F4C542" stroke="#C99A1E" stroke-width="1.4"/><circle cx="90" cy="92" r="2.4" fill="#C99A1E"/><path d="M85 69l5 2 5-2" stroke="#D9473D" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M85 78a5 5 0 0 1 3-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+  card: '<g transform="rotate(14 88 80)"><rect x="76" y="70" width="24" height="16" rx="2" fill="#FFFDF7" stroke="#C9B48E" stroke-width="1.2"/><path d="M79 74h10M79 77.5h7" stroke="#C9B48E" stroke-width="1.2" stroke-linecap="round"/><circle cx="94" cy="80" r="4" fill="#C6302A"/><path d="M92.4 80.6q1.6-3 3.2 0" stroke="#fff" stroke-width="1" fill="none"/></g>',
   wrench: '<path d="M79 98l14-17" stroke="#8C99A6" stroke-width="5" stroke-linecap="round"/><circle cx="96" cy="77" r="7" fill="#9AA5B1"/><circle cx="99" cy="74" r="3.2" fill="#FFF8EC"/><path d="M80 97l5-6" stroke="#B3261E" stroke-width="5" stroke-linecap="round"/>'
 };
 
@@ -74,8 +75,30 @@ const OUTFITS = {
   santaDress: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#D9473D"/><rect x="51" y="80" width="6" height="18" fill="#fff"/></g><path d="M33 99q21 5 42 0l9 13q-30 9-60 0z" fill="#D9473D"/><path d="M24 112q30 9 60 0" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round"/><circle cx="54" cy="85" r="1.8" fill="#D9473D"/><circle cx="54" cy="92" r="1.8" fill="#D9473D"/>`,
   cardigan: `<g ${CLIP}><rect x="28" y="74" width="52" height="42" fill="#FFFDF7"/><rect x="28" y="74" width="20" height="42" fill="#C9A7D9"/><rect x="60" y="74" width="20" height="42" fill="#C9A7D9"/><rect x="28" y="110" width="52" height="6" fill="#B691C9"/></g>${[90, 98, 106].map(y => `<circle cx="49" cy="${y}" r="1.7" fill="#fff" stroke="#B691C9"/>`).join('')}`
 };
+// 괴도 깍정이 — 도토리를 노리는 괴도 다람쥐 (무표정한 까만 눈 + 흰 실크햇·외눈 안경·망토, 직접 만든 캐릭터)
+// 말을 안 해요. 예고장만 남기고 아슬아슬하게 사라져요
+function thiefSvg(prop, o) {
+  const size = o.size || 72, F = '#5E5966', D = '#46424E', BEL = '#E4DED6', W = '#FBFAF6', LN = '#D6CFC3';
+  const vb = o.face ? '12 0 84 84' : '0 0 120 120';
+  const tail = o.face ? '' : `<path d="M74 104c32 2 42-30 28-50-9-12-26-9-24 6" fill="none" stroke="${D}" stroke-width="22" stroke-linecap="round"/><path d="M76 103c24-3 31-27 22-42-6-8-15-6-15 2" fill="none" stroke="#8C8794" stroke-width="7" stroke-linecap="round" opacity=".8"/>`;
+  const cape = o.face ? '' : `<path d="M33 80Q19 99 13 118h82Q89 99 75 80z" fill="${W}" stroke="${LN}" stroke-width="1.2"/><path d="M35 84Q25 101 21 116h9Q35 99 44 87zM73 84Q83 101 87 116h-9Q73 99 64 87z" fill="#C6302A"/>`;
+  const body = o.face ? '' : `<ellipse cx="54" cy="95" rx="24" ry="20" fill="${W}" stroke="${LN}" stroke-width="1"/><path d="M46 77l8 23 8-23z" fill="#A9CDEB"/><path d="M45 77l9 23-6 3-8-22zM63 77l-9 23 6 3 8-22z" fill="#ECE7DE"/>
+    <path d="M47.5 80.5l6.5 3 6.5-3-.8 5.6-5.7-2.3-5.7 2.3z" fill="#C6302A"/><circle cx="54" cy="83.6" r="1.7" fill="#8E1E17"/><circle cx="54" cy="94" r="1.3" fill="${LN}"/><circle cx="54" cy="101" r="1.3" fill="${LN}"/>
+    <ellipse cx="43" cy="114" rx="8" ry="4.5" fill="#2E2B33"/><ellipse cx="65" cy="114" rx="8" ry="4.5" fill="#2E2B33"/>
+    <ellipse cx="38" cy="92" rx="6" ry="8" fill="#fff" stroke="${LN}" transform="rotate(20 38 92)"/>${prop && PROPS[prop] ? PROPS[prop] : ''}<ellipse cx="74" cy="90" rx="6" ry="8" fill="#fff" stroke="${LN}" transform="rotate(-25 74 90)"/>`;
+  const ears = `<path d="M30 42l-3-24 18 14z" fill="${F}"/><path d="M32 38l-2-13 10 8z" fill="#C7A2A8"/><path d="M78 42l3-24-18 14z" fill="${F}"/><path d="M76 38l2-13-10 8z" fill="#C7A2A8"/>`;
+  const head = `<ellipse cx="54" cy="56" rx="31" ry="28" fill="${F}"/><ellipse cx="54" cy="67" rx="17" ry="12" fill="${BEL}"/><path d="M27 51q4-9 13-11M81 51q-4-9-13-11" stroke="${D}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/>`;
+  // 무표정: 작고 까만 눈, 반듯한 입
+  const face = `<path d="M36 49.5l10 1.6M72 49.5l-10 1.6" stroke="#2B2730" stroke-width="2.6" stroke-linecap="round"/><circle cx="42" cy="56" r="3.5" fill="#141217"/><circle cx="66" cy="56" r="3.5" fill="#141217"/>
+    <ellipse cx="54" cy="62.5" rx="3.2" ry="2.3" fill="#2B2622"/><path d="M50 68.5h8" stroke="#2B2622" stroke-width="1.8" stroke-linecap="round"/><path d="M38 64.5l-8-1.2M38 67.5l-8 1.2M70 64.5l8-1.2M70 67.5l8 1.2" stroke="#3A3640" stroke-width="1" opacity=".5"/>`;
+  const mono = `<circle cx="66" cy="56" r="8.6" fill="#CFE6F7" fill-opacity=".32" stroke="#E0B341" stroke-width="2.2"/><path d="M68.5 50.6a5.6 5.6 0 0 1 3.3 3.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    ${o.face ? '' : '<path d="M73.5 61q5 13-5 25" stroke="#E0B341" stroke-width="1.1" fill="none" stroke-dasharray="1.6 1.4"/><g transform="translate(68 88)"><ellipse cx="0" cy="2" rx="2.6" ry="3.2" fill="#D99A5B"/><path d="M-3.2 0q3.2-4 6.4 0z" fill="#7A4B2A"/></g>'}`;
+  const hat = `<g transform="rotate(-9 54 33)"><ellipse cx="54" cy="33" rx="27" ry="5.6" fill="${W}" stroke="${LN}" stroke-width="1.2"/><path d="M39 32.5V9q0-3.6 3.6-3.6h22.8Q69 5.4 69 9v23.5z" fill="#fff" stroke="${LN}" stroke-width="1.2"/><rect x="39" y="23" width="30" height="6" fill="#C6302A"/><path d="M42 9v13" stroke="#EEE9E0" stroke-width="2.4" stroke-linecap="round"/></g>`;
+  return `<svg class="chr chr-thief" width="${size}" height="${size}" viewBox="${vb}" aria-hidden="true">${tail}${cape}${body}${ears}${head}${face}${mono}${hat}</svg>`;
+}
 // who: baby | mom | dad, prop: PROPS 이름, face: 얼굴만(동그란 사진 칸용), outfit: 옷 id(없으면 GAME.wear)
 function svg(who = 'baby', prop = '', o = {}) {
+  if (who === 'thief') return thiefSvg(prop, o);
   const f = FUR[who] || FUR.baby, d = DARK[who] || DARK.baby, size = o.size || 72;
   const vb = o.face ? '16 12 76 76' : '0 0 120 120';
   const wear = o.face ? '' : o.outfit != null ? o.outfit : (window.GAME && GAME.wear ? GAME.wear(who) : '');
@@ -127,6 +150,7 @@ function lines(tab) {
     L.push(['b', 'lens', `수사 ${d}일째! 몸무게·키를 재면 '+ 새 증거 기록'을 눌러 주세요. 그래프에 빨간 점으로 찍어 둘게요.`]);
     L.push(['m', 'heart', `${n}는 오늘도 쑥쑥 자라는 중이에요. 기록을 누르면 고칠 수 있고, 사진을 누르면 크게 볼 수 있어요.`]);
     L.push(['d', 'lens', `숫자 칸(몸무게·키·머리둘레)을 누르면 그래프가 바뀌어요. 백분위는 참고만 하기!`]);
+    L.push(['m', 'card', `괴도 깍정이가 또 예고장을 보냈어요! 아래 '🎩 괴도 깍정이 추적'에서 확인해요. 오늘 남긴 기록 하나하나가 단서예요.`]);
   } else if (tab === 'vac') {
     const np = nextPeriod();
     if (np) L.push(['b', 'shield', `다음 출동은 ${np.name} 접종, ${ddayText(pDate(np))}! 병원을 예약하면 '예약일 입력'으로 날짜를 맞춰 주세요.`]);
@@ -159,9 +183,86 @@ function lines(tab) {
     L.push(['b', 'camera', `100일 보고서 사진은 미리 올려 둬도 돼요. '보고서 사진 미리 올리기'를 눌러요.`]);
     L.push(['m', 'heart', `마음에 드는 사진은 크게 보고 '보드에 붙이기'! 수사 보드에 꽂혀요.`]);
     L.push(['d', 'note', `첫 미소, 첫 뒤집기… 처음 본 순간은 '최초 목격 기록'으로 남겨요.`]);
+    L.push(['b', 'card', `사진 한 장도 괴도 깍정이를 쫓는 단서예요. 한 사람이 하루 12장까지 단서로 세어요!`]);
   }
   return L;
 }
+// ---------- 방에서 식구를 누르면 한마디 (소은 탐정: 명탐정 코난·셜록 홈즈 오마주, 엄마·아빠 수사관: 탐정을 돕는 조수) ----------
+const hourK = () => new Date(Date.now() + 9 * 3600e3).getUTCHours();
+function talkLines(who) {
+  const n = nick(), sh = short(), d = S.profile && S.profile.birth ? daysBetween(S.profile.birth, today()) + 1 : 1, h = hourK();
+  const th = window.WANTED && WANTED.stat ? (() => { try { return WANTED.stat(WANTED.monday(today())); } catch (e) { return null; } })() : null;
+  const chase = th ? (th.caught ? `이번 주 괴도 깍정이는 아슬아슬하게 놓쳤지만, 훔친 걸 되찾았어요!` : `괴도 깍정이까지 남은 거리 ${th.left}m! 오늘 기록 하나면 더 가까워져요.`) : '';
+  if (who === 'baby') return [
+    '진실은 언제나 하나! …그리고 맘마 시간도 언제나 지금!',
+    `몸은 아기, 두뇌는 명탐정! ${sh} 탐정 등장!`,
+    '불가능한 걸 모두 지우고 남은 게 진실이에요. 즉… 기저귀가 젖었어요.',
+    '기본이죠, 아빠 수사관. 이 정도 추리쯤은.',
+    '게임이 시작됐어요! 괴도 깍정이, 이번엔 놓치지 않아!',
+    '작은 단서도 놓치면 안 돼요. 소파 밑 쪽쪽이 같은 거요.',
+    '범인은 이 안에 있어요! …아빠, 입가에 과자 부스러기.',
+    '시계형 마취총은 없지만, 하품 한 방이면 수사관 전원 졸음 유발!',
+    '나비넥타이 변성기 대신 옹알이 변성기를 쓰고 있어요. 아부부부…',
+    '베이커가 221B보다 우리 집 거실이 좋아요. 맘마가 있거든요.',
+    '보는 것과 관찰하는 건 달라요. 엄마, 오늘 머리 묶으셨네요!',
+    '추리 완료! 결론: 지금 안아 주면 사건 해결.',
+    `수사 ${d}일째. 아직 미해결 사건: 아빠 양말 한 짝 실종.`,
+    '명탐정은 낮잠도 수사의 일부예요. 쿨쿨…',
+    '흔적은 거짓말을 안 해요. 이 침 자국… 범인은 바로 저예요!',
+    '용의자 발견! 거울 속 귀여운 아기… 앗, 저잖아?',
+    '깍정이의 예고장에서 도토리 냄새가 나요. 킁킁, 단서 확보!',
+    '사소한 것 속에 진실이 숨어 있어요. 사진 한 장도 큰 단서!',
+    '돋보기로 보니… 엄마 얼굴에 사랑이 잔뜩 묻었어요.',
+    '왓슨… 아니 아빠! 우유 대령해 주세요.',
+    chase,
+    h >= 21 || h < 5 ? '쉿… 밤엔 잠복 근무 중. 깍정이는 밤에 움직이거든요.' : h < 10 ? '좋은 아침, 수사관님들! 오늘의 첫 단서는 제 웃음이에요.' : '오늘도 사건 현장(놀이 매트)으로 출동! 탐정 배지 반짝반짝.'
+  ].filter(Boolean);
+  if (who === 'mom') return [
+    '탐정님, 오늘 증거 사진 확보 완료! 📸',
+    '깍정이 발자국이 베란다에서 끊겼어요. 탐정님 판단은요?',
+    '수사도 좋지만 먼저 맘마부터 드시죠, 탐정님.',
+    '보고합니다. 오늘 탐정님 귀여움 수치… 측정 불가!',
+    '기록은 제가 꼼꼼히. 그래프는 거짓말을 안 하거든요.',
+    '탐정님이 웃으면 그날 사건은 다 해결된 기분이에요.',
+    '예고장 분석 결과, 깍정이는 꼭 일요일 밤에 나타나요.',
+    '지문 채취 완료… 아, 이건 탐정님 침이네요.',
+    '현장 보존! …이라고 하고 싶지만 장난감은 정리할게요.',
+    '아빠 수사관, 잠복 중에 또 졸았죠? 다 봤어요.',
+    '탐정님 손톱 정리 작전, 오늘 밤 극비리에 진행합니다.',
+    `${n}가 태어난 지 ${d}일. 하루하루가 최고의 증거예요.`,
+    '깍정이가 아무리 날쌔도 우리 셋 팀워크는 못 이겨요.',
+    '새벽 출동도 괜찮아요. 탐정님 숨소리가 제일 좋은 소리니까.',
+    chase
+  ].filter(Boolean);
+  if (who === 'dad') return [
+    `명탐정 ${sh} 님의 조수, 아빠 수사관 대기 중!`,
+    '범인은… 저 아니에요. 과자는 진짜 몰라요.',
+    '잠복근무 중… 사실 조금 졸려요.',
+    '깍정이 발견! …인 줄 알았는데 다람쥐 인형이었어요.',
+    '현장 출동 준비 완료! 유모차 바퀴 공기압 정상.',
+    '체력은 자신 있어요. 목말이든 비행기든 맡겨만 주세요!',
+    '잠든 척하고 있으면 사건이 저절로 풀릴지도… 어디서 본 수법인데.',
+    '추리는 탐정님이, 힘쓰는 건 제가!',
+    '아빠 수사관 보고: 기저귀 상황 이상 무… 아, 이상 있음!',
+    '오늘도 탐정님 볼에 뽀뽀 지문 남기기 성공.',
+    '깍정이 녀석, 모자 하나는 멋지더라… 아, 아닙니다 탐정님!',
+    '탐정님 웃음소리 녹음해 뒀어요. 출근길 증거 자료로.',
+    '제 돋보기 어디 갔지? …머리 위에 있었네.',
+    '주말엔 탐문 출동! 유모차 운전은 제가 할게요.',
+    '탐정님 따라 뒤집기 연습 중인데, 허리가 비명을 질러요.',
+    chase
+  ].filter(Boolean);
+  // 괴도 깍정이는 말을 안 해요 (예고장·몸짓만)
+  return ['……(말없이 실크햇을 살짝 기울인다)', '……(외눈 안경이 반짝, 그리고 사라졌다)', '🎩 예고장: 잡을 수 있다면 잡아 보시죠, 탐정님.', '……(망토를 펄럭이며 창밖으로)', '🎩 오늘 밤 도토리 한 알을 접수하겠습니다.'];
+}
+const TK = {};
+// 같은 말이 연달아 나오지 않게 섞어서 차례로
+function talk(who) {
+  const L = talkLines(who); if (!L.length) return '';
+  let q = TK[who]; if (!q || !q.left.length || q.n !== L.length) { const ord = L.map((_, i) => i); for (let i = ord.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ord[i], ord[j]] = [ord[j], ord[i]]; } if (q && ord[0] === q.last && ord.length > 1) ord.push(ord.shift()); q = TK[who] = { left: ord, n: L.length, last: -1 }; }
+  const i = q.left.shift(); q.last = i; return L[i];
+}
+const TNAME = { baby: () => `${short()} 탐정`, mom: () => '엄마 수사관', dad: () => '아빠 수사관', thief: () => '괴도 깍정이' };
 const seen = {};
 const hash = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
 function guide(tab) {
@@ -170,17 +271,29 @@ function guide(tab) {
   const i = seen[tab] % L.length, [w, prop, text] = L[i], [who, name] = WHO[w];
   // 성장 수사(첫 화면)는 소은 탐정의 방 (도토리 놀이터 > 꾸미기에서 도토리로 산 가구·벽지가 보여요)
   if (tab === 'grow' && window.GAME && GAME.roomSvg) return `<div class="guide ghome g-${who}" aria-live="polite"><button class="gchar groomb" data-guide="${tab}" aria-label="다음 말 듣기">${GAME.roomSvg()}</button>
-    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><div class="gfoot"><small>${L.length > 1 ? `${i + 1}/${L.length} · 방을 누르면 다음 말` : ''}</small><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button></div></div></div>`;
+    <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><div class="gfoot"><small>${L.length > 1 ? `${i + 1}/${L.length} · ` : ''}식구를 누르면 한마디 · 빈 곳은 다음 안내</small><button class="ghedit" data-game="shop">🛋️ 방 꾸미기</button></div></div></div>`;
   return `<div class="guide g-${who}" aria-live="polite"><button class="gchar" data-guide="${tab}" aria-label="다음 말 듣기">${svg(who, prop, { size: 84 })}</button>
     <div class="gbub"><b>${esc(name())}</b><p>${esc(text)}</p><small>${L.length > 1 ? `${i + 1}/${L.length} · 저를 누르면 다음 말` : ''}</small></div></div>`;
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-guide]'); if (!b || e.target.closest('[data-rfx],[data-roompic]') || b.closest('.groom-edit')) return;
+  const b = e.target.closest('[data-guide]'); if (!b || e.target.closest('[data-rfx],[data-roompic],[data-thief]') || b.closest('.groom-edit')) return;
+  // 첫 화면 방에서 소은·엄마·아빠를 누르면 그 식구의 한마디
+  const who = b.closest('.ghome') && e.target.closest('[data-mv="baby"],[data-mv="mom"],[data-mv="dad"]');
+  if (who) { say(b.closest('.guide'), who.dataset.mv, who); return; }
   const tab = b.dataset.guide; seen[tab] = (seen[tab] || 0) + 1;
   const old = b.closest('.guide'), t = document.createElement('div'); t.innerHTML = guide(tab);
   const nu = t.firstElementChild; old.replaceWith(nu); nu.classList.add('hop');
 });
 
+function say(box, who, el) {
+  if (!box) return; const txt = talk(who); if (!txt) return;
+  const bub = box.querySelector('.gbub'), nb = bub && bub.querySelector('b'), p = bub && bub.querySelector('p'); if (!nb || !p) return;
+  box.classList.remove('g-baby', 'g-mom', 'g-dad', 'g-thief'); box.classList.add('g-' + who);
+  nb.textContent = TNAME[who](); p.textContent = txt;
+  const sm = bub.querySelector('.gfoot small'); if (sm) sm.textContent = '식구를 누르면 한마디 · 빈 곳을 누르면 다음 안내';
+  bub.classList.remove('say'); void bub.offsetWidth; bub.classList.add('say');
+  if (el) { el.classList.remove('ttalk'); void el.getBoundingClientRect(); el.classList.add('ttalk'); setTimeout(() => el.classList.remove('ttalk'), 700); }
+}
 const css = document.createElement('style');
 css.textContent = `
 .chr{display:block;overflow:visible}
@@ -206,11 +319,14 @@ css.textContent = `
 .ghedit{flex-shrink:0;border:1.5px solid var(--line);border-radius:99px;background:#FFFDF7;font-size:12px;padding:3px 10px;min-height:30px;color:var(--ink)}
 .guide.ghome.hop .gchar{animation:none}
 @keyframes gbob{0%,100%{transform:none}50%{transform:translateY(-2px) rotate(1.5deg)}}
+.gbub.say{animation:gpop .3s ease-out}.g-thief .gbub b{color:#5E5966}
+.groom .ttalk .rbod{animation:rtalk .6s cubic-bezier(.3,1.6,.5,1);transform-box:fill-box;transform-origin:50% 100%}
+@keyframes rtalk{0%{transform:none}35%{transform:translateY(-8%) scale(1.06,.96)}70%{transform:translateY(0) scale(.97,1.03)}100%{transform:none}}
 @media (prefers-reduced-motion:reduce){.gchar .chr,.guide.hop .gchar,.guide.hop .gbub{animation:none}}
 .idb .ph.chrph{background:#FCEBD3;border-color:var(--line);overflow:hidden;padding:0}
 .idb .ph.chrph .chr{width:100%;height:100%}
 .loading .chr{margin:0 auto 10px;animation:gbob 1.4s ease-in-out infinite}`;
 document.head.appendChild(css);
 
-window.CHARS = { svg, guide };
+window.CHARS = { svg, guide, talk, say };
 })();

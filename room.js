@@ -102,9 +102,9 @@ function addNew(s) { let ch = false; if (!('fam' in s.slot)) { s.slot.fam = 'fam
 const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.room.includes(id)); };
 
 // ---------- 특수 소품: 방에서 누르면 기능이 나와요 (값이 더 비싸요) ----------
-const R = { sel: null, edit: false, night: false, radio: null, music: 0, tree: 0 };
+const R = { sel: null, edit: false, night: false, radio: null, music: 0, tree: 0, tune: null };
 const FXDESC = { FRAME: '누르면 소은이 프로필 사진 이야기', CLOCK: '지금 시각으로 바늘이 움직여요 · 누르면 생후 며칠째인지', SIGN: '아기 이름이 들어가요 · 누르면 사건 파일 번호', GIRAFFE: '최근 키를 보여 줘요 · 누르면 키 변화', PIC: '우리 실제 사진을 넣어요 · 누르면 사진 고르기',
-  CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 흘러나와요', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
+  CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 흘러나오고, 한 번 더 누르면 꺼져요', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
   LAMP: '누르면 방 불을 끄고 무드등을 켜요', RADIO: '누르면 잔잔한 잠 소리(백색소음)를 틀고 끄기', BOOK: '누르면 성장 앨범 책이 열려요', MAIL: '새 육아 글이 오면 깃발이 올라가요 · 누르면 육아 글 모음', WEATHER: '지금 산책 지수·기온이 걸려요 · 누르면 동네 탐문', TREE: '누르면 트리 불이 반짝이고 크리스마스까지 며칠 남았는지 알려 줘요' };
 function latest(...types) { for (const t of types) { const m = (S.moments || []).filter(x => x.type === t && x.photo && safeImg(PHOTOS[x.id])).sort((a, b) => a.date < b.date ? 1 : -1)[0]; if (m) return safeImg(PHOTOS[m.id]); } return safeImg(PHOTOS.profile) || ''; }
 // 다음 기념일: 100일마다 + 돌
@@ -119,10 +119,15 @@ function nextDay() {
   return { t: m[1], d: m[0] - n, f: m[0] === pv[0] ? 1 : Math.max(0, Math.min(1, (n - pv[0]) / (m[0] - pv[0]))) };
 }
 let AC = null; const ac = () => { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; };
+// 오르골 모빌: 누르면 자장가(10분 뒤 저절로 꺼짐), 한 번 더 누르면 꺼져요 (예전엔 누를 때마다 겹쳐 울렸어요)
 function playTune() {
-  const c = ac(), N = [523, 523, 784, 784, 880, 880, 784, 0, 698, 698, 659, 659, 587, 587, 523], t0 = c.currentTime + .05, d = .42;
-  N.forEach((f, i) => { if (!f) return; const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t0 + i * d); g.gain.linearRampToValueAtTime(.16, t0 + i * d + .02); g.gain.exponentialRampToValueAtTime(.001, t0 + i * d + d * .95); o.connect(g).connect(c.destination); o.start(t0 + i * d); o.stop(t0 + i * d + d); });
-  R.music = Date.now() + N.length * d * 1000; render(); setTimeout(() => render(), N.length * d * 1000 + 100);
+  if (R.tune) { try { R.tune.p.stop(); } catch (e) {} clearTimeout(R.tune.t); R.tune = null; R.music = 0; render(); toast('🎶 오르골을 껐어요'); return; }
+  const c = ac(), len = 600;
+  let p = null;
+  if (window.MUSIC && MUSIC.play) p = MUSIC.play(c, c.destination, 'lullaby', len);
+  else { const N = [523, 523, 784, 784, 880, 880, 784], t0 = c.currentTime + .05, d = .42, os = []; N.forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t0 + i * d); g.gain.linearRampToValueAtTime(.16, t0 + i * d + .02); g.gain.exponentialRampToValueAtTime(.001, t0 + i * d + d * .95); o.connect(g).connect(c.destination); o.start(t0 + i * d); o.stop(t0 + i * d + d); os.push(o); }); p = { stop: () => os.forEach(o => { try { o.stop(); } catch (e) {} }) }; }
+  R.tune = { p, t: setTimeout(() => { R.tune = null; R.music = 0; render(); }, len * 1000) };
+  R.music = Date.now() + len * 1000; render(); toast('🎶 오르골 자장가 ~ 한 번 더 누르면 꺼져요 (10분 뒤 저절로)');
 }
 function toggleRadio() {
   if (R.radio) { try { R.radio.g.gain.setTargetAtTime(0, R.radio.c.currentTime, .3); R.radio.src.stop(R.radio.c.currentTime + 1); } catch (e) {} clearTimeout(R.radio.t); R.radio = null; render(); toast('라디오를 껐어요'); return; }
@@ -142,7 +147,7 @@ const FX = {
   PIC: () => openPics(),
   CAL: () => { const m = nextDay(); toast(`📅 오늘 생후 ${dayNo(today())}일${m ? (m.d ? ` · ${m.t}까지 ${m.d}일 남았어요` : ` · 오늘이 ${m.t}이에요! 🎉`) : ''}`); },
   TV: () => { if (window.SLIDE) SLIDE.open(); },
-  MUSIC: () => { playTune(); toast('🎶 반짝반짝 작은 별 ~'); },
+  MUSIC: () => playTune(),
   BANK: () => go(() => { S.view = 'medals'; if (window.GAME) GAME.hub('deco'); toast(`🐷 도토리 ${st().acorn || 0}개 모았어요!`); }),
   LAMP: () => { R.night = !R.night; render(); toast(R.night ? '🍄 무드등을 켰어요. 쉿, 잘 자요' : '💡 방 불을 켰어요'); },
   RADIO: () => toggleRadio(),
@@ -155,6 +160,14 @@ const FX = {
 
 // ---------- 그림 ----------
 function season() { const m = +today().slice(5, 7); return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }
+// 창밖에서 엿보는 괴도 깍정이 (이번 주 아직 못 따라잡았을 때) / 따라잡은 주엔 창틀에 꽂고 간 예고장. 누르면 추적 화면
+function thiefPeek() {
+  if (!window.WANTED || !WANTED.stat || !S.profile || !S.profile.birth) return '';
+  let st = null; try { st = WANTED.stat(WANTED.monday(today())); } catch (e) { return ''; }
+  if (st.caught) return '<g data-thief="1" class="rthief card"><rect x="64" y="70" width="16" height="11" rx="1.5" fill="#FFFDF7" stroke="#C9B48E" stroke-width=".8" transform="rotate(-12 72 75)"/><circle cx="74" cy="76" r="2.6" fill="#C6302A"/></g>';
+  const face = CHARS.svg('thief', '', { face: true, size: 84 }).replace(/^<svg[^>]*>|<\/svg>$/g, '');
+  return `<g data-thief="1" class="rthief"><g class="rpk"><g transform="translate(54 64) scale(.36)">${face}</g></g></g>`;
+}
 function windowSvg(round) {
   const h = new Date(Date.now() + 9 * 3600e3).getUTCHours(), se = season();
   const [sky, sun] = h >= 6 && h < 17 ? ['#CFE6F7', '<circle cx="70" cy="46" r="7" fill="#FCE8B4"/>']
@@ -164,8 +177,9 @@ function windowSvg(round) {
     : se === 'summer' ? '<circle cx="32" cy="80" r="11" fill="#7FB77E"/><circle cx="46" cy="82" r="8" fill="#9CCB8E"/>'
     : se === 'autumn' ? '<circle cx="32" cy="80" r="10" fill="#E8A15A"/><circle cx="45" cy="82" r="7" fill="#D9713E"/><path d="M60 58l2 3-3 1zM48 66l2 2-3 1z" fill="#E8A15A"/>'
     : '<path d="M22 84h62v4H22z" fill="#fff"/><circle cx="34" cy="50" r="1.5" fill="#fff"/><circle cx="50" cy="62" r="1.8" fill="#fff"/><circle cx="66" cy="54" r="1.4" fill="#fff"/><circle cx="40" cy="72" r="1.6" fill="#fff"/><circle cx="74" cy="70" r="1.3" fill="#fff"/>';
-  if (round) return `<clipPath id="rwcl-r"><circle cx="53" cy="61" r="30"/></clipPath><g clip-path="url(#rwcl-r)"><rect x="20" y="28" width="66" height="66" fill="${sky}"/>${sun}${view}</g><circle cx="53" cy="61" r="30" fill="none" stroke="#fff" stroke-width="5"/><path d="M53 31v60M23 61h60" stroke="#fff" stroke-width="3"/>`;
-  return `<clipPath id="rwcl-s"><rect x="22" y="34" width="62" height="54" rx="6"/></clipPath><g clip-path="url(#rwcl-s)"><rect x="22" y="34" width="62" height="54" fill="${sky}"/>${sun}${view}</g><rect x="22" y="34" width="62" height="54" rx="6" fill="none" stroke="#fff" stroke-width="4"/><path d="M53 34v54M22 61h62" stroke="#fff" stroke-width="3"/>`;
+  const pk = thiefPeek();
+  if (round) return `<clipPath id="rwcl-r"><circle cx="53" cy="61" r="30"/></clipPath><g clip-path="url(#rwcl-r)"><rect x="20" y="28" width="66" height="66" fill="${sky}"/>${sun}${view}${pk}</g><circle cx="53" cy="61" r="30" fill="none" stroke="#fff" stroke-width="5"/><path d="M53 31v60M23 61h60" stroke="#fff" stroke-width="3"/>`;
+  return `<clipPath id="rwcl-s"><rect x="22" y="34" width="62" height="54" rx="6"/></clipPath><g clip-path="url(#rwcl-s)"><rect x="22" y="34" width="62" height="54" fill="${sky}"/>${sun}${view}${pk}</g><rect x="22" y="34" width="62" height="54" rx="6" fill="none" stroke="#fff" stroke-width="4"/><path d="M53 34v54M22 61h62" stroke="#fff" stroke-width="3"/>`;
 }
 function wallSvg(id) {
   const base = `<rect width="${VW}" height="130" fill="${WALLC[id] || (id === 'dots' ? '#FFF3DD' : id === 'stripe' ? '#FBF1E4' : id === 'stars' ? '#E2EEF8' : '#FFF7EC')}"/>`;
@@ -239,7 +253,7 @@ function picSvg(id) {
 }
 function draw(id) { const c = item(id); if (!c || !c[4]) return ''; if (c[4] === 'PIC') return picSvg(id);
   return /^[A-Z]+$/.test(c[4]) ? (FX[c[4]] ? `<g data-rfx="${c[4]}" class="rfx">${special(c[4])}</g>` : special(c[4])) : c[4]; }
-const chr = (who, prop, x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})">${CHARS.svg(who, prop, { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`;
+const chr = (who, prop, x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})"><g class="rbod">${CHARS.svg(who, prop, { size: 120 }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g></g>`;
 // 자리마다 옮긴 만큼(s.pos[자리] = [dx, dy]) 움직여 그려요. 식구: 아빠 > 엄마 > 소은 크기
 const ORIGIN = { ceil: '50% 0', hang: '50% 0', wallC: '50% 50%', pic: '50% 50%', win: '50% 50%' };
 const BASE = { mom: [50, 80, .7], dad: [182, 64, .8], baby: [118, 92, .66], solo: [118, 72, .82] };
@@ -308,6 +322,8 @@ document.addEventListener('click', e => {
   // 꾸미기 화면 방에서 식구를 누르면 그 식구 꾸미기로
   const pg = e.target.closest('#ghomeshop [data-mv=baby], #ghomeshop [data-mv=mom], #ghomeshop [data-mv=dad]');
   if (pg && !R.edit && window.GAME && GAME.kitFor) { GAME.kitFor(pg.dataset.mv); return; }
+  const tf = e.target.closest('[data-thief]');
+  if (tf && !e.target.closest('.groom-edit')) { if (window.WANTED) { S.view = 'wanted'; render(); window.scrollTo(0, 0); } return; }
   const fx = e.target.closest('[data-rfx]');
   if (fx && !e.target.closest('.groom-edit')) { const f = FX[fx.dataset.rfx]; if (f) f(); return; }
   const pk = e.target.closest('[data-roompick]'); if (pk) { const s = state(); s.pic = pk.dataset.roompick; save(s); closeSheet(); render(); toast('액자 사진을 바꿨어요'); return; }
@@ -382,7 +398,7 @@ css.textContent = `
 .rsize button{min-width:42px;min-height:38px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-size:20px;font-family:var(--display);color:var(--navy)}.rsize button:disabled{opacity:.35}
 .rsize .rsz0{font-size:12.5px;font-family:var(--body);min-width:0;padding:0 10px}.rsize span{min-width:44px;text-align:center;font-family:var(--display);font-size:16px;color:var(--red)}
 .rsize.none{color:var(--muted);font-size:13px;border-style:dashed;border-color:var(--line)}
-.rfx{cursor:pointer}.rnotes,.rwave{opacity:0;transition:opacity .3s}.rnotes.on,.rwave.on{opacity:1;animation:rbob 1s ease-in-out infinite}
+.rfx{cursor:pointer}.rthief{cursor:pointer}.rthief .rpk{animation:rpeek 5s ease-in-out infinite}@keyframes rpeek{0%,55%,100%{transform:translateY(9px)}65%,90%{transform:none}}@media (prefers-reduced-motion:reduce){.rthief .rpk{animation:none}}.rnotes,.rwave{opacity:0;transition:opacity .3s}.rnotes.on,.rwave.on{opacity:1;animation:rbob 1s ease-in-out infinite}
 @keyframes rbob{50%{transform:translateY(-3px)}}
 .rtw{animation:rtw .6s ease-in-out infinite alternate}@keyframes rtw{from{opacity:.35}to{opacity:1}}
 .rbar{display:flex;justify-content:flex-end;margin:8px 0 0}.rbar .ghost{font-size:12.5px;min-height:34px}
