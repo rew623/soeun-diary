@@ -41,14 +41,14 @@ function dec(s) {
   while (i < s.length) { let r = 0, sh = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 0x1f) << sh; sh += 5; } while (b >= 0x20 && i < s.length); out.push(r & 1 ? ~(r >> 1) : r >> 1); }
   return out;
 }
-function pack(pts, t0) {
+function pack(pts, t0, v) {
   const nums = []; let a = 0, b = 0, c = 0;
   pts.forEach(p => { const la = Math.round(p.lat * 1e5), lo = Math.round(p.lng * 1e5), t = Math.round(p.t); nums.push(la - a, lo - b, t - c); a = la; b = lo; c = t; });
-  return `1:${Math.round(t0 / 1000)}:${enc(nums)}`;
+  return `${v || 1}:${Math.round(t0 / 1000)}:${enc(nums)}`;   // 1: GPS로 그린 길, 2: 지도에 직접 찍은 곳을 이은 길
 }
 const TC = new Map();
 function track(w) {
-  const s = w && w.path; if (!s || s.slice(0, 2) !== '1:') return null;
+  const s = w && w.path; if (!s || !/^[12]:/.test(s)) return null;
   if (TC.has(s)) return TC.get(s);
   const k = s.indexOf(':', 2), t0 = +s.slice(2, k) * 1000, n = dec(s.slice(k + 1)), pts = [];
   let la = 0, lo = 0, t = 0;
@@ -326,8 +326,8 @@ const chip = (grp, v, on, label) => `<button type="button" class="chip${on ? ' o
 function openForm(id, preset) {
   const w = id ? byId(id) : null; if (id && !w) return;
   const me = myRole(), p = preset || {};
-  W.form = w ? { id: w.id, kind: w.kind || 'walk', title: w.title, date: w.date, start: w.start, end: w.end, place: w.place, geo: w.geo, memo: w.memo, mood: w.mood, who: new Set(String(w.who || '').split(',').filter(Boolean)), path: w.path, dist: w.dist, pics: String(w.pics || '').split(',').filter(Boolean), wx: w.wx, live: false, touched: true }
-    : { id: '', kind: p.kind || 'walk', title: p.title || '', date: p.date || today(), start: p.start || '', end: p.end || '', place: p.place || '', geo: p.geo || '', memo: '', mood: '', who: new Set(me ? [me] : []), path: p.path || '', dist: p.dist || '', pics: p.pics || [], wx: p.wx || '', live: !!p.live, touched: !!p.live };
+  W.form = w ? { id: w.id, kind: w.kind || 'walk', title: w.title, date: w.date, start: w.start, end: w.end, place: w.place, geo: w.geo, memo: w.memo, mood: w.mood, who: new Set(String(w.who || '').split(',').filter(Boolean)), path: w.path, dist: w.dist, pics: String(w.pics || '').split(',').filter(Boolean), wx: w.wx, live: false, touched: true, gps: /^1:/.test(w.path || ''), pins: /^2:/.test(w.path || '') ? (track(w) || { pts: [] }).pts.map(p => ({ lat: p.lat, lng: p.lng })) : parse(w.geo) ? [parse(w.geo)] : [] }
+    : { id: '', kind: p.kind || 'walk', title: p.title || '', date: p.date || today(), start: p.start || '', end: p.end || '', place: p.place || '', geo: p.geo || '', memo: '', mood: '', who: new Set(me ? [me] : []), path: p.path || '', dist: p.dist || '', pics: p.pics || [], wx: p.wx || '', live: !!p.live, touched: !!p.live, gps: !!p.path, pins: p.geo && !p.path ? [parse(p.geo)] : [] };
   W.files.forEach(f => { try { URL.revokeObjectURL(f.url); } catch (e) {} }); W.files = [];
   const f = W.form, T = f.path ? track({ path: f.path }) : null, n = CV.nick();
   const sum = f.live ? `<div class="wksum">${T && T.pts.length > 1 ? routeSvg(T.pts, 72, 72) : '<span class="wkemo">🐾</span>'}<span><b>${kmText(+f.dist || 0)} · ${durText(Math.max(1, p.mins || 0))}</b><small>${f.start}~${f.end} · 사진 ${f.pics.length}장${T && T.pts.length > 1 ? ' · 길을 그려 뒀어요' : ' · 길이 거의 안 그려졌어요'}</small></span></div>` : '';
@@ -349,7 +349,8 @@ function openForm(id, preset) {
     <div class="actions">${w ? `<button class="danger" data-wk="del" data-v="${esc(w.id)}">삭제</button>` : f.live ? '<button class="danger" data-wf="discard">버리기</button>' : ''}<button class="secondary" data-wf="cancel">${f.live ? '나중에' : '취소'}</button><button class="primary" data-wf="save">저장</button></div>`);
 }
 function geoLine() {
-  const f = W.form, g = f && parse(f.geo); if (!g) return '<small class="wkgeo none">위치를 붙이면 탐험 지도에 꽂혀요</small>';
+  const f = W.form; if (f && !f.gps && f.pins.length > 1) return `<small class="wkgeo">📍 ${f.pins.length}곳을 찍었어요 · 순서대로 이어서 길로 그려요 (${kmText(pathM(f.pins))}) <button type="button" data-wf="ungeo">모두 빼기</button></small>`;
+  const g = f && parse(f.geo); if (!g) return '<small class="wkgeo none">위치를 붙이면 탐험 지도에 꽂혀요. 지도에서 여러 곳을 누르면 길로 이어져요</small>';
   const r = RG(g); return `<small class="wkgeo">📍 ${r ? esc(r) + ' · ' : ''}${g.lat.toFixed(4)}, ${g.lng.toFixed(4)} <button type="button" data-wf="ungeo">빼기</button></small>`;
 }
 function formPhotos() {
@@ -372,7 +373,15 @@ async function saveForm(btn) {
   btn.disabled = true;
   try {
     const id = f.id || 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-    const pics = f.pics.slice(), fill = $('wf-fill') && $('wf-fill').checked && parse(f.geo) ? { geo: f.geo } : null;
+    // 핀 여러 개 → 찍은 순서대로 이은 길(2:). 시간은 출발~도착을 거리 비율로 나눠 둬서, 찍은 시각이 있는 사진은 그 길 위에 놓여요
+    if (!f.gps) {
+      if (f.pins.length > 1) {
+        const a = at(f.date, f.start) || at(f.date, '12:00'), b = at(f.date, f.end), tot = b && b > a ? (b - a) / 1000 : (f.pins.length - 1) * 600, D = pathM(f.pins);
+        let acc = 0; const pts = f.pins.map((p, i) => { if (i) acc += km(f.pins[i - 1], p) * 1000; return { lat: p.lat, lng: p.lng, t: D ? acc / D * tot : i * tot / (f.pins.length - 1) }; });
+        f.path = pack(pts, a, 2); f.dist = String(Math.round(D));
+      } else { f.path = ''; f.dist = ''; }
+    }
+    const pics = f.pics.slice(), fill = $('wf-fill') && $('wf-fill').checked && parse(f.geo) && (f.gps || f.pins.length === 1) ? { geo: f.geo } : null;
     if (W.files.length) { const ids = await ALBUM.queue(W.files.map(x => x.file), undefined, fill); pics.push(...(ids || [])); }
     let wx = f.wx; if (!wx && f.date === today() && window.TOWN && TOWN.now) { const n = TOWN.now(); if (n) wx = `${n.ico} ${n.tmp}° · 산책 지수 ${n.s}`; }
     const o = { id, date: f.date, kind: f.kind, title: f.title, place: f.place, geo: f.geo || '', start: f.start, end: f.end, dist: f.dist ? String(Math.round(+f.dist)) : '', path: f.path || '', pics: [...new Set(pics)].join(','), memo: f.memo, who: [...f.who].join(','), wx: wx || '', mood: f.mood || '', by: myRole() };
@@ -408,7 +417,7 @@ picker.addEventListener('change', async () => {
     grab(); const ds = W.files.map(x => x.meta.date).filter(Boolean).sort(), tms = W.files.filter(x => x.meta.date === ds[0] && x.meta.tm).map(x => x.meta.tm.slice(0, 5)).sort();
     if (ds[0] && !f.touched) { f.date = ds[0]; const el = $('wf-date'); if (el) el.value = ds[0]; }
     if (tms.length && !f.start && ds[0] === f.date) { f.start = tms[0]; f.end = tms[tms.length - 1] > tms[0] ? tms[tms.length - 1] : ''; const a = $('wf-start'), b = $('wf-end'); if (a) a.value = f.start; if (b) b.value = f.end; }
-    const g = W.files.map(x => parse(x.meta.geo)).find(Boolean); if (g && !parse(f.geo)) { f.geo = fmtGeo(g); const el = $('wf-geo'); if (el) el.innerHTML = geoLine(); }
+    const g = W.files.map(x => parse(x.meta.geo)).find(Boolean); if (g && !parse(f.geo)) setGeo(g);
   }
   const box = $('wf-ph'); if (box) box.innerHTML = formPhotos();
 });
@@ -429,9 +438,12 @@ function regionName(g) {
     new kakao.maps.services.Geocoder().coord2RegionCode(g.lng, g.lat, (r, st) => { const x = st === kakao.maps.services.Status.OK && r && (r.find(y => y.region_type === 'H') || r[0]); RGC[k] = x ? [x.region_2depth_name, x.region_3depth_name].filter(Boolean).join(' ') : ''; res(RGC[k]); });
   })).catch(() => '');
 }
-function setGeo(g, name) {
+// 장소 핀: 지도·지금 위치·장소 찾기로 고를 때마다 하나씩 더해요 (GPS로 그린 길이 있는 기록은 장소 하나만). g=null이면 모두 빼기
+function setGeo(g, name, replace) {
   const f = W.form; if (!f) return;
-  f.geo = g ? fmtGeo(g) : ''; if (name) { const el = $('wf-place'); if (el && !el.value.trim()) el.value = name; }
+  if (!g) f.pins = []; else if (f.gps || replace) f.pins = [g]; else if (!f.pins.some(q => km(q, g) < .015)) f.pins.push(g);
+  f.geo = f.pins[0] ? fmtGeo(f.pins[0]) : ''; if (name) { const el = $('wf-place'); if (el && !el.value.trim()) el.value = name; }
+  drawPins();
   const box = $('wf-geo'); if (box) box.innerHTML = geoLine();
   if (g) regionName(g).then(() => { const b = $('wf-geo'); if (b) b.innerHTML = geoLine(); });
 }
@@ -453,16 +465,29 @@ async function doSearch() {
     out.innerHTML = W.res.length ? `<div class="wkres">${W.res.map((p, i) => `<button type="button" data-wf="pickres" data-v="${i}"><b>${esc(p.place_name)}</b><small>${esc(p.road_address_name || p.address_name || '')}${p.distance ? ' · ' + kmText(+p.distance) : ''}</small></button>`).join('')}</div>` : '<p class="hint">찾지 못했어요. 다른 이름으로 찾아보세요.</p>';
   } catch (e) { out.innerHTML = `<p class="hint">${esc(e.message || '찾지 못했어요')}</p>`; }
 }
-let fMap = null, fMk = null;
+let fMap = null, fOv = [];
+// 지도 고르기: 누르면 핀이 생기고, 핀을 누르면 빠져요. 두 곳 넘으면 순서대로 선으로 이어요
+function drawPins() {
+  if (!fMap || !$('wf-map')) return;
+  fOv.forEach(o => o.setMap(null)); fOv = [];
+  const f = W.form; if (!f) return;
+  const LLs = f.pins.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+  if (LLs.length > 1) fOv.push(new kakao.maps.Polyline({ map: fMap, path: LLs, strokeWeight: 4, strokeColor: '#B3261E', strokeOpacity: .8, strokeStyle: 'shortdash' }));
+  LLs.forEach((ll, i) => {
+    const el = document.createElement('button'); el.type = 'button'; el.className = 'wkfpin'; el.textContent = f.pins.length > 1 ? String(i + 1) : '📍'; el.setAttribute('aria-label', `${i + 1}번 핀 빼기`);
+    el.addEventListener('click', ev => { ev.stopPropagation(); f.pins.splice(i, 1); f.geo = f.pins[0] ? fmtGeo(f.pins[0]) : ''; drawPins(); const b = $('wf-geo'); if (b) b.innerHTML = geoLine(); });
+    fOv.push(new kakao.maps.CustomOverlay({ map: fMap, position: ll, content: el, yAnchor: 1, clickable: true, zIndex: 5 }));
+  });
+}
 function mapUi() {
   const box = $('wf-pick'); if (!box || !window.HOSP) return;
-  box.innerHTML = '<div class="expickmap" id="wf-map"><p class="vempty" style="padding:12px">지도 불러오는 중…</p></div><p class="hint" style="margin:6px 0 0">지도를 눌러 다녀온 곳을 골라요.</p>';
+  box.innerHTML = `<div class="expickmap" id="wf-map"><p class="vempty" style="padding:12px">지도 불러오는 중…</p></div><p class="hint" style="margin:6px 0 0">${W.form && W.form.gps ? '지도를 눌러 대표 장소를 골라요.' : '지도를 누르면 핀이 생기고, 핀을 누르면 빠져요. 여러 곳을 찍으면 순서대로 길로 이어져요.'}</p>`;
   HOSP.sdk().then(() => {
     const el = $('wf-map'); if (!el) return; el.innerHTML = '';
     const g = parse(W.form && W.form.geo), c = g || G.cur || (window.EXPLORE && EXPLORE.places()[0] && EXPLORE.places()[0].c) || { lat: 37.3422, lng: 127.9202 };
     fMap = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(c.lat, c.lng), level: g ? 4 : 6 });
-    fMk = new kakao.maps.Marker({ position: new kakao.maps.LatLng(c.lat, c.lng) }); if (g) fMk.setMap(fMap);
-    kakao.maps.event.addListener(fMap, 'click', ev => { const ll = ev.latLng; fMk.setPosition(ll); fMk.setMap(fMap); setGeo({ lat: ll.getLat(), lng: ll.getLng() }); });
+    fOv = []; drawPins();
+    kakao.maps.event.addListener(fMap, 'click', ev => { const ll = ev.latLng; setGeo({ lat: ll.getLat(), lng: ll.getLng() }); });
   }).catch(() => { const el = $('wf-map'); if (el) el.innerHTML = '<p class="vempty" style="padding:12px">지도를 불러오지 못했어요. "지금 위치"를 써 주세요.</p>'; });
 }
 
@@ -811,6 +836,7 @@ css.textContent = `
 .wksum span{display:flex;flex-direction:column}.wksum b{font-family:var(--display);font-weight:400;font-size:19px;color:var(--navy)}.wksum small{font-size:12px;color:var(--muted)}.wksum svg{flex-shrink:0;background:#F7EBD3;border-radius:12px}
 .wkf2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wkf2 .field{margin-bottom:10px}
 .wkplb{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}.wkplb .ghost{min-height:40px;font-size:13px;padding:0 4px;white-space:nowrap}
+.wkfpin{display:grid;place-items:center;min-width:30px;height:30px;padding:0 6px;border-radius:50% 50% 50% 4px;border:2.5px solid #fff;background:var(--red);color:#fff;font-size:14px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.35)}
 .wkgeo{display:block;margin-top:6px;font-size:12.5px;color:#2E7D5B}.wkgeo.none{color:var(--muted)}.wkgeo button{border:0;background:none;color:var(--red);text-decoration:underline;font-size:12.5px;padding:0 4px}
 .wksrch{display:flex;gap:6px;margin-top:8px}.wksrch input{flex:1;min-width:0}.wksrch .primary{min-height:44px;padding:0 14px}
 .wkres{display:flex;flex-direction:column;margin-top:6px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#FFFDF7}
