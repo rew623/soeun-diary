@@ -436,20 +436,21 @@ function guessHtml() {
   const R = rounds(), last = W[W.length - 1], open = R.find(r => r.open && r.base.id === last.id), done = R.filter(r => !r.open);
   const tally = { 엄마: 0, 아빠: 0 }; done.forEach(r => { if (tally[r.win] != null) tally[r.win]++; });
   const lr = done[done.length - 1], me = myRole();
-  const row = role => { const g = open && open.gs[role]; return `<span class="gg${g ? ' on' : ''}"><b>${role}</b>${g ? (role === me ? `${(+g.value).toFixed(2)}kg` : '예측 완료 🤫') : '아직'}</span>`; };
+  const row = role => { const g = open && open.gs[role]; return `<span class="gg${g ? ' on' : ''}"><b>${role}</b>${g ? (role === me ? `${(+g.value).toFixed(3)}kg` : '예측 완료 🤫') : '아직'}</span>`; };
   return `<section class="gguess"><h2 class="sh"><span>⚖️ 몸무게 예측 대결</span><span>엄마 ${tally.엄마}승 · 아빠 ${tally.아빠}승</span></h2>
     <p class="hint" style="margin:0 0 8px">다음에 잴 때 몇 kg일까요? 지난 측정 ${fmt('weight', last.weight)}kg (${fmtK(last.date, true)}). 다음 기록이 생기면 더 가까운 수사관이 이겨요.</p>
     <div class="ggs">${row('엄마')}${row('아빠')}${me ? `<button class="ghost" data-game="guess">${open && open.gs[me] ? '예측 바꾸기' : '내 예측 걸기'}</button>` : ''}</div>
-    ${lr ? `<p class="foot" style="margin:8px 0 0">지난 대결: 실제 ${lr.real.toFixed(2)}kg → ${lr.win === '무승부' ? '무승부!' : `<b style="color:var(--red)">${lr.win} 수사관 승</b> (차이 ${Math.round(lr.diff * 1000)}g)`} · ${Object.values(lr.gs).map(g => `${g.role} ${(+g.value).toFixed(2)}`).join(' / ')}</p>` : ''}
+    ${lr ? `<p class="foot" style="margin:8px 0 0">지난 대결: 실제 ${lr.real.toFixed(3)}kg → ${lr.win === '무승부' ? '무승부!' : `<b style="color:var(--red)">${lr.win} 수사관 승</b> (차이 ${Math.round(lr.diff * 1000)}g)`} · ${Object.values(lr.gs).map(g => `${g.role} ${(+g.value).toFixed(3)}`).join(' / ')}</p>` : ''}
   </section>`;
 }
 function openGuess() {
   const W = wrecs(), last = W[W.length - 1]; if (!last) return;
   const R = rounds(), open = R.find(r => r.open && r.base.id === last.id), mine = open && open.gs[myRole()];
-  const est = (+last.weight + Math.max(0, daysBetween(last.date, today()) + 14) * (dayNo(today()) < 120 ? 0.028 : 0.015)).toFixed(2);
+  const est = (Math.round((+last.weight + Math.max(0, daysBetween(last.date, today()) + 14) * (dayNo(today()) < 120 ? 0.028 : 0.015)) * 200) / 200).toFixed(3);   // 5g 단위
   openSheet(`<h3>몸무게 예측 걸기</h3>
     <p class="hint">지난 측정 ${fmt('weight', last.weight)}kg (${fmtK(last.date, true)}). 상대 수사관에겐 다음 측정 전까지 숫자가 안 보여요.</p>
-    <label class="field"><span>다음 측정 때 몸무게</span><div class="unitwrap"><input id="gs-v" inputmode="decimal" value="${mine ? (+mine.value).toFixed(2) : est}"><em>kg</em></div></label>
+    <label class="field"><span>다음 측정 때 몸무게 <small>(5g 단위)</small></span><div class="unitwrap"><input id="gs-v" inputmode="decimal" value="${mine ? (+mine.value).toFixed(3) : est}"><em>kg</em></div></label>
+    <div class="quick ggstep">${[['-0.05', '−50g'], ['-0.005', '−5g'], ['0.005', '＋5g'], ['0.05', '＋50g']].map(([v, l]) => `<button type="button" data-game="gstep" data-v="${v}">${l}</button>`).join('')}</div>
     <p class="err" id="gs-err"></p>
     <div class="actions"><button class="secondary" data-act="close">취소</button><button class="primary" data-game="guess-save">걸기</button></div>`);
 }
@@ -573,11 +574,12 @@ document.addEventListener('click', async e => {
     case 'mc': memFlip(+b.dataset.i); break;
     case 'guess': openGuess(); break;
     case 'shop': S.view = 'medals'; G.hub = 'deco'; render(); window.scrollTo(0, 0); break;
+    case 'gstep': { const el = document.getElementById('gs-v'); if (!el) break; const v = parseFloat(String(el.value).replace(',', '.')) || 0; el.value = (Math.round((v + +b.dataset.v) * 200) / 200).toFixed(3); if (window.__app) __app.sheetDirty(); break; }
     case 'guess-save': {
-      const v = parseFloat(String(document.getElementById('gs-v').value).replace(',', '.')), W = wrecs(), last = W[W.length - 1];
+      const v0 = parseFloat(String(document.getElementById('gs-v').value).replace(',', '.')), v = Math.round(v0 * 200) / 200, W = wrecs(), last = W[W.length - 1];   // 5g 단위로 맞춰요
       if (!(v > 1 && v < 30)) { document.getElementById('gs-err').textContent = '몸무게를 kg으로 넣어 주세요 (예: 6.3)'; return; }
       const id = 'g' + last.id + '_' + (myRole() === '아빠' ? 'd' : 'm');
-      if (await write('saveItem', 'guess', { id, role: myRole(), value: v.toFixed(2), at: today(), base: last.id, by: myRole() })) { closeSheet(); toast('예측을 걸었어요! 다음 측정을 기다려요'); }
+      if (await write('saveItem', 'guess', { id, role: myRole(), value: v.toFixed(3), at: today(), base: last.id, by: myRole() })) { closeSheet(); toast('예측을 걸었어요! 다음 측정을 기다려요'); }
       break;
     }
   }
