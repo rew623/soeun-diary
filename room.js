@@ -280,7 +280,7 @@ function roomSvg(edit) {
 const keyName = k => ({ baby: '소은', mom: '엄마', dad: '아빠' })[k] || (() => { const sl = state().slot[k], c = sl && item(sl); return c ? c[2] : ((SLOTS.find(x => x[0] === k) || [])[1] || k); })();
 function editorHtml() {
   const p = R.sel && (state().pos || {})[R.sel], sc = p ? +p[2] || 1 : 1;
-  return `<div class="redit"><button class="${R.edit ? 'primary' : 'ghost'}" data-roomedit="1">${R.edit ? '✓ 다 꾸몄어요' : '✋ 위치·크기 바꾸기'}</button>${R.edit ? '<button class="ghost" data-roomreset="1">처음대로</button>' : '<button class="ghost" data-roomfull="1">⛶ 크게 보기</button>'}</div>
+  return `<div class="redit"><button class="${R.edit ? 'primary' : 'ghost'}" data-roomedit="1">${R.edit ? '✓ 다 꾸몄어요' : '✋ 위치·크기 바꾸기'}</button>${R.edit ? '<button class="ghost" data-roomreset="1">처음대로</button>' : ''}</div>
     ${R.edit ? `<p class="hint" style="margin:4px 0 6px;color:var(--red)">끌어서 옮기고, 눌러서 고른 다음 아래 −/+로 크기를 바꿔요.</p>` : '<p class="hint" style="margin:4px 0 6px">방에서 소은·엄마·아빠를 누르면 그 식구 꾸미기로 가요.</p>'}${roomSvg(R.edit)}
     ${R.edit ? (R.sel ? `<div class="rsize"><b>${esc(keyName(R.sel))}</b><button data-rsize="-" ${sc <= .45 ? 'disabled' : ''}>−</button><span>${Math.round(sc * 100)}%</span><button data-rsize="+" ${sc >= 2.15 ? 'disabled' : ''}>+</button><button class="rsz0" data-rsize="0">원래 크기</button></div>` : '<div class="rsize none">크기를 바꿀 소품이나 식구를 눌러 골라요</div>') : ''}`;
 }
@@ -414,27 +414,5 @@ css.textContent = `
 .rpp{display:grid;place-items:center;height:42px;font-size:24px;color:var(--muted)}`;
 document.head.appendChild(css);
 
-// 방 크게 보기 (첫 화면 방 구석 ⛶ · 꾸미기 화면 '⛶ 크게 보기', 사용자 요청 2026.10.11): 화면 가득, ✕·바깥·뒤로가기로 닫힘
-let fullEl = null;
-function full() {
-  if (fullEl) return; fullEl = document.createElement('div'); fullEl.className = 'rfull';
-  fullEl.innerHTML = `<div class="rfullin">${roomSvg(false)}<p>식구·소품을 누르면 그대로 움직여요</p></div><button class="rfullx" data-roomfullx="1" aria-label="닫기">✕</button>`;
-  document.body.appendChild(fullEl); document.documentElement.classList.add('shopen');
-}
-function fullClose() {   // 휴대폰 뒤로가기는 viewer.js popstate에서
-  if (!fullEl) return false; fullEl.remove(); fullEl = null; if (!document.getElementById('sheet') || !document.getElementById('sheet').classList.contains('open')) document.documentElement.classList.remove('shopen');
-  return true;
-}
-document.addEventListener('click', e => {
-  if (e.target.closest('[data-roomfull]')) { e.preventDefault(); e.stopPropagation(); full(); return; }
-  if (fullEl && (e.target.closest('[data-roomfullx]') || e.target === fullEl)) { fullClose(); }
-}, true);
-const fcss = document.createElement('style');
-fcss.textContent = `.rfull{position:fixed;inset:0;z-index:58;background:rgba(31,42,68,.88);display:flex;align-items:center;justify-content:center;padding:12px}
-.rfullin{width:100%;max-width:720px}.rfullin svg{display:block;width:100%;height:auto;max-height:84vh;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.rfullin p{margin:8px 0 0;text-align:center;color:#fff;font-size:12.5px;opacity:.85}
-.rfullx{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:46px;height:46px;border-radius:50%;border:0;background:#fff;color:var(--navy);font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
-.groomwrap .grfull{position:absolute;top:8px;right:8px;z-index:2;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--line);background:rgba(255,253,247,.92);color:var(--navy);font-size:17px;line-height:1;padding:0;box-shadow:0 2px 6px rgba(120,90,50,.18)}`;
-document.head.appendChild(fcss);
-window.ROOMS = { svg: roomSvg, editor: editorHtml, shop: shopHtml, count, full, fullClose };
+window.ROOMS = { svg: roomSvg, editor: editorHtml, shop: shopHtml, count };
 })();
