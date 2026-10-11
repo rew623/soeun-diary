@@ -78,7 +78,6 @@ function sectionHtml() {
   return `<section${isFold('a-free') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-free" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">현장 사진첩</span><span>${L.length}장</span></h2>
     <p class="foot" style="margin:0 0 10px">여러 장을 한 번에 올리면 찍은 날짜별로 나눠서 보관해요. 사진을 길게 누르면 여러 장 골라서 지우거나 날짜를 바꿀 수 있어요.</p>
     <button class="solve" data-al="pick" style="width:100%;min-height:50px">+ 사진 올리기 (여러 장 가능)</button>
-    <button class="ghost apick2" data-al="pick2">📁 갤러리 앱·파일에서 고르기 <small>(앨범 폴더째 · 위치 그대로)</small></button>
     ${L.length > 1 && window.DUPES ? '<button class="ghost apick2" data-al="dupes">🔍 중복 사진 찾기</button>' : ''}
     ${progHtml()}
     ${groups.map((g, gi) => `<div class="amon${isFold('m-' + g.ym, gi >= 1) ? ' folded' : ''}"><h3 class="agh" data-fold="m-${g.ym}">${head(g.ym)} · ${cnt(g.ym)}장</h3>${g.days.map(d => `<div class="agd" data-day="${d.date}">${dayHead(d.date)}<em>${d.items.length}장</em></div><div class="agrid">${d.items.map(cell).join('')}</div>`).join('')}<button class="afold" data-al="foldm" data-k="m-${g.ym}">▴ ${+g.ym.slice(5)}월 사진 접기</button></div>`).join('') || '<p class="vempty" style="margin-top:12px">아직 올린 사진이 없어요.</p>'}
@@ -142,7 +141,7 @@ window.addEventListener('online', () => setTimeout(pump, 800));
 
 // ---------- 여러 장 고르기 (파일 칸은 body에 고정) ----------
 const picker = document.createElement('input');
-picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true; picker.hidden = true;
+picker.type = 'file'; picker.accept = 'image/*,application/octet-stream'; picker.multiple = true; picker.hidden = true;
 document.body.appendChild(picker);
 picker.addEventListener('change', () => { const files = [...picker.files]; picker.value = ''; queue(files); });
 // 크롬은 '사진만' 받는 칸이면 안드로이드 사진 선택 창을 띄워요(위치를 지워서 넘겨줌). 다른 종류도 받는 칸으로 열면
@@ -153,7 +152,7 @@ document.body.appendChild(picker2);
 picker2.addEventListener('change', () => { const files = [...picker2.files]; picker2.value = ''; if (files.length && !files.some(f => /^image\//.test(f.type))) { toast('사진 파일만 올릴 수 있어요'); return; } queue(files); });
 // 최초 목격에 사진 더 올리기 (어느 기록에 붙일지 기억해 두고 고르기)
 const exPicker = document.createElement('input');
-exPicker.type = 'file'; exPicker.accept = 'image/*'; exPicker.multiple = true; exPicker.hidden = true;
+exPicker.type = 'file'; exPicker.accept = 'image/*,application/octet-stream'; exPicker.multiple = true; exPicker.hidden = true;
 document.body.appendChild(exPicker);
 let exFor = null;
 exPicker.addEventListener('change', () => { const files = [...exPicker.files]; exPicker.value = ''; const m = S.moments.find(x => x.id === exFor); if (m) queue(files, { type: 'extra', of: m.id, fb: m.date }); });
@@ -332,8 +331,7 @@ function openFree(id) {
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-al]'); if (!b) return;
   switch (b.dataset.al) {
-    case 'pick': selOff(); { let g = 'photo'; try { g = JSON.parse(localStorage.getItem('soeun-picker') || '"photo"'); } catch (x) {} (g === 'gallery' ? picker2 : picker).click(); } break;   // 설정의 '사진 올리기' 기본 창
-    case 'pick2': selOff(); picker2.click(); break;
+    case 'pick': case 'pick2': selOff(); picker2.click(); break;   // 늘 갤러리 앱·파일 창 (사용자 요청)
     case 'dupes': selOff(); DUPES.open(); break;
     case 'shfree': case 'shfam': {
       if (!SH) return; const fam = b.dataset.al === 'shfam', files = SH.files;
@@ -342,7 +340,7 @@ document.addEventListener('click', async e => {
     }
     case 'shx': closeSheet(); shDone(); break;
     case 'shwalk': { if (!SH) return; const files = SH.files; closeSheet(); S.tab = 'town'; S.view = ''; S.townView = ''; render(); window.scrollTo(0, 0); WALK.formWith(files); shDone(); break; }
-    case 'extra': exFor = b.dataset.id; exPicker.click(); break;
+    case 'extra': exFor = b.dataset.id; if (pkList().length) { PK.inp = exPicker; PK.multi = true; PK.sel = []; PK.n = 60; PK.mode = 'extra'; pkOpen('ask'); } else exPicker.click(); break;
     case 'exdel': {
       if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '빼기'; b.classList.add('sure'); return; }
       const id = b.dataset.id, x = S.moments.find(m => m.id === id);
@@ -381,8 +379,101 @@ document.addEventListener('click', async e => {
   }
 });
 
+
+// ---------- 편집창 사진 칸: 현장 사진에서 고를지, 갤러리 앱에서 올릴지 먼저 물어요 (사용자 요청: 사진은 거의 다 현장 사진첩에 올려 두니까) ----------
+// 100일 보고서·최초 목격·월별 사진·프로필 등 photoField 칸 모두. 현장 사진에서 고르면 그 사진을 복사해 이 칸에 넣어요(원본 사진은 그대로)
+const PK = { mode: '', inp: null, multi: false, sel: [], n: 60, box: null };
+const pkList = () => (S.moments || []).filter(m => m.type !== 'report' && safeImg(PHOTOS[m.id])).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.tm || '').localeCompare(a.tm || '') || String(b.id).localeCompare(String(a.id)));
+document.addEventListener('click', e => {
+  const lab = e.target.closest('#sheet .pbox'); if (!lab || !e.isTrusted) return;
+  const inp = lab.querySelector('input[type=file]'); if (!inp || !pkList().length) return;   // 현장 사진이 없으면 바로 갤러리
+  e.preventDefault(); PK.mode = ''; PK.inp = inp; PK.multi = inp.multiple; PK.sel = []; PK.n = 60; pkOpen('ask');
+}, true);
+function pkOpen(step) {
+  if (!PK.box) {
+    PK.box = document.createElement('div'); PK.box.className = 'pkbox'; PK.box.setAttribute('role', 'dialog'); document.body.appendChild(PK.box);
+    PK.box.addEventListener('click', pkClick);
+  }
+  const L = pkList();
+  if (step === 'ask') PK.box.innerHTML = `<div class="pkcard"><b class="pkt">사진을 어디서 가져올까요?</b>
+    <button class="pkbig" data-pk="mine">📷 현장 사진에서 고르기<small>이미 올린 사진 ${L.length}장 중에서</small></button>
+    <button class="pkbig" data-pk="gal">📁 갤러리 앱에서 올리기<small>폰에 있는 새 사진</small></button>
+    <button class="pkx" data-pk="x">취소</button></div>`;
+  else {
+    let lastYm = '', h = '';
+    L.slice(0, PK.n).forEach(m => { const ym = (m.date || '').slice(0, 7); if (ym !== lastYm) { lastYm = ym; h += `<div class="pkym">${ym ? `${ym.slice(0, 4)}년 ${+ym.slice(5)}월` : '날짜 없음'}</div>`; }
+      const i = PK.sel.indexOf(m.id); h += `<button class="pkc${i >= 0 ? ' on' : ''}" data-pk="c" data-id="${m.id}"><img src="${safeImg(PHOTOS[m.id])}" alt="" loading="lazy" decoding="async">${i >= 0 ? `<i>${PK.multi ? i + 1 : '✓'}</i>` : ''}</button>`; });
+    PK.box.innerHTML = `<div class="pkfull"><div class="pktop"><button data-pk="ask">‹</button><b>현장 사진에서 고르기</b><small>${PK.multi ? '여러 장 고를 수 있어요 (첫 장이 대표)' : '한 장을 골라요'}</small></div>
+      <div class="pkgrid">${h}${L.length > PK.n ? '<button class="pkmore" data-pk="more">사진 더 보기</button>' : ''}</div>
+      <div class="pkact"><button data-pk="x">취소</button><button class="go" data-pk="ok" ${PK.sel.length ? '' : 'disabled'}>${PK.sel.length ? `${PK.sel.length}장 넣기` : '사진을 골라요'}</button></div></div>`;
+    if (window.FOCUS) FOCUS.apply(PK.box);
+  }
+  PK.box.hidden = false; document.documentElement.classList.add('pk-open');
+}
+function pkClose() { if (!PK.box || PK.box.hidden) return false; PK.box.hidden = true; PK.box.innerHTML = ''; document.documentElement.classList.remove('pk-open'); return true; }
+async function pkClick(e) {
+  const b = e.target.closest('[data-pk]'); if (!b) { if (e.target === PK.box) pkClose(); return; }
+  const a = b.dataset.pk;
+  if (a === 'x') return pkClose();
+  if (a === 'ask') return pkOpen('ask');
+  if (a === 'gal') { pkClose(); const inp = PK.inp; if (inp && inp.isConnected) inp.click(); return; }
+  if (a === 'mine') return pkOpen('grid');
+  if (a === 'more') { PK.n += 60; const y = PK.box.querySelector('.pkgrid').scrollTop; pkOpen('grid'); PK.box.querySelector('.pkgrid').scrollTop = y; return; }
+  if (a === 'c') { const id = b.dataset.id, i = PK.sel.indexOf(id); if (i >= 0) PK.sel.splice(i, 1); else if (PK.multi) PK.sel.push(id); else PK.sel = [id];
+    const y = PK.box.querySelector('.pkgrid').scrollTop; pkOpen('grid'); PK.box.querySelector('.pkgrid').scrollTop = y; if (!PK.multi && PK.sel.length) pkUse(); return; }
+  if (a === 'ok') return pkUse();
+}
+// 고른 앨범 사진을 그림으로 다시 그려 이 칸 사진으로 (원본은 그대로 두고 복사본을 저장)
+async function pkUse() {
+  const ids = PK.sel.slice(), inp = PK.inp; if (!ids.length || !inp || !inp.isConnected) return pkClose();
+  const big = PK.mode === 'extra' || inp.dataset.big === '1', ok = PK.box.querySelector('[data-pk=ok]'); if (ok) { ok.disabled = true; ok.textContent = '불러오는 중…'; }
+  const draw = async id => { const im = await CV.img(safeImg(PHOTOS[id])), max = big ? 1600 : 900, sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+    c.width = Math.round(im.naturalWidth * sc); c.height = Math.round(im.naturalHeight * sc); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); if (im.__blob) URL.revokeObjectURL(im.__blob);
+    let q = .85, d = c.toDataURL('image/jpeg', q); const LIM = big ? 380000 : 180000; while (d.length > LIM && q > .4) { q -= .08; d = c.toDataURL('image/jpeg', q); } return d; };
+  if (PK.mode === 'extra') {   // 최초 목격 '사진 더': 고른 사진들을 그 기록에 붙여요
+    const m = S.moments.find(x => x.id === exFor), files = [];
+    for (const id of ids) { try { const bl = await (await fetch(await draw(id))).blob(); files.push(new File([bl], id + '.jpg', { type: 'image/jpeg', lastModified: Date.now() })); } catch (x) {} }
+    pkClose(); if (m && files.length) queue(files, { type: 'extra', of: m.id, fb: m.date }); else if (!files.length) toast('사진을 불러오지 못했어요. 갤러리 앱에서 골라 주세요');
+    return;
+  }
+  try {
+    const d0 = await draw(ids[0]), m0 = S.moments.find(m => m.id === ids[0]);
+    pending = d0; EXTRA_FILES = [];
+    for (const id of ids.slice(1)) { try { const d = await draw(id), bl = await (await fetch(d)).blob(), m = S.moments.find(x => x.id === id); EXTRA_FILES.push(Object.assign(new File([bl], id + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }), { __date: m && m.date })); } catch (x) {} }
+    PGEO = m0 && m0.geo && m0.geo !== '-' ? { geo: m0.geo, tm: m0.tm || '' } : null;
+    const pv = document.getElementById('pv'); if (pv) { pv.src = d0; pv.hidden = false; } const rm = document.querySelector('[data-act=rmphoto]'); if (rm) rm.hidden = false;
+    const dEl = document.getElementById('m-date') || document.getElementById('af-date');
+    if (dEl && m0 && m0.date && m0.date >= S.profile.birth && m0.date <= today() && dEl.value !== m0.date) { dEl.value = m0.date; toast('사진 날짜(' + fmtK(m0.date, true) + ')로 맞췄어요'); }
+    const exh = document.getElementById('exfield'); if (exh) { const o = exh.querySelector('.exnew'); if (o) o.remove(); if (EXTRA_FILES.length) exh.insertAdjacentHTML('beforeend', `<p class="hint exnew" style="margin:6px 0 0;color:var(--red)">+ ${EXTRA_FILES.length}장은 저장하면 '사진 더'에 붙어요</p>`); }
+    if (window.__app && __app.sheetDirty) __app.sheetDirty();
+    pkClose();
+  } catch (x) { toast('사진을 불러오지 못했어요. 갤러리 앱에서 골라 주세요'); if (ok) { ok.disabled = false; ok.textContent = '다시 넣기'; } }
+}
+
 const css = document.createElement('style');
 css.textContent = `
+.pkbox{position:fixed;inset:0;z-index:80;background:rgba(14,20,36,.55);display:flex;align-items:flex-end;justify-content:center}
+.pkbox[hidden]{display:none}
+.pkcard{width:100%;max-width:480px;background:var(--paper,#FBF6EC);border-radius:22px 22px 0 0;padding:20px 16px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+.pkt{font-family:var(--display);font-weight:400;font-size:20px;color:var(--navy);text-align:center;margin-bottom:4px}
+.pkbig{min-height:64px;border-radius:16px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);font-family:var(--display);font-size:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.pkbig small{font-family:var(--body,inherit);font-size:12px;opacity:.75}
+.pkbig:first-of-type{background:var(--navy);color:#fff}
+.pkx{min-height:44px;border:0;background:none;color:var(--ink2,#555);font-size:14px}
+.pkfull{position:absolute;inset:0;background:var(--paper,#FBF6EC);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.pktop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1.5px dashed rgba(31,42,68,.25);flex-wrap:wrap}
+.pktop button{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--navy);background:#fff;font-size:22px;color:var(--navy)}
+.pktop b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--navy)}.pktop small{width:100%;font-size:12px;color:var(--ink2,#555)}
+.pkgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px;align-content:start}
+.pkym{grid-column:1/-1;font-family:var(--display);color:var(--navy);font-size:15px;padding:8px 2px 2px}
+.pkc{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:8px;overflow:hidden;background:#ddd}
+.pkc img{width:100%;height:100%;object-fit:cover;display:block}
+.pkc.on{outline:3px solid var(--red);outline-offset:-3px}
+.pkc i{position:absolute;right:5px;top:5px;min-width:24px;height:24px;border-radius:12px;background:var(--red);color:#fff;font-style:normal;font-size:13px;display:grid;place-items:center;padding:0 5px}
+.pkmore{grid-column:1/-1;min-height:44px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);margin:8px 0}
+.pkact{display:flex;gap:8px;padding:10px 12px max(12px,env(safe-area-inset-bottom));border-top:1.5px dashed rgba(31,42,68,.25)}
+.pkact button{flex:1;min-height:48px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);font-size:15px}
+.pkact .go{background:var(--red);border-color:var(--red);color:#fff}.pkact .go:disabled{opacity:.5}
 .shpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}.shpick button{min-height:64px;font-size:16px}
 .agh{display:flex;align-items:center;font-size:13px;color:var(--navy);font-weight:700;letter-spacing:0;margin:16px 0 6px;padding:8px 12px;background:var(--card2);border-radius:14px}
 .agh::after{margin-left:auto!important}
@@ -426,5 +517,5 @@ css.textContent = `
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:11px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
-window.ALBUM = { pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
+window.ALBUM = { pkClose, pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
 })();

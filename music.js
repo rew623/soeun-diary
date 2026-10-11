@@ -204,8 +204,29 @@ function playMine(ac, outs, len) {
   }).catch(() => {});
   return { ready, stop() { stopped = true; try { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setTargetAtTime(.0001, ac.currentTime, .08); } catch (e) {} setTimeout(() => { try { a && a.pause(); } catch (e) {} if (url) URL.revokeObjectURL(url); }, 450); } };
 }
+// ---------- 🎻 실제 연주 (위키미디어 공용의 퍼블릭 도메인·CC0 연주, music.yml이 music/에 넣어 둠) ----------
+let REAL = null, realP = null;   // [{ id, name, desc, file, sec, title, artist, license, src }]
+function loadReal() {
+  if (realP) return realP;
+  realP = fetch('music/tracks.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { REAL = (j && Array.isArray(j.tracks) ? j.tracks : []).filter(t => /^r-[a-z0-9-]+$/.test(t.id) && /^music\/r-[a-z0-9-]+\.mp3$/.test(t.file)); return REAL; }).catch(() => { REAL = []; realP = null; return REAL; });
+  return realP;
+}
+const realOf = id => (REAL || []).find(t => t.id === id) || null;
+// 파일을 통째로 받아(blob) <audio>로 흘려요 — 녹화 중 끊기지 않게. 곡보다 영상이 길면 되풀이
+function playUrl(ac, outs, len, getBlob) {
+  let a = null, url = '', stopped = false; const g = ac.createGain(); g.gain.value = .0001;
+  (Array.isArray(outs) ? outs : [outs]).forEach(o => { try { g.connect(o); } catch (e) {} });
+  const ready = getBlob().then(b => {
+    if (!b || stopped) return;
+    url = URL.createObjectURL(b); a = new Audio(); a.src = url; a.loop = true; a.preload = 'auto';
+    ac.createMediaElementSource(a).connect(g);
+    return a.play().then(() => { const t = ac.currentTime; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(1, t + .6); g.gain.setValueAtTime(1, t + Math.max(.7, len - 2)); g.gain.exponentialRampToValueAtTime(.0001, t + len); });
+  }).catch(() => {});
+  return { ready, stop() { stopped = true; try { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setTargetAtTime(.0001, ac.currentTime, .08); } catch (e) {} setTimeout(() => { try { a && a.pause(); } catch (e) {} if (url) URL.revokeObjectURL(url); }, 450); } };
+}
 function play(ac, outs, id, len, ahead = 1.5) {
   if (id === 'mine' && ac) return playMine(ac, outs, len);
+  if (realOf(id) && ac) { const t = realOf(id); return playUrl(ac, outs, len, () => fetch(t.file).then(r => r.ok ? r.blob() : null)); }
   const s = SONGS[id]; if (!s || !ac) return { stop() {} };
   const bus = ac.createGain(), dry = ac.createGain(), wet = ac.createGain(), rv = reverb(ac), comp = ac.createDynamicsCompressor(), master = ac.createGain();
   wet.gain.value = .22; bus.connect(dry); bus.connect(rv); rv.connect(wet); dry.connect(comp); wet.connect(comp); comp.connect(master);
@@ -242,10 +263,10 @@ function pick(tpl) {
 let PV = null;
 function stopPreview() { if (!PV) return; const p = PV; PV = null; clearTimeout(p.t); try { p.p.stop(); } catch (e) {} setTimeout(() => { try { p.ac.close(); } catch (e) {} }, 400); if (p.done) p.done(); }
 function preview(id, done) {
-  stopPreview(); if (!SONGS[id] && id !== 'mine') return false;
+  stopPreview(); if (!SONGS[id] && id !== 'mine' && !realOf(id)) return false;
   let ac; try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); } catch (e) { return false; }
   PV = { ac, id, done, p: play(ac, ac.destination, id, 10) }; PV.t = setTimeout(stopPreview, 10300);
   return true;
 }
-window.MUSIC = { SONGS, ORDER, MODERN, play, pick, preview, stopPreview, playing: () => PV && PV.id, mineInfo, mineSet, mine: () => MINE };
+window.MUSIC = { SONGS, ORDER, MODERN, play, pick, preview, stopPreview, playing: () => PV && PV.id, mineInfo, mineSet, mine: () => MINE, loadReal, real: () => REAL, realOf };
 })();

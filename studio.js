@@ -287,8 +287,8 @@ async function exportBlob() {
 const fname = () => `${CV.nick()}_${((ST.oc && ST.oc.label) || dayNo(today()) + '일').replace(/\s/g, '')}_${today().replace(/-/g, '')}.jpg`;
 
 // 폰 사진 고르기 칸은 body에 (파일 창에서 돌아올 때 화면을 다시 그려도 안 사라지게)
-const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/*'; picker.hidden = true; document.body.appendChild(picker);
-picker.addEventListener('change', () => { const f = picker.files[0]; picker.value = ''; if (!f) return; ST.key = ''; ST.src = URL.createObjectURL(f); ST.img = null; resetPan(); render(); });
+const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/*,application/octet-stream'; picker.hidden = true; document.body.appendChild(picker);
+picker.addEventListener('change', () => { const f = picker.files[0]; picker.value = ''; if (!f || !/^image\//.test(f.type)) return; ST.key = ''; ST.src = URL.createObjectURL(f); ST.img = null; resetPan(); render(); });
 
 document.addEventListener('input', e => {
   if (S.view !== 'studio') return;

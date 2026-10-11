@@ -1,6 +1,11 @@
 // 수사 보드 — 사건 앨범 탭의 FBI 수사 게시판 (기존 기록을 모아 카드로 붙이고 빨간 실로 이어요)
 (function () {
 const T = { x: 0, y: 0, s: 1, init: false };        // 보드 위치·확대 (다시 그려도 그대로)
+// 크게 보기(빈 곳을 누르면 화면 가득), 카드 옮긴 자리(꾹 눌러 끌기 — 이 폰에만 기억 localStorage soeun-board-pos {카드id:[dx,dy]})
+const B = { full: false };
+const PK = 'soeun-board-pos';
+let POS = {}; try { POS = JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) {}
+const posSave = () => { try { localStorage.setItem(PK, JSON.stringify(POS)); } catch (e) {} };
 const hash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
 const jit = (id, k, r) => (hash(id + k) % 1000) / 1000 * 2 * r - r;   // 카드마다 늘 같은 기울기·흔들림
 
@@ -47,10 +52,11 @@ function cards() {
 
 function renderBoard() {
   const cs = cards();
-  return `<div class="bwrap" id="bwrap"><div class="bstage" id="bstage">
+  return `<div class="bwrap${B.full ? ' bfull' : ''}" id="bwrap"><div class="bstage" id="bstage">
     ${cs.map(c => `<div class="bcard ${c.cls}" data-bid="${esc(c.id)}" data-bgo="${c.go}" role="button" tabindex="0" ${c.id === 'center' ? 'data-center="1"' : ''}>${c.html}</div>`).join('')}
     <svg class="bstrings" id="bstrings" aria-hidden="true"></svg><svg class="bstrings bpins" id="bpins" aria-hidden="true"></svg></div>
-    <div class="bhint">두 손가락으로 벌려 확대, 끌어서 이동 · 카드를 누르면 크게 보기</div></div>
+    <div class="bhint">빈 곳을 누르면 ${B.full ? '작게' : '크게'} · 카드를 꾹 누르면 옮기기 · 두 손가락으로 확대</div>
+    <div class="btools">${Object.keys(POS).length ? '<button data-bt="reset">↩ 처음 배치</button>' : ''}<button data-bt="full" aria-label="${B.full ? '작게 보기' : '크게 보기'}">${B.full ? '✕' : '⛶'}</button></div></div>
     <p class="foot">앨범 사진을 크게 보고 "보드에 붙이기"를 누르면 여기에 붙어요.</p>`;
 }
 
@@ -83,10 +89,11 @@ function layout() {
   placed.forEach(q => { q.x += ox; q.y += 0; });
   const pins = new Map();
   placed.forEach(q => {
-    const el = q.el, id = el.dataset.bid, x = q.x + jit(id, 'x', 4), y = q.y + off + jit(id, 'y', 5);
+    const el = q.el, id = el.dataset.bid, o = POS[id] || [0, 0], x = q.x + jit(id, 'x', 4) + o[0], y = q.y + off + jit(id, 'y', 5) + o[1];
+    el.dataset.ax = x - o[0]; el.dataset.ay = y - o[1];   // 저절로 정한 자리 (옮긴 만큼은 POS에)
     el.style.left = x + 'px'; el.style.top = y + 'px';
     el.style.transform = `rotate(${jit(id, 'r', el === center ? 2 : 7).toFixed(2)}deg)`;
-    el.style.zIndex = el === center ? 3 : 1 + (hash(id + 'z') % 2);
+    el.style.zIndex = POS[id] ? 5 : el === center ? 3 : 1 + (hash(id + 'z') % 2);
     el.classList.toggle('taped', el !== center && el.classList.contains('pola') && hash(id + 't') % 3 !== 0);   // 사진은 대부분 테이프로
     pins.set(el, { x: x + q.w / 2, y: y + 7, taped: el.classList.contains('taped') });
   });
@@ -123,9 +130,14 @@ function bind(wrap) {
   if (wrap.dataset.bound) return; wrap.dataset.bound = '1';
   const local = e => { const r = wrap.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   wrap.addEventListener('pointerdown', e => {
+    if (e.target.closest('.btools')) return;
     pts.set(e.pointerId, local(e));
-    if (pts.size === 1) { const p = local(e); g = { sx: p.x, sy: p.y, x0: T.x, y0: T.y }; moved = false; }
+    if (pts.size === 1) { const p = local(e), card = e.target.closest('.bcard'); g = { sx: p.x, sy: p.y, x0: T.x, y0: T.y, card }; moved = false;
+      // 카드를 꾹(0.45초) 누르면 그 카드를 끌어 옮겨요
+      if (card) g.lp = setTimeout(() => { if (!g || moved || g.pinch || g.card !== card) return; g.drag = { l0: parseFloat(card.style.left) || 0, t0: parseFloat(card.style.top) || 0 }; card.classList.add('bdrag'); moved = true; try { navigator.vibrate && navigator.vibrate(18); } catch (x) {} if (!wrap.hasPointerCapture(e.pointerId)) try { wrap.setPointerCapture(e.pointerId); } catch (x) {} }, 450);
+    }
     if (pts.size === 2) {
+      if (g && g.lp) clearTimeout(g.lp); if (g && g.drag) dragEnd();
       const [a, b] = [...pts.values()], mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       g = { pinch: true, d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, s0: T.s, qx: (mid.x - T.x) / T.s, qy: (mid.y - T.y) / T.s }; moved = true;
     }
@@ -137,14 +149,25 @@ function bind(wrap) {
       const [a, b] = [...pts.values()], mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       T.s = Math.min(2.5, Math.max(dim.min || .5, g.s0 * Math.hypot(a.x - b.x, a.y - b.y) / g.d0));
       T.x = mid.x - g.qx * T.s; T.y = mid.y - g.qy * T.s;
+    } else if (g.drag) {
+      const p = local(e); g.card.style.left = (g.drag.l0 + (p.x - g.sx) / T.s) + 'px'; g.card.style.top = (g.drag.t0 + (p.y - g.sy) / T.s) + 'px'; return;
     } else if (!g.pinch) {
       const p = local(e), dx = p.x - g.sx, dy = p.y - g.sy;
-      if (Math.abs(dx) + Math.abs(dy) > 8) { moved = true; if (!wrap.hasPointerCapture(e.pointerId)) wrap.setPointerCapture(e.pointerId); }
+      if (Math.abs(dx) + Math.abs(dy) > 8) { moved = true; if (g.lp) clearTimeout(g.lp); if (!wrap.hasPointerCapture(e.pointerId)) wrap.setPointerCapture(e.pointerId); }
       if (moved) { T.x = g.x0 + dx; T.y = g.y0 + dy; }
     }
     clamp(); apply();
   });
+  const dragEnd = () => {   // 옮긴 자리 기억하고 실·압정 다시
+    const c = g && g.card; if (!c || !g.drag) return; c.classList.remove('bdrag');
+    POS[c.dataset.bid] = [Math.round((parseFloat(c.style.left) || 0) - +c.dataset.ax), Math.round((parseFloat(c.style.top) || 0) - +c.dataset.ay)]; posSave(); g.drag = null;
+    dim = layout(); tools();
+  };
   const up = e => {
+    if (g && g.lp) clearTimeout(g.lp);
+    if (g && g.drag) dragEnd();
+    // 빈 곳을 짧게 누르면 크게 보기 / 작게
+    else if (g && !moved && !g.pinch && pts.size === 1 && !e.target.closest('.bcard,.btools') && e.type === 'pointerup') setTimeout(() => toggleFull(), 0);
     pts.delete(e.pointerId);
     if (pts.size === 1) { const [p] = pts.values(); g = { sx: p.x, sy: p.y, x0: T.x, y0: T.y }; }
     else if (!pts.size) g = null;
@@ -159,9 +182,23 @@ function bind(wrap) {
   wrap.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
 }
 
+function tools() { const t = document.querySelector('#bwrap .btools'); if (t) t.innerHTML = `${Object.keys(POS).length ? '<button data-bt="reset">↩ 처음 배치</button>' : ''}<button data-bt="full" aria-label="${B.full ? '작게 보기' : '크게 보기'}">${B.full ? '✕' : '⛶'}</button>`; }
+function toggleFull(on) {
+  const wrap = document.getElementById('bwrap'); if (!wrap) return false;
+  B.full = on === undefined ? !B.full : on; wrap.classList.toggle('bfull', B.full); document.documentElement.classList.toggle('bfull-open', B.full);
+  const h = wrap.querySelector('.bhint'); if (h) h.textContent = `빈 곳을 누르면 ${B.full ? '작게' : '크게'} · 카드를 꾹 누르면 옮기기 · 두 손가락으로 확대`;
+  tools(); T.init = false; dim = layout();
+  T.init = true; T.s = Math.min(1, (dim.W - 12) / dim.SW); T.x = (dim.W - dim.SW * T.s) / 2; T.y = dim.H * T.s <= dim.vh ? (dim.vh - dim.H * T.s) / 2 : dim.vh / 2 - (dim.c0.y + 110) * T.s;
+  clamp(); apply(); return true;
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#bwrap [data-bt]'); if (!b) return; e.stopPropagation();
+  if (b.dataset.bt === 'full') toggleFull();
+  else if (b.dataset.bt === 'reset') { if (!(await ask('옮긴 카드를 모두\n처음 자리로 돌릴까요?', { ok: '처음 배치' }))) return; POS = {}; posSave(); dim = layout(); tools(); }
+});
 // 화면을 다시 그릴 때마다 배치만 다시 하고, 보고 있던 위치·확대는 그대로
 function mount() {
-  const wrap = document.getElementById('bwrap'); if (!wrap) return;
+  const wrap = document.getElementById('bwrap'); if (!wrap) { if (B.full) { B.full = false; document.documentElement.classList.remove('bfull-open'); } return; }
   dim = layout(); bind(wrap);
   if (!T.init) {   // 처음엔 판 폭이 화면에 꼭 맞게, 가운데 아기 사진이 화면 가운데 오게
     T.init = true; T.s = Math.min(1, (dim.W - 12) / dim.SW); T.x = (dim.W - dim.SW * T.s) / 2;
@@ -221,10 +258,17 @@ css.textContent = `
 .bcard.small .bt{font-size:14px}
 .bhint{position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:11px;color:#EAD9B2;background:linear-gradient(transparent,rgba(20,12,4,.7));text-align:center;pointer-events:none;z-index:4}
 .aview{margin-top:14px}
+.bwrap.bfull{position:fixed;inset:0;z-index:45;margin:0;height:auto;border-radius:0;border-width:6px;padding-top:env(safe-area-inset-top)}
+html.bfull-open,html.bfull-open body{overflow:hidden}
+.btools{position:absolute;right:8px;top:8px;z-index:6;display:flex;gap:6px}
+.bwrap.bfull .btools{top:calc(8px + env(safe-area-inset-top,0px))}
+.btools button{min-height:40px;min-width:40px;border-radius:99px;border:0;background:rgba(255,253,247,.94);color:var(--navy);font-size:15px;padding:0 12px;box-shadow:0 2px 6px rgba(43,38,34,.35)}
+.bcard.bdrag{z-index:9!important;box-shadow:0 14px 26px rgba(40,20,5,.5);transform:scale(1.06) rotate(0deg)!important;transition:box-shadow .15s}
+.bcard img{-webkit-user-drag:none;user-select:none;-webkit-touch-callout:none}
 .bcard.taped::before{content:"";position:absolute;top:-9px;left:50%;width:46%;height:16px;margin-left:-23%;background:rgba(248,216,209,.85);transform:rotate(-3deg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .bcard.taped:nth-of-type(3n)::before{background:rgba(252,232,180,.9)}.bcard.taped:nth-of-type(3n+1)::before{background:rgba(220,231,241,.92)}
 .bcard.note{border-radius:2px 2px 14px 2px}`;
 document.head.appendChild(css);
 
-window.BOARD = { render: renderBoard, mount };
+window.BOARD = { render: renderBoard, mount, closeFull: () => B.full && !!document.getElementById('bwrap') ? toggleFull(false) : false };
 })();

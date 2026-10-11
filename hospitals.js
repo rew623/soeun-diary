@@ -134,7 +134,9 @@ async function load() {
   H.list = hs.concat(ps, keep.filter(h => !have.has(h.hpid)));
   saveFav(); rerender();
 }
-const rerender = () => { if (S.view === 'hosp') render(); };
+// 긴급 출동 탭의 병원·약국 소탭(S.sickView 'hosp'|'ph')에서 바로 보여요 (예전 안쪽 화면 S.view='hosp'도 그대로)
+const onHosp = () => S.view === 'hosp' || (S.tab === 'sick' && !S.view && (S.sickView === 'hosp' || S.sickView === 'ph'));
+const rerender = () => { if (onHosp()) render(); };
 const byId = id => (H.list || []).find(h => h.hpid === id);
 
 // ---------- 카카오맵 ----------
@@ -244,7 +246,8 @@ function closeFull() { if (!H.full) return false; H.full = false; rerender(); re
 
 const chip = (on, attrs, label) => `<button class="chip${on ? ' on' : ''}" ${attrs} aria-pressed="${on ? 'true' : 'false'}">${label}</button>`;
 
-function renderHosp() {
+function renderHosp(inline) {
+  if (inline) H.kind = S.sickView === 'ph' ? 'ph' : 'hosp';
   if (!H.list && !H.loading) load();
   if (!H.mode) H.mode = hasKey() ? 'map' : 'list';
   const ph = H.kind === 'ph', W = ph ? { n: '약국', t: '영업' } : { n: '병원', t: '진료' };
@@ -262,7 +265,7 @@ function renderHosp() {
   else if (err) notice = `<p class="notice">인터넷에 연결되지 않아 ${has ? `마지막으로 받은 관심 ${W.n}만` : `${W.n} 정보를`} 보여 줘요.</p>`;
   const flts = [['now', `지금 ${W.t} 중`], ['sat', '토요일'], ['sun', '일요일'], ['hol', '공휴일'], ['night', ph ? '야간 21시 이후' : '야간 18시 이후']].concat(ph ? [] : [['er', '응급실']]);
   const filters = `<div class="hfilters">
-    ${!ph && H.preset === 'ernight' ? '<p class="hpreset"><span>응급실 또는 야간(18시 이후) 진료 병원만 보는 중</span><button class="ghost" data-h="preset">모두 보기</button></p>' : ''}
+    ${ph ? '' : `<button class="herbtn${H.preset === 'ernight' ? ' on' : ''}" data-h="preset" aria-pressed="${H.preset === 'ernight'}">🚑 <b>응급실·야간 진료 병원만 보기</b><small>${H.preset === 'ernight' ? '지금 응급실 또는 18시 이후 진료하는 곳만 보는 중 · 누르면 모두 보기' : '밤이나 주말에 아플 때 바로 찾기'}</small></button>`}
     ${ph ? '' : `<div class="chips">${chip(!H.dept, 'data-h="dept" data-v=""', '전체 과목')}${DEPTS.map(d => chip(H.dept === d, `data-h="dept" data-v="${d}"`, d)).join('')}</div>`}
     <div class="chips">${flts.map(([k, l]) => chip(!!H.f[k], `data-h="flt" data-v="${k}"`, l)).join('')}</div>
   </div>`;
@@ -291,6 +294,7 @@ function renderHosp() {
   }
   const src = ph ? '약국 정보: 국립중앙의료원 전국 약국 정보 조회 서비스(공공데이터포털). 영업시간이 실제와 다를 수 있어요.'
     : '병원 정보: 국립중앙의료원 전국 병·의원 찾기 서비스(공공데이터포털). 진료시간이 실제와 다를 수 있어요.';
+  if (inline) return regRow + notice + filters + seg + body + `<p class="foot">${src}</p>`;
   return head + regRow + kinds + notice + filters + seg + body + `<p class="foot">${src}</p><button class="secondary" data-act="back" style="width:100%;margin-top:16px">돌아가기</button>`;
 }
 
@@ -311,8 +315,9 @@ function openEdit(id) {
 
 function openView(preset, kind) {
   H.full = false;
-  S.tab = 'sick'; S.view = 'hosp'; H.preset = preset; H.sel = ''; H.more = 40;
+  H.preset = preset; H.sel = ''; H.more = 40;
   if (H.preset) { H.mode = 'list'; H.kind = 'hosp'; } else if (kind) H.kind = kind;
+  S.tab = 'sick'; S.view = ''; S.sickView = H.kind === 'ph' ? 'ph' : 'hosp';   // 긴급 출동 탭의 병원·약국 소탭으로
   if (!H.list || H.err || H.phErr) load();
   if (!H.pos && navigator.permissions) navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') locate(true); }).catch(() => {});
   render(); window.scrollTo(0, 0);
@@ -328,7 +333,7 @@ document.addEventListener('click', async e => {
   const v = b.dataset.v, id = b.dataset.id;
   switch (b.dataset.h) {
     case 'open': openView(b.dataset.p || '', b.dataset.k || ''); break;
-    case 'preset': H.preset = ''; render(); break;
+    case 'preset': H.preset = H.preset ? '' : 'ernight'; H.sel = ''; H.more = 40; if (H.preset && !H.pos && navigator.geolocation) locate(true); render(); break;
     case 'kind': H.kind = v; H.sel = ''; H.more = 40; render(); break;
     case 'here': { const r = regionFor(H.pos); if (r) setRegion(r.code); break; }
     case 'dept': H.dept = v; H.more = 40; render(); break;
@@ -371,6 +376,9 @@ css.textContent = `
 .hreg .ghost{min-height:38px}.hreg small{color:var(--muted)}
 .hfilters .chips{margin-top:10px;gap:6px}
 .chip.on{background:var(--navy);color:var(--paper)}
+.herbtn{width:100%;margin-top:12px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:2px solid var(--red);background:#FFF6F3;color:var(--red);border-radius:14px;padding:10px 14px;min-height:56px}
+.herbtn b{font-family:var(--display);font-weight:400;font-size:17px}.herbtn small{font-size:12px;color:var(--ink);opacity:.8}
+.herbtn.on{background:var(--red);color:#fff}.herbtn.on small{color:#fff;opacity:.9}
 .hpreset{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 0;border:1px dashed var(--red);color:var(--red);padding:6px 10px;font-size:13px}
 .hmapwrap{position:relative;margin-top:10px}
 .hfull{position:absolute;right:10px;top:10px;z-index:3;border:0;background:rgba(255,253,247,.94);color:var(--navy);border-radius:4px;padding:7px 11px;font-size:13px;box-shadow:0 2px 6px rgba(31,42,68,.3);min-height:38px}
@@ -418,5 +426,5 @@ body:has(.hmapwrap.full){overflow:hidden}
 .hacts{display:flex;gap:8px;margin-top:10px}`;
 document.head.appendChild(css);
 
-window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames, closeFull: () => S.view === 'hosp' && closeFull(), sdk: () => hasKey() ? loadSdk() : Promise.reject(new Error('지도 키가 없어요')), regionCenter: code => { const r = regionList().find(x => x.code === code); return r ? { lat: r.lat, lng: r.lng } : null; } };
+window.HOSP = { render: renderHosp, mount, quickHtml, open: openView, favNames, closeFull: () => onHosp() && closeFull(), on: onHosp, sdk: () => hasKey() ? loadSdk() : Promise.reject(new Error('지도 키가 없어요')), regionCenter: code => { const r = regionList().find(x => x.code === code); return r ? { lat: r.lat, lng: r.lng } : null; } };
 })();

@@ -30,9 +30,9 @@ function render_() {
 
 // 사진 고르기 칸은 body에 (파일 창에서 돌아올 때 화면을 다시 그려도 안 사라지게), 누르면 바로 사진 고르기
 const picker = document.createElement('input');
-picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true; picker.hidden = true;
+picker.type = 'file'; picker.accept = 'image/*,application/octet-stream'; picker.multiple = true; picker.hidden = true;
 document.body.appendChild(picker);
-picker.addEventListener('change', () => { const files = [...picker.files]; picker.value = ''; if (files.length) ALBUM.queue(files, { type: 'fam', who: '' }); });
+picker.addEventListener('change', () => { const files = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = ''; if (files.length) ALBUM.queue(files, { type: 'fam', who: '' }); });
 
 function openPhoto(id) {
   const m = S.moments.find(x => x.id === id); if (!m) return;

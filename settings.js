@@ -1,6 +1,6 @@
 // 앱 설정 (S.view='settings', 성장 수사 맨 위 ⚙️ 단추)
 // 버전·업데이트 · 아래 메뉴 탭 보이기/숨기기(성장 수사는 늘 보임) · 첫 화면 카드 · 사진 올리기 기본 창 · 떠 있는 📚 단추 · 가족·알림(FAM) · 이 폰 저장 공간 · 기록 통계
-// 설정은 이 폰에만 기억해요 (localStorage soeun-tabs-off, soeun-home-off, soeun-picker, soeun-posts-hide) — 엄마·아빠 폰마다 따로
+// 설정은 이 폰에만 기억해요 (localStorage soeun-tabs-off, soeun-home-off, soeun-posts-hide) — 엄마·아빠 폰마다 따로
 (function () {
 const get = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
 const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -36,7 +36,7 @@ async function update() {
 const mb = n => n >= 1e9 ? (n / 1e9).toFixed(1) + 'GB' : Math.max(.1, n / 1e6).toFixed(1) + 'MB';
 
 function render_() {
-  const off = hiddenTabs(), home = get('soeun-home-off', []), pk = get('soeun-picker', 'photo'), fab = !get('soeun-posts-hide', false);
+  const off = hiddenTabs(), home = get('soeun-home-off', []), fab = !get('soeun-posts-hide', false);
   const M = S.moments || [], ph = M.filter(m => m.photo).length, d = S.profile && S.profile.birth ? daysBetween(S.profile.birth, today()) + 1 : 0;
   const stat = [['📏', '성장 기록', (S.records || []).length], ['📷', '사진', ph], ['🐾', '탐문 기록', (S.walks || []).length], ['💉', '접종 완료', (S.vaccines || []).filter(v => v.done).length], ['👀', '최초 목격', M.filter(m => (m.type || 'first') === 'first').length], ['📅', '수사 일수', d]];
   const sw2 = (on, attr, label, sub) => `<button class="stsw${on ? ' on' : ''}" ${attr} role="switch" aria-checked="${on}"><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><i></i></button>`;
@@ -50,9 +50,6 @@ function render_() {
     <div class="stlist">${TABS.map(([k, l, i]) => sw2(!off.includes(k), `data-stg="tab" data-v="${k}"`, `${i} ${l}`, '')).join('')}</div></section>
   <section class="stsec"><h2 class="sh"><span>첫 화면 카드</span><span>성장 수사</span></h2>
     <div class="stlist">${CARDS.map(([k, l]) => sw2(!home.includes(k), `data-stg="card" data-v="${k}"`, l, '')).join('')}</div></section>
-  <section class="stsec"><h2 class="sh"><span>사진 올리기</span><span>사건 앨범</span></h2>
-    <div class="stseg"><button class="${pk === 'photo' ? 'on' : ''}" data-stg="picker" data-v="photo"><b>📷 폰 사진 선택 창</b><small>빠르게 고르기 (위치는 지워져요)</small></button><button class="${pk === 'gallery' ? 'on' : ''}" data-stg="picker" data-v="gallery"><b>📁 갤러리 앱·파일</b><small>앨범 폴더째 · 위치 그대로</small></button></div>
-    <p class="foot" style="margin:8px 0 0">'+ 사진 올리기'를 누르면 고른 창이 바로 열려요.</p></section>
   <section class="stsec"><h2 class="sh"><span>떠 있는 단추</span><span>📚 육아 글</span></h2>
     <div class="stlist">${sw2(fab, 'data-stg="fab"', '📚 육아 글 단추 보이기', '숨겨도 방의 우편함이나 아래 단추로 열 수 있어요')}</div>
     <div class="st2"><button class="ghost" data-stg="fabreset">단추 자리 처음대로</button><button class="ghost" data-stg="posts">📚 육아 글 열기</button></div></section>
@@ -79,7 +76,6 @@ document.addEventListener('click', async e => {
   if (a === 'update') return update();
   if (a === 'tab') { const off = hiddenTabs(); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-tabs-off', off); toast(i >= 0 ? `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 다시 보여요` : `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 숨겼어요`); render(); return; }
   if (a === 'card') { const off = get('soeun-home-off', []); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-home-off', off); render(); return; }
-  if (a === 'picker') { put('soeun-picker', v); render(); toast(v === 'gallery' ? "'+ 사진 올리기'는 갤러리 앱·파일 창으로 열려요" : "'+ 사진 올리기'는 폰 사진 선택 창으로 열려요"); return; }
   if (a === 'fab') { put('soeun-posts-hide', !get('soeun-posts-hide', false)); render(); return; }
   if (a === 'fabreset') { if (window.POSTS && POSTS.resetPos) POSTS.resetPos(); toast('📚 단추를 처음 자리로 돌렸어요'); return; }
   if (a === 'posts') { S.view = 'posts'; render(); window.scrollTo(0, 0); if (window.POSTS) POSTS.load(); return; }

@@ -1,5 +1,5 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.10.11-23';
+const VERSION = '2026.10.11-24';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
   './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './music.js', './movie.js', './wanted.js', './look.js', './capsule.js', './paper.js', './explore.js', './walk.js', './dupes.js', './settings.js', './focus.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
@@ -68,6 +68,15 @@ self.addEventListener('fetch', e => {
         if (hit) return hit;
         throw x;
       }
+    })());
+    return;
+  }
+  // 🎻 영상 음악(music/*.mp3): 한 번 받으면 폰에 보관 (VERSION이 바뀌어도 그대로)
+  if (url.origin === location.origin && /\/music\/r-[\w-]+\.mp3$/.test(url.pathname)) {
+    e.respondWith((async () => {
+      const c = await caches.open('music-v1'), hit = await c.match(req.url, { ignoreSearch: true });
+      if (hit) return hit;
+      const res = await fetch(req); if (res.ok && res.status === 200) c.put(req.url, res.clone()); return res;
     })());
     return;
   }

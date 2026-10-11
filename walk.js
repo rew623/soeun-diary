@@ -47,7 +47,18 @@ function pack(pts, t0, v) {
   return `${v || 1}:${Math.round(t0 / 1000)}:${enc(nums)}`;   // 1: GPS로 그린 길, 2: 지도에 직접 찍은 곳을 이은 길
 }
 const TC = new Map();
-function track(w) {
+// 이 기록의 길: 저장된 길(GPS 1: · 직접 찍은 핀 2:) → 없으면 사진 자리(사진에 붙은 위치)를 찍은 시각 순서로 이은 길(저장 안 함, photo:true)
+// 사진 핀을 옮기면 길도 저절로 따라 바뀌어요 (탐문 보고서·탐험 지도·카드·영상 모두 이 길을 써요)
+const track = w => trackRaw(w) || (w && w.id ? photoTrack(w) : null);
+let PT = { m: null, w: null, map: new Map() };
+function photoTrack(w) {
+  if (PT.m !== S.moments || PT.w !== S.walks) PT = { m: S.moments, w: S.walks, map: new Map() };
+  if (PT.map.has(w.id)) return PT.map.get(w.id);
+  const P = photos(w).map(m => ({ g: parse(m.geo), t: at(m.date, m.tm) })).filter(x => x.g && x.t != null).sort((a, b) => a.t - b.t), pts = [];
+  P.forEach(x => { const z = pts[pts.length - 1]; if (z && km(z, x.g) * 1000 < 15) return; pts.push({ lat: x.g.lat, lng: x.g.lng, t: (x.t - P[0].t) / 1000 }); });
+  const r = pts.length > 1 ? { t0: P[0].t, pts, photo: true } : null; PT.map.set(w.id, r); return r;
+}
+function trackRaw(w) {
   const s = w && w.path; if (!s || !/^[12]:/.test(s)) return null;
   if (TC.has(s)) return TC.get(s);
   const k = s.indexOf(':', 2), t0 = +s.slice(2, k) * 1000, n = dec(s.slice(k + 1)), pts = [];
@@ -88,20 +99,20 @@ const all = () => (S.walks || []).slice().sort((a, b) => a.date < b.date ? 1 : a
 const byId = id => (S.walks || []).find(w => w.id === id) || null;
 // 언제부터 언제까지 (경로가 있으면 경로 시각과 적은 시각 중 넓게)
 function span(w) {
-  const T = track(w); let a = at(w.date, w.start), b = at(w.date, w.end);
+  const T = trackRaw(w); let a = at(w.date, w.start), b = at(w.date, w.end);
   if (T && T.pts.length > 1) { const ta = T.t0 + T.pts[0].t * 1000, tb = T.t0 + T.pts[T.pts.length - 1].t * 1000; a = a == null ? ta : Math.min(a, ta); b = b == null ? tb : Math.max(b, tb); }
   return a != null && b != null && b > a ? [a, b] : null;
 }
 const dur = w => { const s = span(w); return s ? Math.round((s[1] - s[0]) / 60000) : 0; };
 const distM = w => { const d = +w.dist; if (d > 0) return d; const T = track(w); return T ? pathM(T.pts) : 0; };
 const timeText = w => w.start ? `${w.start}${w.end ? '~' + w.end : ''}` : '';
-// 이 기록의 사진: 같이 올린 사진(pics) + 그날 그 시간(앞뒤 5분)에 찍은 사진
+// 이 기록의 사진: 같이 올린 사진(pics) + 그날 그 시간(앞뒤 5분)에 찍은 사진 − 뺀 사진(pics에 '-사진id'로 적어 둠: 고치기에서 ✕ · 보고서에서 '이 기록에서 빼기')
 let PC = { m: null, w: null, map: new Map() };
 function photos(w) {
   if (PC.m !== S.moments || PC.w !== S.walks) PC = { m: S.moments, w: S.walks, map: new Map() };
   let r = PC.map.get(w.id); if (r) return r;
-  const ids = new Set(String(w.pics || '').split(',').filter(Boolean)), sp = span(w);
-  r = (S.moments || []).filter(m => { if (!m.photo) return false; if (ids.has(m.id)) return true; if (!sp || m.date !== w.date) return false; const t = at(m.date, m.tm); return t != null && t >= sp[0] - 5 * 60e3 && t <= sp[1] + 5 * 60e3; })
+  const L0 = String(w.pics || '').split(',').filter(Boolean), ids = new Set(L0.filter(x => x[0] !== '-')), no = new Set(L0.filter(x => x[0] === '-').map(x => x.slice(1))), sp = span(w);
+  r = (S.moments || []).filter(m => { if (!m.photo || no.has(m.id)) return false; if (ids.has(m.id)) return true; if (!sp || m.date !== w.date) return false; const t = at(m.date, m.tm); return t != null && t >= sp[0] - 5 * 60e3 && t <= sp[1] + 5 * 60e3; })
     .sort((a, b) => (at(a.date, a.tm) || 0) - (at(b.date, b.tm) || 0) || (a.id < b.id ? -1 : 1));
   PC.map.set(w.id, r); return r;
 }
@@ -255,16 +266,26 @@ function render_() {
     const where = p ? (p.src === 'track' ? '경로에서 찾은 자리' : p.src === 'place' ? '장소 위치' : '찍은 곳') : x.geo === '-' ? '핀 뺌' : '위치 없음';
     return `<div class="wktl${on ? ' on' : ''}">${cw ? `<button class="wktck${on ? ' on' : ''}" data-wk="tsel" data-v="${esc(x.id)}" aria-pressed="${on}" aria-label="${i + 1}번 사진 고르기"><i>✓</i></button>` : ''}<span class="wktn${p ? '' : ' off'}">${i + 1}</span><button class="wktph" data-view="${esc(x.id)}">${u ? `<img src="${u}" alt="" loading="lazy" decoding="async">` : '<span>사진</span>'}</button><span class="wktx"${p ? ` data-wk="pan" data-v="${esc(x.id)}"` : ''}><b>${x.tm ? x.tm.slice(0, 5) : fmtMD(x.date)}${p ? ' <u>지도 ›</u>' : ''}</b><small>${rel != null && rel >= 0 ? `출발 ${durText(rel)} 뒤 · ` : ''}${where}</small></span>${cw ? `<button class="wktpan" data-wk="pinmv" data-v="${esc(x.id)}" aria-label="${i + 1}번 사진 핀 자리 정하기">📍</button>` : ''}</div>`;
   }).join('');
-  const selBar = cw && P.length ? `<div class="wksel"${W.tsel.size ? '' : ' hidden'}><b>${W.tsel.size}장 골랐어요</b><button data-wk="tpin">📍 지도에서 옮기기</button><button data-wk="tnone" aria-label="고르기 풀기">✕</button></div>` : '';
+  const selBar = cw && P.length ? `<div class="wksel"${W.tsel.size ? '' : ' hidden'}><b>${W.tsel.size}장 골랐어요</b><button data-wk="tpin">📍 옮기기</button><button data-wk="tout" class="out">이 기록에서 빼기</button><button data-wk="tnone" aria-label="고르기 풀기">✕</button></div>` : '';
   return `<header class="vhead"><span class="no">탐문 보고서 No.${no}</span><h1>${k[1]} ${esc(w.title || (w.place ? `${w.place} ${k[2]}` : k[2]))}</h1><p>${fmtK(w.date)}${timeText(w) ? ' · ' + timeText(w) : ''}${w.place ? ` · 📍 ${esc(w.place)}` : ''}</p></header>
   ${hasMap ? `<div class="wkmapwrap" data-noswipe><div id="wkmap-slot"></div><div class="mtools"><button data-wk="mloc" aria-label="내 위치">◎</button><button data-wk="mfull" aria-label="크게 보기">⛶</button></div></div>` : ''}
   <div class="wkdst"><span><i>🚶</i><b>${m ? kmText(m) : '-'}</b><small>거리</small></span><span><i>⏱️</i><b>${mins ? durText(mins) : '-'}</b><small>시간</small></span><span><i>📷</i><b>${P.length}장</b><small>사진</small></span><span><i>${mo ? mo[1] : '🙂'}</i><b>${mo ? mo[2] : '-'}</b><small>${esc(CV.nick())} 반응</small></span></div>
   ${spd || w.wx || w.who ? `<p class="wkwx">${[w.wx ? esc(w.wx) : '', w.who ? '🕵️ ' + esc(w.who.split(',').map(r => r + ' 수사관').join('·')) : '', spd ? spd.slice(3) : ''].filter(Boolean).join(' · ')}</p>` : ''}
   ${w.memo ? `<div class="wkmemo"><b>수사 메모</b><p>${esc(w.memo).replace(/\n/g, '<br>')}</p></div>` : ''}
+  ${routeNote(w, T, cw)}
   <section class="wktls" data-vpin="walk"><h2 class="sh"><span>현장 사진</span><span>${P.length}장${cw && P.length > 1 ? ` <button class="wkall" data-wk="tall">${W.tsel.size === P.length ? '모두 풀기' : '모두 고르기'}</button>` : ''}</span></h2>
     ${P.length ? `<p class="foot" style="margin:0 0 8px">${nTrack ? `사진 ${nTrack}장은 찍은 시각으로 경로 위 자리를 찾았어요. ` : ''}${cw ? '📍를 누르고 위 지도에서 새 자리를 누르면 핀이 옮겨져요. 동그라미로 여러 장 골라 한 번에 옮길 수도 있어요.' : ''}</p><div class="wktlist">${tl}</div>${selBar}` : `<p class="vempty">${cw ? '아래 \'📷 사진 더하기\'로 그날 사진을 붙여요. 산책 시간에 찍은 사진은 저절로 붙어요.' : '사진이 없어요.'}</p>`}</section>
   <div class="wkacts">${canWrite() ? `<button class="ghost" data-wk="edit" data-v="${esc(w.id)}">✏️ 고치기</button><button class="ghost" data-wk="addph" data-v="${esc(w.id)}">📷 사진 더하기</button>` : ''}<button class="ghost" data-wk="card" data-v="${esc(w.id)}">🖼️ 보고서 카드</button>${canWrite() ? `<button class="ghost wkdel" data-wk="del" data-v="${esc(w.id)}">🗑️ 지우기</button>` : ''}</div>
   ${back}`;
+}
+// 길이 어디서 왔는지 한 줄 (GPS·직접 찍은 핀·사진 자리) + 사진 자리로 길 바꾸기
+function routeNote(w, T, cw) {
+  const raw = trackRaw(w), pt = photoTrack(w);
+  if (T && T.photo) return `<p class="wkrn">🐾 길: 사진 찍은 자리를 시간 순서로 이었어요 (사진 ${T.pts.length}곳). 사진 핀을 옮기면 길도 같이 바뀌어요.</p>`;
+  if (raw && /^2:/.test(w.path || '')) return `<p class="wkrn">🐾 길: 고치기에서 지도에 찍은 핀 ${raw.pts.length}곳을 이었어요.${cw && pt ? ' <button data-wk="rphoto">📷 사진 자리로 길 바꾸기</button>' : ''}</p>`;
+  if (raw) return '<p class="wkrn">🐾 길: 탐문 출동 때 GPS로 그린 길이에요.</p>';
+  if (cw && photos(w).length) return '<p class="wkrn">🐾 위치 있는 사진이 두 곳 넘게 있으면 찍은 순서대로 길을 그려요. 📍로 사진 자리를 정하거나, ✏️ 고치기에서 지도에 여러 곳을 찍어도 돼요.</p>';
+  return '';
 }
 function mount() {
   const slot = $('wkmap-slot'); if (!slot) return;
@@ -344,7 +365,7 @@ const chip = (grp, v, on, label) => `<button type="button" class="chip${on ? ' o
 function openForm(id, preset) {
   const w = id ? byId(id) : null; if (id && !w) return;
   const me = myRole(), p = preset || {};
-  W.form = w ? { id: w.id, kind: w.kind || 'walk', title: w.title, date: w.date, start: w.start, end: w.end, place: w.place, geo: w.geo, memo: w.memo, mood: w.mood, who: new Set(String(w.who || '').split(',').filter(Boolean)), path: w.path, dist: w.dist, pics: String(w.pics || '').split(',').filter(Boolean), wx: w.wx, live: false, touched: true, gps: /^1:/.test(w.path || ''), pins: /^2:/.test(w.path || '') ? (track(w) || { pts: [] }).pts.map(p => ({ lat: p.lat, lng: p.lng })) : parse(w.geo) ? [parse(w.geo)] : [] }
+  W.form = w ? { id: w.id, kind: w.kind || 'walk', title: w.title, date: w.date, start: w.start, end: w.end, place: w.place, geo: w.geo, memo: w.memo, mood: w.mood, who: new Set(String(w.who || '').split(',').filter(Boolean)), path: w.path, dist: w.dist, pics: [...new Set(photos(w).map(m => m.id).concat(String(w.pics || '').split(',').filter(x => x && x[0] !== '-')))], no: String(w.pics || '').split(',').filter(x => x[0] === '-').map(x => x.slice(1)), wx: w.wx, live: false, touched: true, gps: /^1:/.test(w.path || ''), pins: /^2:/.test(w.path || '') ? (track(w) || { pts: [] }).pts.map(p => ({ lat: p.lat, lng: p.lng })) : parse(w.geo) ? [parse(w.geo)] : [] }
     : { id: '', kind: p.kind || 'walk', title: p.title || '', date: p.date || today(), start: p.start || '', end: p.end || '', place: p.place || '', geo: p.geo || '', memo: '', mood: '', who: new Set(me ? [me] : []), path: p.path || '', dist: p.dist || '', pics: p.pics || [], wx: p.wx || '', live: !!p.live, touched: !!p.live, gps: !!p.path, pins: p.geo && !p.path ? [parse(p.geo)] : [] };
   W.files.forEach(f => { try { URL.revokeObjectURL(f.url); } catch (e) {} }); W.files = [];
   const f = W.form, T = f.path ? track({ path: f.path }) : null, n = CV.nick();
@@ -358,7 +379,7 @@ function openForm(id, preset) {
       <div class="wkplb"><button type="button" class="ghost" data-wf="here">📍 지금 위치</button><button type="button" class="ghost" data-wf="search">🔎 장소 찾기</button><button type="button" class="ghost" data-wf="map">🗺️ 지도에서</button></div>
       <div id="wf-geo">${geoLine()}</div><div id="wf-pick"></div></div>
     <div class="field"><span>사진</span><div id="wf-ph">${formPhotos()}</div>
-      <div class="wkf2"><button type="button" class="ghost" data-wf="photos">📷 사진 고르기</button><button type="button" class="ghost" data-wf="photos2">📁 갤러리 앱에서</button></div></div>
+      <button type="button" class="ghost" data-wf="photos" style="width:100%;min-height:46px">📁 갤러리 앱에서 사진 고르기</button></div>
     <label class="check" style="margin:-4px 0 12px"><input type="checkbox" id="wf-fill" checked> 위치 없는 사진엔 이 장소 위치를 붙여요</label>
     <div class="field"><span>${esc(n)} 반응</span><div class="chips">${MOODS.map(x => chip('mood', x[0], f.mood === x[0], `${x[1]} ${x[2]}`)).join('')}</div></div>
     <div class="field"><span>함께한 수사관</span><div class="chips">${['엄마', '아빠'].map(r => chip('who', r, f.who.has(r), r === '엄마' ? '👩 엄마' : '👨 아빠')).join('')}</div></div>
@@ -404,7 +425,7 @@ async function saveForm(btn) {
     const pics = f.pics.slice(), fill = $('wf-fill') && $('wf-fill').checked && parse(f.geo) && (f.gps || f.pins.length === 1) ? { geo: f.geo } : null;
     if (W.files.length) { const ids = await ALBUM.queue(W.files.map(x => x.file), undefined, fill); pics.push(...(ids || [])); }
     let wx = f.wx; if (!wx && f.date === today() && window.TOWN && TOWN.now) { const n = TOWN.now(); if (n) wx = `${n.ico} ${n.tmp}° · 산책 지수 ${n.s}`; }
-    const o = { id, date: f.date, kind: f.kind, title: f.title, place: f.place, geo: f.geo || '', start: f.start, end: f.end, dist: f.dist ? String(Math.round(+f.dist)) : '', path: f.path || '', pics: [...new Set(pics)].join(','), memo: f.memo, who: [...f.who].join(','), wx: wx || '', mood: f.mood || '', by: myRole() };
+    const o = { id, date: f.date, kind: f.kind, title: f.title, place: f.place, geo: f.geo || '', start: f.start, end: f.end, dist: f.dist ? String(Math.round(+f.dist)) : '', path: f.path || '', pics: [...new Set(pics)].concat([...new Set(f.no || [])].filter(x => !pics.includes(x)).map(x => '-' + x)).join(','), memo: f.memo, who: [...f.who].join(','), wx: wx || '', mood: f.mood || '', by: myRole() };
     const res = await write('saveItem', 'walk', o);
     if (!res) return;
     const wasLive = f.live; W.files = []; W.form = null; closeSheet();
@@ -424,10 +445,10 @@ async function del(id) {
 }
 // 사진 고르기 (파일 칸은 body에)
 const picker = document.createElement('input');
-picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true; picker.hidden = true;
+picker.type = 'file'; picker.accept = 'image/*,application/octet-stream'; picker.multiple = true; picker.hidden = true;
 document.body.appendChild(picker);
 picker.addEventListener('change', async () => {
-  const files = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = ''; picker.accept = 'image/*';
+  const files = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = '';
   if (!files.length) return;
   if (W.pickMode === 'add') return addPhotos(W.addFor, files);
   formFiles(files);
@@ -450,7 +471,7 @@ async function formFiles(files) {
 async function addPhotos(id, files) {
   const w = byId(id); if (!w) return;
   const g = parse(w.geo), ids = await ALBUM.queue(files, undefined, g ? { geo: w.geo } : null);
-  const pics = [...new Set(String(w.pics || '').split(',').filter(Boolean).concat(ids || []))].join(',');
+  const add = new Set(ids || []), pics = [...new Set(String(w.pics || '').split(',').filter(x => x && !(x[0] === '-' && add.has(x.slice(1)))).concat(ids || []))].join(',');
   await write('saveItem', 'walk', Object.assign({}, w, { pics }));
   render();
 }
@@ -776,6 +797,15 @@ document.addEventListener('click', async e => {
   if (a === 'day') { const X = all().filter(w => w.date === v); if (X.length === 1) return open(X[0].id); openSheet(`<h3>${fmtK(v)} 탐문</h3><div class="wklist">${X.map(rowHtml).join('')}</div><div class="actions"><button class="secondary" data-act="close">닫기</button></div>`); return; }
   if (a === 'pan') return pan(v);
   if (a === 'tsel') { if (W.tsel.has(v)) W.tsel.delete(v); else W.tsel.add(v); selSync(); return; }
+  if (a === 'tout') {   // 고른 사진을 이 탐문 기록에서 빼요 (사진은 사건 앨범에 그대로)
+    const w = byId(W.cur), ids = [...W.tsel]; if (!w || !ids.length) return;
+    if (!(await ask(`고른 사진 ${ids.length}장을 이 탐문 기록에서 뺄까요?\n사진은 사건 앨범에 그대로 남아요.`, { ok: '빼기' }))) return;
+    const L0 = String(w.pics || '').split(',').filter(x => x && !ids.includes(x) && !ids.includes(x.replace(/^-/, '')));
+    if (await write('saveItem', 'walk', Object.assign({}, w, { pics: L0.concat(ids.map(x => '-' + x)).join(',') }))) { W.tsel.clear(); dSig = ''; render(); toast(`${ids.length}장을 이 기록에서 뺐어요`); }
+    return;
+  }
+  if (a === 'rphoto') { const w = byId(W.cur); if (!w) return; if (!(await ask('지도에 찍은 핀 길 대신\n사진 찍은 자리를 시간 순서로 이은 길로 바꿀까요?', { ok: '바꾸기' }))) return;
+    if (await write('saveItem', 'walk', Object.assign({}, w, { path: '', dist: '' }))) { dSig = ''; render(); toast('사진 자리로 길을 그렸어요 🐾'); } return; }
   if (a === 'tall') { const ids = [...document.querySelectorAll('.wktck')].map(x => x.dataset.v); if (W.tsel.size === ids.length) W.tsel.clear(); else ids.forEach(id => W.tsel.add(id)); selSync(); return; }
   if (a === 'tnone') { W.tsel.clear(); selSync(); if (window.EXPLORE) EXPLORE.pinOff(); return; }
   if (a === 'tpin') return pinPhoto([...W.tsel]);
@@ -802,8 +832,7 @@ document.addEventListener('click', async e => {
   if (a === 'kind' || a === 'mood') { f[a] = a === 'mood' && f.mood === v ? '' : v; b.parentElement.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.v === f[a])); return; }
   if (a === 'who') { if (f.who.has(v)) f.who.delete(v); else f.who.add(v); b.classList.toggle('on', f.who.has(v)); return; }
   if (a === 'photos') { grab(); W.pickMode = 'form'; picker.click(); return; }
-  if (a === 'photos2') { grab(); W.pickMode = 'form'; picker.accept = 'image/*,application/octet-stream'; picker.click(); setTimeout(() => { picker.accept = 'image/*'; }, 500); return; }   // 파일 고르기 창 → 갤러리 앱·앨범 폴더 (위치도 대개 그대로)
-  if (a === 'unpic') { f.pics = f.pics.filter(x => x !== v); $('wf-ph').innerHTML = formPhotos(); return; }
+  if (a === 'unpic') { f.pics = f.pics.filter(x => x !== v); f.no = [...new Set((f.no || []).concat(v))]; if (window.__app) __app.sheetDirty(); $('wf-ph').innerHTML = formPhotos(); return; }   // 시간으로 저절로 들어온 사진도 다시 안 들어오게 '-id'로
   if (a === 'unfile') { const x = W.files.splice(+v, 1)[0]; if (x) try { URL.revokeObjectURL(x.url); } catch (er) {} $('wf-ph').innerHTML = formPhotos(); return; }
   if (a === 'ungeo') { setGeo(null); return; }
   if (a === 'unpin') { unpin(+v); return; }
@@ -870,7 +899,9 @@ css.textContent = `
 .wktck.on i{background:var(--red);border-color:var(--red);color:#fff}.wktl.on{background:#FBE9E4;border-radius:14px}
 .wkall{margin-left:6px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:99px;font-size:12px;padding:2px 10px;min-height:30px;color:var(--navy)}
 .wksel{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;align-items:center;gap:8px;margin-top:10px;background:var(--navy);color:#fff;border-radius:16px;padding:8px 8px 8px 14px;box-shadow:0 6px 16px rgba(31,42,68,.3)}
-.wksel[hidden]{display:none}.wksel b{flex:1;font-family:var(--display);font-weight:400;font-size:15px}
+.wksel[hidden]{display:none}.wksel button.out{background:#fff;color:var(--red)}
+.wkrn{margin:10px 0 0;font-size:13px;line-height:1.55;background:#FFFDF7;border:1.5px dashed rgba(31,42,68,.3);border-radius:12px;padding:8px 12px;color:var(--ink)}
+.wkrn button{margin-top:6px;display:block;min-height:38px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);padding:0 14px;font-size:13px}.wksel b{flex:1;font-family:var(--display);font-weight:400;font-size:15px}
 .wksel button{min-height:40px;border-radius:99px;border:0;background:var(--red);color:#fff;font-size:13.5px;padding:0 14px;white-space:nowrap}.wksel button[data-wk=tnone]{background:none;border:1.5px solid rgba(255,255,255,.45);padding:0 12px}
 .wktpan{flex-shrink:0;width:44px;height:44px;border:1.5px solid var(--line);border-radius:12px;background:#FFFDF7;font-size:18px}
 .wkacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.wkacts .ghost{min-height:46px}.wkacts .wkdel{color:var(--red)}

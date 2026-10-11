@@ -1,0 +1,46 @@
+# 성장 영상용 '실제 연주' 클래식 곡 받기: 위키미디어 공용에서 퍼블릭 도메인·CC0 연주만 골라 music/에 올려요 (스크립트를 바꾸거나 직접 실행할 때)
+name: 영상 음악 받기
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/scripts/fetch-music.mjs', '.github/workflows/music.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: music
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: ffmpeg 설치
+        run: which ffmpeg || (sudo apt-get update -q && sudo apt-get install -y -q ffmpeg)
+      - name: 곡 받기 (PD·CC0만)
+        run: node .github/scripts/fetch-music.mjs
+      - name: 바뀐 게 있으면 main에 올리기
+        run: |
+          git add -A music
+          if git diff --cached --quiet; then
+            echo "그대로라 올리지 않아요"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "영상 음악(퍼블릭 도메인 연주) 갱신"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 5))
+          done
+          exit 1

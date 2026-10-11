@@ -241,6 +241,7 @@ window.addEventListener('popstate', () => {
   if (history.state && history.state.soeunGuard) return;
   if (window.__askClose && __askClose()) { guard(); return; }            // 앱 확인창
   if (window.FOCUS && FOCUS.close()) { guard(); return; }                // 🎯 보여 줄 곳 정하기
+  if (window.ALBUM && ALBUM.pkClose && ALBUM.pkClose()) { guard(); return; }   // 현장 사진에서 고르기 창
   if (isOpen()) { close(); guard(); return; }                          // 1) 사진 크게 보기
   if (sheetOpen()) { if (window.__app && __app.softClose) __app.softClose(); else closeSheet(); guard(); return; }   // 2) 편집창 같은 아래 창 (적던 중이면 한 번 더 눌러야 닫혀요)
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리
@@ -248,7 +249,8 @@ window.addEventListener('popstate', () => {
   if (window.MOVIE && MOVIE.close()) { guard(); return; }                          // 성장 영상 만드는 창
   if (window.EXPLORE && EXPLORE.closeFull && EXPLORE.closeFull()) { guard(); return; }   // 크게 본 탐험·탐문 지도
   if (window.WALK && WALK.close()) { guard(); return; }                            // 탐문 중 화면 → 작게 (기록은 계속)
-  if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }   // 3) 크게 본 병원 지도
+  if (window.HOSP && HOSP.closeFull && HOSP.closeFull()) { guard(); return; }
+  if (window.BOARD && BOARD.closeFull && BOARD.closeFull()) { guard(); return; }   // 크게 본 수사 보드   // 3) 크게 본 병원 지도
   if (typeof S !== 'undefined' && S.view) {                            // 3) 안쪽 화면 → 열기 전 화면, 그 스크롤 위치로 (goBack, index.html)
     goBack(); guard(); return;
   }

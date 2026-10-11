@@ -16,6 +16,13 @@ const issueNo = ym => { const b = S.profile.birth; return (+ym.slice(0, 4) - +b.
 function months() { const L = []; for (let ym = S.profile.birth.slice(0, 7); ym <= today().slice(0, 7); ym = nextYm(ym)) L.push(ym); return L.reverse(); }
 const regionCode = () => { try { return localStorage.getItem('soeun-hosp-region') || 'wonju'; } catch (e) { return 'wonju'; } };
 const SKY = { 1: '맑음', 3: '구름 많음', 4: '흐림' };
+// 내가 고친 것 (이 폰만, localStorage soeun-paper-edit): { 'YYYY-MM': { no:[뺀 사진], main:대표 사진, strip:[사진 줄 4칸], seed:다시 만들기 횟수 } }
+const EK = 'soeun-paper-edit';
+const edits = () => { try { return JSON.parse(localStorage.getItem(EK) || '{}') || {}; } catch (e) { return {}; } };
+const ed = ym => Object.assign({ no: [], main: '', strip: [], seed: 0 }, edits()[ym] || {});
+const edPut = (ym, e) => { const all = edits(); all[ym] = e; try { localStorage.setItem(EK, JSON.stringify(all)); } catch (x) {} };
+// seed로 섞기 (다시 만들 때마다 다른 사진·다른 큰 제목)
+const shuf = (L, seed) => { if (!seed) return L.slice(); let x = seed * 9301 + 49297; const r = () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; const a = L.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 // ---------- 그달 이야기 모으기 ----------
 function issue(ym) {
@@ -43,23 +50,30 @@ function issue(ym) {
   // 독자 투고: 그달 메모 중 가장 긴 것
   const memos = [...(S.records || []).filter(r => inM(r.date) && r.memo).map(r => ({ by: r.by, t: r.memo, d: r.date })), ...(S.moments || []).filter(m => inM(m.date) && m.memo).map(m => ({ by: m.by, t: m.memo, d: m.date }))].sort((x, y) => y.t.length - x.t.length);
   // 대표 사진: 그달 월별 사진 → 최초 목격 사진 → 가장 최근 사진
-  const ok = id => !!safeImg(PHOTOS[id]);
-  const pool = CV.photos().filter(p => inM(p.date) && p.id !== 'profile');
-  const main = pool.find(p => p.type === 'month') || pool.find(p => p.type === 'first') || pool[0] || null;
-  const rest = pool.filter(p => !main || p.id !== main.id), strip = [];
-  if (rest.length) { const n = Math.min(4, rest.length); for (let i = 0; i < n; i++) strip.push(rest[Math.floor(i * rest.length / n)]); }
+  // 내가 뺀 사진은 안 쓰고, 직접 고른 사진은 그 자리에. 🔄 다시 만들기(seed)면 다른 사진으로
+  const ok = id => !!safeImg(PHOTOS[id]), E = ed(ym), all = CV.photos(), byPid = id => all.find(p => p.id === id) || null;
+  const pool = shuf(all.filter(p => inM(p.date) && p.id !== 'profile' && !E.no.includes(p.id)), E.seed);
+  const main = (E.main && !E.no.includes(E.main) && byPid(E.main)) || (E.seed ? pool[0] : pool.find(p => p.type === 'month') || pool.find(p => p.type === 'first') || pool[0]) || null;
+  const rest = pool.filter(p => (!main || p.id !== main.id) && !E.strip.includes(p.id)), strip = [], auto = [];
+  if (rest.length) { const n = Math.min(4, rest.length); for (let i = 0; i < n; i++) auto.push(rest[Math.floor(i * rest.length / n)]); }
+  for (let i = 0; i < 4; i++) { const pick = E.strip[i] && !E.no.includes(E.strip[i]) && byPid(E.strip[i]); const q = pick || auto.shift(); if (q) strip.push(q); }
   const kg = v => (+v).toFixed(2).replace(/0$/, '');
-  return { ym, d0, d1, no: issueNo(ym), w1, w0, h1, h0, wIn, hIn, kg, firsts, photos, phBy, vacs, chks, foods, devs, caps, days, wanted, look, verdict, places, walks, ann, memo: memos[0] || null, main: main && ok(main.id) ? main : null, strip: strip.filter(p => ok(p.id)), partial: d1 < end };
+  return { ym, d0, d1, no: issueNo(ym), w1, w0, h1, h0, wIn, hIn, kg, firsts, photos, phBy, vacs, chks, foods, devs, caps, days, wanted, look, verdict, places, walks, ann, memo: memos[0] || null, main: main && ok(main.id) ? main : null, strip: strip.filter(p => ok(p.id)), partial: d1 < end, seed: E.seed, pool };
 }
-function headline(I) {
-  const n = nm(), sub = josa(n + ' 탐정', '은', '는');
+// 큰 제목: 들어갈 만한 것 중 첫째(다시 만들기를 누르면 차례로 다음 것)
+function headline(I) { const L = heads(I); return L[(I.seed || 0) % L.length]; }
+function heads(I) {
+  const out = [], n = nm(), sub = josa(n + ' 탐정', '은', '는');
   const past = I.ann.filter(a => a[0] <= I.d1);
-  if (past.length) return ['경축', `${n} 탐정 ${past[0][1]} 돌파!`, `${fmtK(past[0][0], true)} 온 가족이 축하했다`];
-  if (I.firsts.length) { const f = I.firsts[0]; return ['속보', `${f.title} 성공… 최초 목격자는 ${f.by || '수사관'}${f.by ? ' 수사관' : ''}`, `생후 ${dayNo(f.date)}일${I.firsts.length > 1 ? ` · 이달 최초 목격 ${I.firsts.length}건` : ''}`]; }
-  if (I.w1 && I.w0 && I.wIn && Math.floor(+I.w1.weight) > Math.floor(+I.w0.weight)) return ['속보', `${n} 탐정 ${Math.floor(+I.w1.weight)}kg 돌파!`, `${I.kg(I.w0.weight)}kg → ${I.kg(I.w1.weight)}kg, 한 달 새 ${Math.round((I.w1.weight - I.w0.weight) * 1000)}g 증량`];
-  if (I.vacs.length) return ['단독', `주사 ${I.vacs.length}방에도 씩씩… 예방접종 작전 성공`, I.vacs.slice(0, 3).map(v => v.name).join(' · ')];
-  if (I.photos.length >= 10) return ['특종', `이달의 증거 사진 ${I.photos.length}장 확보`, `엄마 수사관 ${I.phBy('엄마')}장 · 아빠 수사관 ${I.phBy('아빠')}장`];
-  return ['오늘의 소식', `${sub} 이번 달도 무럭무럭`, `생후 ${dayNo(I.d0)}~${dayNo(I.d1)}일의 수사 보고`];
+  if (past.length) out.push(['경축', `${n} 탐정 ${past[0][1]} 돌파!`, `${fmtK(past[0][0], true)} 온 가족이 축하했다`]);
+  if (I.firsts.length) { const f = I.firsts[(I.seed || 0) % I.firsts.length]; out.push(['속보', `${f.title} 성공… 최초 목격자는 ${f.by || '수사관'}${f.by ? ' 수사관' : ''}`, `생후 ${dayNo(f.date)}일${I.firsts.length > 1 ? ` · 이달 최초 목격 ${I.firsts.length}건` : ''}`]); }
+  if (I.w1 && I.w0 && I.wIn && Math.floor(+I.w1.weight) > Math.floor(+I.w0.weight)) out.push(['속보', `${n} 탐정 ${Math.floor(+I.w1.weight)}kg 돌파!`, `${I.kg(I.w0.weight)}kg → ${I.kg(I.w1.weight)}kg, 한 달 새 ${Math.round((I.w1.weight - I.w0.weight) * 1000)}g 증량`]);
+  if (I.vacs.length) out.push(['단독', `주사 ${I.vacs.length}방에도 씩씩… 예방접종 작전 성공`, I.vacs.slice(0, 3).map(v => v.name).join(' · ')]);
+  if (I.walks.length) out.push(['현장', `${n} 탐정, 이달 탐문 ${I.walks.length}번 출동`, I.places.length ? `처음 가 본 곳 ${I.places.length}곳 · 동네 지도가 넓어졌다` : '산책·나들이로 동네 구석구석 수사']);
+  if (I.photos.length >= 10) out.push(['특종', `이달의 증거 사진 ${I.photos.length}장 확보`, `엄마 수사관 ${I.phBy('엄마')}장 · 아빠 수사관 ${I.phBy('아빠')}장`]);
+  if (I.main && I.main.title) out.push(['화제', `포착! ${I.main.title}`, `${fmtK(I.main.date, true)} 생후 ${dayNo(I.main.date)}일 현장 사진`]);
+  out.push(['오늘의 소식', `${sub} 이번 달도 무럭무럭`, `생후 ${dayNo(I.d0)}~${dayNo(I.d1)}일의 수사 보고`]);
+  return out;
 }
 function articles(I) {
   const A = [], n = nm();
@@ -195,14 +209,36 @@ function render_() {
   return `<header class="vhead noprint"><span class="no">사건 파일 No.${fileNo()}</span><h1>월간 ${esc(nm())}일보</h1><p>그달 기록으로 신문 한 장을 만들어요. 카톡으로 보내거나 인쇄할 수 있어요.</p></header>
   <div class="chips ppms noprint">${L.map(m => `<button class="chip${m === ym ? ' on' : ''}" data-pp="ym" data-v="${m}">${m.slice(0, 4) !== today().slice(0, 4) ? m.slice(2, 4) + '년 ' : ''}${+m.slice(5)}월호${m === today().slice(0, 7) ? ' (진행 중)' : ''}</button>`).join('')}</div>
   <div class="ppwrap"><canvas id="ppcv" class="ppcv" width="${W}" height="${H}" aria-label="${+ym.slice(5)}월호 신문"></canvas><p class="ppload" id="pp-load">신문 찍는 중…</p></div>
+  <div class="ppedit noprint"><button class="ppre" data-pp="regen">🔄 다시 만들기<small>다른 사진·다른 큰 제목으로</small></button></div>
+  <div class="ppslots noprint" id="pp-slots"></div>
   <div class="stact noprint"><button class="primary" data-pp="share">📤 카톡으로 보내기</button><button class="secondary" data-pp="save">💾 저장</button><button class="secondary" data-pp="print">🖨️ 인쇄</button></div>
   <button class="secondary noprint" data-pp="close" style="width:100%;margin-top:10px">돌아가기</button>`;
 }
 function defYm() { const t = today(), cur = t.slice(0, 7), pv = prevYm(cur); return +t.slice(8) <= 5 && pv >= S.profile.birth.slice(0, 7) ? pv : cur; }
 function mount() {
   const cv = document.getElementById('ppcv'); if (!cv) return;
-  draw(cv, P.ym).then(ok => { const l = document.getElementById('pp-load'); if (ok && l) l.hidden = true; }).catch(e => { console.error(e); const l = document.getElementById('pp-load'); if (l) l.textContent = '신문을 만들지 못했어요: ' + ((e && e.message) || ''); });
+  draw(cv, P.ym).then(ok => { const l = document.getElementById('pp-load'); if (ok && l) l.hidden = true; if (ok) slots(); }).catch(e => { console.error(e); const l = document.getElementById('pp-load'); if (l) l.textContent = '신문을 만들지 못했어요: ' + ((e && e.message) || ''); });
 }
+// 신문에 들어간 사진 칸: 누르면 다른 사진으로 바꾸기, ✕는 빼기(그 자리는 다른 사진이 채워요). 글(사진 설명·큰 제목)은 바뀐 사진으로 다시 써요
+function slots() {
+  const box = document.getElementById('pp-slots'); if (!box) return;
+  const I = issue(P.ym), E = ed(P.ym), changed = E.no.length || E.main || E.strip.some(Boolean) || E.seed;
+  const cell = (p, k, lab) => `<div class="ppsl${p ? '' : ' empty'}"><button class="ppsli" data-pp="slot" data-v="${k}">${p ? `<img src="${safeImg(PHOTOS[p.id])}" alt="" loading="lazy">` : '<span>＋</span>'}<em>${lab}</em></button>${p ? `<button class="ppslx" data-pp="drop" data-v="${esc(p.id)}" aria-label="이 사진 빼기">✕</button>` : ''}</div>`;
+  box.innerHTML = `<p class="ppsh"><b>🖼️ 신문 사진</b><span>누르면 바꾸기 · ✕는 빼기</span></p><div class="ppsg">${cell(I.main, 'main', '대표')}${[0, 1, 2, 3].map(i => cell(I.strip[i], 's' + i, '사진 ' + (i + 1))).join('')}</div>
+    ${E.no.length ? `<p class="ppno">뺀 사진 ${E.no.length}장 <button data-pp="unno">다시 넣기</button></p>` : ''}${changed ? '<button class="ppreset" data-pp="reset">↩ 처음대로 (저절로 만든 신문)</button>' : ''}`;
+  if (window.FOCUS) FOCUS.apply(box);
+}
+function slotSheet(k, wide) {
+  const ym = P.ym, E = ed(ym), L = CV.photos().filter(p => p.id !== 'profile' && (wide || p.date.slice(0, 7) === ym));
+  const cur = k === 'main' ? (issue(ym).main || {}).id : (issue(ym).strip[+k.slice(1)] || {}).id;
+  openSheet(`<h3>${k === 'main' ? '대표 사진' : '사진 ' + (+k.slice(1) + 1)} 바꾸기</h3>
+    <p class="hint" style="margin:-6px 0 10px">${wide ? '모든 달의 사진이에요.' : `${+ym.slice(5)}월에 찍은 사진이에요.`} 고르면 신문을 다시 만들어요.</p>
+    <div class="ppgrid">${L.slice(0, 240).map(p => `<button class="${p.id === cur ? 'on' : ''}${E.no.includes(p.id) ? ' no' : ''}" data-pp="use" data-k="${k}" data-v="${esc(p.id)}"><img src="${safeImg(PHOTOS[p.id])}" alt="" loading="lazy" decoding="async"><small>${fmtMD(p.date)}</small></button>`).join('') || '<p class="vempty">이달 사진이 없어요.</p>'}</div>
+    ${wide ? '' : `<button class="ghost" data-pp="wide" data-k="${k}" style="width:100%;margin-top:10px;min-height:44px">다른 달 사진도 보기</button>`}
+    <div class="actions"><button class="secondary" data-act="close">닫기</button></div>`);
+  if (window.FOCUS) FOCUS.apply(document.getElementById('sheet'));
+}
+const redraw = () => { const l = document.getElementById('pp-load'); if (l) { l.hidden = false; l.textContent = '신문 다시 찍는 중…'; } mount(); };
 const fname = () => `${nm()}일보_${P.ym.slice(0, 4)}년${+P.ym.slice(5)}월호.jpg`;
 function blob() { const cv = document.getElementById('ppcv'); return new Promise((res, rej) => { try { cv.toBlob(b => b ? res(b) : rej(new Error('만들지 못했어요')), 'image/jpeg', .92); } catch (e) { rej(e); } }); }
 function banner() {
@@ -220,6 +256,13 @@ document.addEventListener('click', async e => {
   if (a === 'openprev') { P.ym = prevYm(today().slice(0, 7)); try { localStorage.setItem(SEEN, P.ym); } catch (x) {} S.view = 'paper'; render(); window.scrollTo(0, 0); return; }
   if (a === 'close') { goBack(); return; }
   if (a === 'ym') { P.ym = b.dataset.v; render(); return; }
+  if (a === 'regen') { const E = ed(P.ym); E.seed = (E.seed || 0) + 1; E.main = ''; E.strip = []; edPut(P.ym, E); redraw(); toast('🔄 다른 사진·다른 제목으로 다시 만들었어요'); return; }
+  if (a === 'slot') { slotSheet(b.dataset.v, false); return; }
+  if (a === 'wide') { slotSheet(b.dataset.k, true); return; }
+  if (a === 'use') { const E = ed(P.ym), k = b.dataset.k, id = b.dataset.v; E.no = E.no.filter(x => x !== id); if (k === 'main') { E.main = id; E.strip = E.strip.map(x => x === id ? '' : x); } else { const i = +k.slice(1); E.strip = [0, 1, 2, 3].map(j => j === i ? id : (E.strip[j] === id ? '' : E.strip[j] || '')); if (E.main === id) E.main = ''; } edPut(P.ym, E); closeSheet(); redraw(); return; }
+  if (a === 'drop') { const E = ed(P.ym), id = b.dataset.v; if (!E.no.includes(id)) E.no.push(id); if (E.main === id) E.main = ''; E.strip = E.strip.map(x => x === id ? '' : x); edPut(P.ym, E); redraw(); toast('그 사진을 빼고 다른 사진으로 채웠어요'); return; }
+  if (a === 'unno') { const E = ed(P.ym); E.no = []; edPut(P.ym, E); redraw(); return; }
+  if (a === 'reset') { if (!(await ask('고친 것을 모두 없애고\n처음 저절로 만든 신문으로 돌릴까요?', { ok: '처음대로' }))) return; edPut(P.ym, { no: [], main: '', strip: [], seed: 0 }); redraw(); return; }
   if (a === 'print') { window.print(); return; }
   if (a === 'share' || a === 'save') {
     b.disabled = true;
@@ -231,7 +274,25 @@ document.addEventListener('click', async e => {
 
 const css = document.createElement('style');
 css.textContent = `
-.ppms{margin-top:12px}.ppms .chip.on{background:var(--navy);color:#fff}
+.ppms{margin-top:12px}
+.ppedit{margin-top:12px}.ppre{width:100%;min-height:54px;border-radius:16px;border:2px solid var(--navy);background:var(--navy);color:#fff;font-family:var(--display);font-size:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.ppre small{font-family:var(--body);font-size:12px;opacity:.85}
+.ppslots{margin-top:12px;background:#FFFDF7;border:1.5px dashed var(--line);border-radius:16px;padding:10px 12px}
+.ppslots:empty{display:none}
+.ppsh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 8px;font-size:12px;color:var(--muted)}.ppsh b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}
+.ppsg{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:6px;align-items:end}
+.ppsl{position:relative}.ppsli{display:block;width:100%;aspect-ratio:1;border:1.5px solid var(--navy);border-radius:10px;overflow:hidden;padding:0;background:#EFE5CF;position:relative}
+.ppsl:first-child .ppsli{aspect-ratio:4/3.4}
+.ppsli img{width:100%;height:100%;object-fit:cover;display:block}.ppsli span{font-size:22px;color:var(--muted)}
+.ppsli em{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:11px;background:rgba(31,42,68,.75);color:#fff;padding:1px 0;text-align:center}
+.ppslx{position:absolute;right:-6px;top:-6px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:var(--red);color:#fff;font-size:12px;padding:0;line-height:1}
+.ppno{margin:8px 0 0;font-size:12.5px;color:var(--muted)}.ppno button{border:0;background:none;color:var(--red);text-decoration:underline;font-size:12.5px;min-height:32px}
+.ppreset{width:100%;margin-top:8px;min-height:40px;border-radius:99px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-size:13px}
+.ppgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-height:56vh;overflow-y:auto}
+.ppgrid button{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:8px;overflow:hidden;background:#ddd}
+.ppgrid img{width:100%;height:100%;object-fit:cover;display:block}
+.ppgrid small{position:absolute;left:4px;bottom:3px;color:#fff;font-size:11px;text-shadow:0 1px 2px #000}
+.ppgrid .on{outline:3px solid var(--red);outline-offset:-3px}.ppgrid .no{opacity:.45}.ppms .chip.on{background:var(--navy);color:#fff}
 .ppwrap{position:relative;margin-top:12px}
 .ppcv{display:block;width:100%;height:auto;border-radius:6px;box-shadow:0 6px 16px rgba(60,40,20,.22);background:#F6F0E1}
 .ppload{position:absolute;left:0;right:0;top:40%;text-align:center;font-family:var(--display);color:var(--navy);font-size:18px}
