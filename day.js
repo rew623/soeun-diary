@@ -20,7 +20,8 @@ const K = {
 };
 const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath'];
 // 5칸 × 2줄 (자주 쓰는 것 첫 줄, 옆으로 밀지 않아도 다 보여요)
-const QUICK = [['formula', '🍼', '분유'], ['breast', '🤱', '모유수유'], ['solid', '🥣', '이유식'], ['diaper', '🧷', '소변/대변'], ['sleep', '😴', '수면'], ['pump', '🍶', '유축수유'], ['bath', '🛁', '목욕'], ['memo', '📝', '메모'], ['temp', '🌡️', '체온'], ['med', '💊', '투약']];
+const DIA = '<svg viewBox="0 0 24 24" width="1.15em" height="1.15em" style="vertical-align:-.2em" aria-hidden="true"><path d="M2.5 5.5h19v5.2c0 5.2-3.4 8.3-9.5 8.3s-9.5-3.1-9.5-8.3z" fill="#FFFDF7" stroke="#1F2A44" stroke-width="1.5" stroke-linejoin="round"/><path d="M2.5 8.6h19" stroke="#2a78d6" stroke-width="1.4"/><rect x="2.5" y="5.5" width="4" height="3.1" rx="1" fill="#7FB2F0" stroke="#1F2A44" stroke-width="1.2"/><rect x="17.5" y="5.5" width="4" height="3.1" rx="1" fill="#7FB2F0" stroke="#1F2A44" stroke-width="1.2"/><path d="M9 12.5q3 2.2 6 0" fill="none" stroke="#9db8d9" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const QUICK = [['formula', '🍼', '분유'], ['breast', '🤱', '모유수유'], ['solid', '🥣', '이유식'], ['diaper', DIA, '소변/대변'], ['sleep', '😴', '수면'], ['pump', '🍶', '유축수유'], ['bath', '🛁', '목욕'], ['memo', '📝', '메모'], ['temp', '🌡️', '체온'], ['med', '💊', '투약']];
 const PH = { memo: '기록하고 싶은 정보가 있다면 적어 주세요', formula: '예: 160 탔다가 130 먹음', pump: '예: 냉동 모유 데워서 먹임', breast: '예: 왼쪽 먹다가 잠듦', diaper: '예: 엉덩이가 살짝 빨개요', sleep: '예: 안아서 재움, 중간에 한 번 깸', bath: '예: 물 38도, 머리도 감김' };
 const AMT = { 조금: '양 조금', 보통: '양 보통', 많이: '양 많이' }, STT = { 묽음: '묽은 변', 보통: '보통 변', 단단: '단단한 변', 설사: '설사' };
 const SLOT_T = { 아침: '08:00', 점심: '12:00', 저녁: '18:00', 간식: '15:00' };
@@ -185,7 +186,7 @@ function dayLog() {
     const now = Date.now(), A = evs().filter(e => e.s <= now), feed = A.filter(e => ['formula', 'pump', 'breast', 'solid'].includes(e.k)).pop(), dia = A.filter(e => e.k === 'diaper').pop();
     const bath = A.filter(e => e.k === 'bath').pop();
     const box = (ic, lab, e, sub) => `<div><small>${ic} ${lab}</small>${e ? `<b>${e}</b><em>${sub}</em>` : '<b class="no">-</b><em>기록 없음</em>'}</div>`;
-    last = `<p class="dylh">마지막 기록</p><div class="dylast">${box('🍼', '수유', feed && feed.t, feed && agoTxt(feed.s))}${box('🧷', '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${box('🛁', '목욕', bath && bath.t, bath && agoTxt(bath.s))}</div>`;
+    last = `<p class="dylh">마지막 기록</p><div class="dylast">${box('🍼', '수유', feed && feed.t, feed && agoTxt(feed.s))}${box(DIA, '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${box('🛁', '목욕', bath && bath.t, bath && agoTxt(bath.s))}</div>`;
   }
   const chips = [[st.formula.n, `🍼 분유 ${st.formula.ml}ml · ${st.formula.n}회`], [st.breast.n, `🤱 모유 ${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`], [st.pump.n, `🍶 유축 ${st.pump.ml}ml`], [st.solid.n, `🥣 이유식 ${st.solid.n}회`],
     [st.pee.n, `💧 소변 ${st.pee.n}`], [st.poo.n, `💩 대변 ${st.poo.n}`], [st.sleep.min, `😴 ${durTxt(st.sleep.min)}`], [st.bath.n, `🛁 목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span>${x[1]}</span>`).join('');
@@ -309,7 +310,7 @@ function openForm(k, c) {
   const now = new Date(), d0 = c ? c.date : D.date, t0 = c ? c.t : (D.date === today() ? hmOf(now) : '12:00');
   const liveBr = !!(c && c.live && c.k === 'breast' && c.seg), add = liveBr ? Math.max(0, (Date.now() - c.seg) / 60000) : 0;
   F = { k, id: c ? c.id : newCid(), old: c ? c.date : '', edit: !!c, live: c ? c.live : 0, side: c ? c.side : '', seg: liveBr ? Date.now() : c ? c.seg : 0, at: c ? c.at : 0, pee: c ? !!c.pee : true, poo: c ? !!c.poo : false };
-  const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = k === 'diaper' ? '🧷' : kk.i;
+  const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = k === 'diaper' ? DIA : kk.i;
   // 시각은 폰 시계 창(헷갈려요) 대신 숫자 칸 + ▲▼ (사용자 요청)
   const hasE = ['formula', 'pump', 'breast', 'sleep'].includes(k);
   const tIn = `<label class="field"><span>날짜</span><input id="dy-d" type="date" value="${d0}" min="${S.profile.birth}" max="${today()}"></label>
@@ -392,7 +393,7 @@ async function save(b) {
   b.disabled = false;
   if (!res) return;
   const k = F.k; F = null; closeSheet(); D.date = g.date; D.wk = monday(g.date); render();
-  toast(`${k === 'diaper' ? '🧷 기저귀' : (K[k] || K.memo).i + ' ' + (K[k] || K.memo).n} 기록을 남겼어요`);
+  toast(`${k === 'diaper' ? '기저귀' : (K[k] || K.memo).i + ' ' + (K[k] || K.memo).n} 기록을 남겼어요`);
 }
 // 빠른 단추: 누르는 그 순간, 같은 종류의 가장 최근 기록과 똑같은 값으로 바로 남겨요 (사용자 요청 2026.10.11)
 // 다 먹이고 나서 목록에서 눌러 양·메모를 고쳐요. 처음(최근 기록 없음)·메모는 창을 열어요, 수면은 바로 타이머
@@ -417,7 +418,7 @@ async function quickAdd(k, btn) {
   if (!res) return;
   D.mode = 'day'; D.sub.day = 'log'; D.date = today(); D.flash = it.id; render(); setTimeout(() => { if (D.flash === it.id) D.flash = ''; }, 2600);
   const det = k === 'formula' || k === 'pump' ? ` ${it.ml}ml` : k === 'breast' ? ` 왼쪽 ${Math.round(it.l || 0)}분·오른쪽 ${Math.round(it.r || 0)}분` : k === 'diaper' ? ` ${[it.pee ? '소변' : '', it.poo ? '대변' : ''].filter(Boolean).join('·')}` : k === 'bath' ? ` ${it.dur || 0}분` : '';
-  toast(`${k === 'diaper' ? '🧷' : (K[k] || K.memo).i} ${hmOf(now)}${det} 바로 남겼어요\n다르면 목록에서 눌러 고쳐요`);
+  toast(`${k === 'diaper' ? '기저귀' : (K[k] || K.memo).i} ${hmOf(now)}${det} 바로 남겼어요\n다르면 목록에서 눌러 고쳐요`);
 }
 // ---------- 다른 앱(베이비빌리 등) 기록 붙여넣기: 한 줄에 기록 하나 ----------
 // 형식: 2026-10-05 08:30 분유 160 [~08:50] [# 메모] · 모유 왼10 오8 · 유축 80 · 소변 · 대변 [많이] [묽음] · 소변대변 · 수면 ~10:40 · 목욕 15분 · 메모 내용
