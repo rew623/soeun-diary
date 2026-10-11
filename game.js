@@ -408,7 +408,7 @@ function lookOnce() {
   looking = true;
   const o = { look: LOOK, hat: 'none', hatOf: Object.assign({}, s.hatOf || {}, { mom: 'bowler', dad: 'deer' }), wear: Object.assign({}, s.wear || {}, { baby: 'conan', mom: 'watson', dad: 'sherlock' }), propOf: Object.assign({}, s.propOf || {}, { baby: 'skate', mom: 'bag', dad: 'violin' }) };
   Object.assign(g, clone(o));
-  run('saveGame', o, 0, undefined, { key: 'look', val: LOOK }).then(() => { setTimeout(() => toast('🕵️ 소은=코난, 아빠=셜록, 엄마=왓슨으로 갈아입었어요!\n꾸미기에서 언제든 바꿀 수 있어요'), 800); render(); })
+  run('saveGame', o, 0, undefined, { key: 'look', val: LOOK }).then(() => { setTimeout(() => toast('🕵️ 탐정·수사관 옷으로 갈아입었어요!\n꾸미기에서 언제든 바꿀 수 있어요'), 800); render(); })
     .catch(() => { if (window.__app && __app.refresh) __app.refresh(); }).finally(() => { looking = false; });   // 다른 폰이 먼저 했으면 그쪽 모습으로
 }
 // ---------- 방 꾸미기는 room.js (ROOMS) ----------
