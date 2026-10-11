@@ -1,11 +1,17 @@
 // 수사 보드 — 사건 앨범 탭의 FBI 수사 게시판 (기존 기록을 모아 카드로 붙이고 빨간 실로 이어요)
 (function () {
 const T = { x: 0, y: 0, s: 1, init: false };        // 보드 위치·확대 (다시 그려도 그대로)
-// 크게 보기(빈 곳을 누르면 화면 가득), 카드 옮긴 자리(꾹 눌러 끌기 — 이 폰에만 기억 localStorage soeun-board-pos {카드id:[dx,dy]})
+// 크게 보기(빈 곳을 누르면 화면 가득), 카드 옮긴 자리(꾹 눌러 끌기 — 두 폰 같이: game/shared bpos {카드id:[dx,dy]}, GAME.store)
 const B = { full: false };
-const PK = 'soeun-board-pos';
-let POS = {}; try { POS = JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) {}
-const posSave = () => { try { localStorage.setItem(PK, JSON.stringify(POS)); } catch (e) {} };
+const PK = 'soeun-board-pos';   // 예전에 이 폰에만 기억하던 자리 (한 번 같이 쓰는 곳으로 옮기고 지워요)
+let POS = {};
+function posLoad() {
+  if (!window.GAME || !GAME.store) return POS;
+  const s = GAME.store.get(); let old = null; try { old = JSON.parse(localStorage.getItem(PK) || 'null'); } catch (e) {}
+  if (old && Object.keys(old).length && !(s.bpos && Object.keys(s.bpos).length) && s.synced && S.game && S.game.srv && !(S.me && S.me.viewer)) { s.bpos = old; GAME.store.set(s); try { localStorage.removeItem(PK); } catch (e) {} }
+  POS = Object.assign({}, s.bpos || {}); return POS;
+}
+const posSave = () => { if (!window.GAME || !GAME.store) return; if (S.me && S.me.viewer) { toast('보기 전용이라 배치는 이 화면에서만 바뀌어요'); return; } const s = GAME.store.get(); s.bpos = Object.assign({}, POS); GAME.store.set(s); };
 const hash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
 const jit = (id, k, r) => (hash(id + k) % 1000) / 1000 * 2 * r - r;   // 카드마다 늘 같은 기울기·흔들림
 
@@ -51,7 +57,7 @@ function cards() {
 }
 
 function renderBoard() {
-  const cs = cards();
+  posLoad(); const cs = cards();
   return `<div class="bwrap${B.full ? ' bfull' : ''}" id="bwrap"><div class="bstage" id="bstage">
     ${cs.map(c => `<div class="bcard ${c.cls}" data-bid="${esc(c.id)}" data-bgo="${c.go}" role="button" tabindex="0" ${c.id === 'center' ? 'data-center="1"' : ''}>${c.html}</div>`).join('')}
     <svg class="bstrings" id="bstrings" aria-hidden="true"></svg><svg class="bstrings bpins" id="bpins" aria-hidden="true"></svg></div>
@@ -63,6 +69,7 @@ function renderBoard() {
 // ---------- 자동 배치 (콜라주: 가운데 아기 사진 둘레로 사방에 고르게, 크기·기울기 제각각, 살짝 겹쳐도 괜찮게) ----------
 // 판은 화면보다 넓게 쓰고(옆으로도 퍼지게), 처음엔 판 전체 폭이 화면에 들어오게 줄여서 보여 줘요
 function layout() {
+  posLoad();
   const wrap = document.getElementById('bwrap'), stage = document.getElementById('bstage');
   const W = wrap.clientWidth, vh = wrap.clientHeight;
   const els = [...stage.querySelectorAll('.bcard')];

@@ -19,7 +19,7 @@
 - hospitals.js: 긴급 출동 탭의 소탭 🏥병원·💊약국(S.sickView 'hosp'|'ph', 탭 안에 바로 HOSP.render(true) — 2026.10.11 사용자 요청, 응급실 소탭은 없애고 병원 안 '🚑 응급실·야간 진료 병원만 보기' 단추 H.preset 'ernight'. HOSP.open(preset, kind)도 이 소탭으로) (강원 18개 시·군, 현재 위치의 시·군 자동 선택, 카카오맵(크게 보기), 목록, 필터, 관심 병원·약국, 공휴일 목록)
 - map-key.js: 카카오맵 JavaScript 키 (공개용, 등록 도메인 rew623.github.io)
 - viewer.js: 사진·보드 카드 크게 보기(3칸 트랙으로 옆으로 넘기기, 핀치 줌, 아래 단추는 그림 한 줄 + 글자 한 줄 '📌/보드에 붙이기'), 지도·탐문 보고서에서 연 사진(조상에 data-vpin='place'|'walk')은 원본 편집·보드 단추 대신 '📍 핀 위치'(사용자 요청: 원본은 사건 앨범에서만), 🎨 꾸미기는 아래 창(지도 핀 창 등)을 닫고 사진관으로, 안드로이드 뒤로가기(탐문 중 화면은 작게: WALK.close), 길게 누르기 막기
-- board.js: 사건 앨범 > 수사 보드 (빈 곳을 짧게 누르면 화면 가득 크게 .bfull — 다시 누르기·✕·뒤로가기로 작게, 카드를 0.45초 꾹 누르면 끌어 옮기기 → 이 폰 localStorage soeun-board-pos {카드id:[dx,dy]}(저절로 정한 자리에서 옮긴 만큼, 실·압정도 따라감), '↩ 처음 배치'. 콜라주 배치: 가운데 아기 사진 둘레로 사방에 고르게(판은 화면보다 넓게), 크기·기울기 제각각, 사진은 테이프·메모는 압정, 실은 몇 장만, 처음엔 판 폭이 화면에 맞게 줄여서 가운데가 보이게)
+- board.js: 사건 앨범 > 수사 보드 (빈 곳을 짧게 누르면 화면 가득 크게 .bfull — 다시 누르기·✕·뒤로가기로 작게, 카드를 0.45초 꾹 누르면 끌어 옮기기 → game/shared bpos {카드id:[dx,dy]}(두 폰 같이, GAME.store, 저절로 정한 자리에서 옮긴 만큼, 실·압정도 따라감 — 2026.10.11 사용자 요청, 예전 이 폰 기억 soeun-board-pos는 처음 한 번 옮기고 지움), '↩ 처음 배치'. 콜라주 배치: 가운데 아기 사진 둘레로 사방에 고르게(판은 화면보다 넓게), 크기·기울기 제각각, 사진은 테이프·메모는 압정, 실은 몇 장만, 처음엔 판 폭이 화면에 맞게 줄여서 가운데가 보이게)
 - recipes.js: 급식 수사 > 센터 식단 올리기 (엑셀 → 표준레시피, PDF → 식단표 이미지, 사진)
 - album.js: 사건 앨범 > 현장 사진첩 (여러 장 자유 업로드, mom 컬렉션에 type:'free', 사진 찍은 날짜(EXIF)로 날짜별 묶음), 올리기 줄(IndexedDB soeun-upload: 앱을 나갔다 오거나 다시 켜면 이어서 올림, ALBUM.queue(files, more, fill)은 문서 id 목록을 돌려줌 — fill {geo,tm,date}는 사진에 없을 때만 채움, 찍은 시각 tm 'HH:MM:SS'는 위치가 없어도 저장), 100일 보고서 사진(type:'report'), 최초 목격 추가 사진(type:'extra'), 사진첩 길게 눌러 여러 장 골라 삭제·날짜 바꾸기, 올릴 때 이미 있는 사진과 찍은 시각이 초까지 같으면 '빼고 올리기' 물음. 편집창 사진 칸(photoField: 100일 보고서·최초 목격·월별 사진·프로필 등)과 최초 목격 '사진 더'는 누르면 먼저 '📷 현장 사진에서 고르기 / 📁 갤러리 앱에서 올리기'(.pkbox, 사용자 요청 — 현장 사진을 고르면 그 사진을 다시 그려 복사본으로 저장, 날짜·위치도 따라옴)
 - dupes.js: 사건 앨범 '🔍 중복 사진 찾기'(DUPES.open): 찍은 시각이 초까지 같거나 그림이 거의 같은 사진(9×8 dHash 6비트 이하 + 평균 색 차이 36 이하, 해시는 localStorage soeun-dhash2)을 묶어 보여 주고, 묶음마다 하나 남기고 지우기(현장·가족·최초 목격 추가 사진만, 기록 사진은 안 지움)
@@ -69,7 +69,7 @@
 - families/{fid} 하위 컬렉션:
   - members/{uid}: { role(엄마/아빠), name, email, viewer(보기 전용이면 true) }
   - records, periods, vaccines, ep, log, visit, mom(앨범), food, meal, cube, menu(식단표 사진), people(가족 앨범의 가족: name, rel, photo, by), dev(발달 체크: 문서 id=항목 id, at, by), guess(몸무게 예측: role, value, at, base=그때 마지막 측정 기록 id, by), push(알림 받는 폰: token, uid, role, viewer, at)
-  - game/shared: 두 폰이 같이 쓰는 놀이 저장 { acorn, hats, hat, hatOf{mom,dad}, room, slot{자리:id}, clothes, wear{baby,mom,dad}, stickers, roulette, pic(액자 사진 id), paid(받은 보상), props, propOf{baby,mom,dad}, pos{자리|식구: [dx,dy,크기]}, regrant(보상 다시 준 날), wanted(괴도 깍정이 현상금 받은 주 월요일), look(캐릭터 컨셉 옷을 한 번 입힌 표시 'holmes'), by, updatedAt } (2026.10 추가, 저장은 mergeFields로 보낸 칸만 통째로)
+  - game/shared: 두 폰이 같이 쓰는 놀이 저장 { acorn, hats, hat, hatOf{mom,dad}, room, slot{자리:id}, clothes, wear{baby,mom,dad}, stickers, roulette, pic(액자 사진 id), paid(받은 보상), props, propOf{baby,mom,dad}, pos{자리|식구: [dx,dy,크기]}, regrant(보상 다시 준 날), wanted(괴도 깍정이 현상금 받은 주 월요일), look(캐릭터 컨셉 옷을 한 번 입힌 표시 'holmes'), bpos(수사 보드 카드 옮긴 자리 {카드id:[dx,dy]}, 2026.10.11 추가 — 이전 필요 없음), by, updatedAt } (2026.10 추가, 저장은 mergeFields로 보낸 칸만 통째로)
   - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
   - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
   - look/{날짜_mom|dad}: date, pick(mom·dad·both), parts(닮은 곳 id 쉼표로), by (닮은꼴 판정단, 2026.10 추가)

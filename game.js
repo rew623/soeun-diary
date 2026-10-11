@@ -3,7 +3,7 @@
 // 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos'];
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'bpos'];   // bpos: 수사 보드 카드 옮긴 자리
 const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
