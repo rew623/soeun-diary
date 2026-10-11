@@ -268,8 +268,11 @@ function openForm(k, c) {
   const liveBr = !!(c && c.live && c.k === 'breast' && c.seg), add = liveBr ? Math.max(0, (Date.now() - c.seg) / 60000) : 0;
   F = { k, id: c ? c.id : newCid(), old: c ? c.date : '', edit: !!c, live: c ? c.live : 0, side: c ? c.side : '', seg: liveBr ? Date.now() : c ? c.seg : 0, at: c ? c.at : 0, pee: c ? !!c.pee : true, poo: c ? !!c.poo : false };
   const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = k === 'diaper' ? '🧷' : kk.i;
-  const tIn = `<div class="wkf2"><label class="field"><span>날짜</span><input id="dy-d" type="date" value="${d0}" min="${S.profile.birth}" max="${today()}"></label><label class="field"><span>${k === 'sleep' ? '잠든 시각' : k === 'breast' || k === 'bath' ? '시작 시각' : '시각'}</span><input id="dy-t" type="time" value="${t0}"></label></div>
-    ${['formula', 'pump', 'breast', 'sleep'].includes(k) ? `<div class="wkf2"><label class="field"><span>${k === 'sleep' ? '깬 시각' : '끝난 시각'} (선택)</span><input id="dy-e" type="time" value="${esc((c && c.e) || '')}"></label><div class="field dyeq"><span>&nbsp;</span><button type="button" class="ghost" data-dy="now" data-t="dy-e">${k === 'sleep' ? '지금 깼어요' : '지금 끝났어요'}</button></div></div>` : ''}`;
+  // 시각은 폰 시계 창(헷갈려요) 대신 숫자 칸 + ▲▼ (사용자 요청)
+  const hasE = ['formula', 'pump', 'breast', 'sleep'].includes(k);
+  const tIn = `<label class="field"><span>날짜</span><input id="dy-d" type="date" value="${d0}" min="${S.profile.birth}" max="${today()}"></label>
+    <div class="dytpr${hasE ? '' : ' one'}"><div class="field"><span>${k === 'sleep' ? '잠든 시각' : k === 'breast' || k === 'bath' ? '시작 시각' : '시각'}</span>${tpick('dy-t', t0)}</div>
+    ${hasE ? `<div class="field"><span>${k === 'sleep' ? '깬 시각' : '끝난 시각'} <small>(선택)</small></span>${tpick('dy-e', (c && c.e) || '', true)}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-t="dy-e">${k === 'sleep' ? '지금 깼어요' : '지금 끝'}</button><button type="button" class="ghost" data-dy="tpx" data-t="dy-e" aria-label="끝난 시각 지우기">비우기</button></div></div>` : ''}</div>`;
   let body = '';
   if (k === 'formula' || k === 'pump') {
     const v = c ? +c.ml : lastMl(k);
@@ -295,6 +298,36 @@ function openForm(k, c) {
     <div class="actions">${c ? `<button class="danger" data-dy="del" data-id="${c.id}">삭제</button>` : ''}<button class="secondary" data-act="close">닫기</button><button class="primary" data-dy="save">${c ? '수정 완료' : '저장'}</button></div>`);
   if (k === 'diaper') pooSync();
 }
+// 시각 고르기: 시·분 숫자 칸(직접 입력) + ▲▼, 값은 숨은 칸(id)에 HH:MM (비우면 '')
+function tpick(id, v, empty) {
+  const [h, m] = /^\d\d:\d\d/.test(v || '') ? v.split(':') : ['', ''];
+  const col = (u, val) => `<div class="dytpc"><button type="button" data-dy="tp" data-t="${id}" data-u="${u}" data-v="1" aria-label="${u === 'h' ? '1시간' : '1분'} 올리기">▲</button><input class="dytpi" data-tp="${id}" data-u="${u}" inputmode="numeric" maxlength="2" value="${val}" placeholder="--" aria-label="${u === 'h' ? '시' : '분'}"><button type="button" data-dy="tp" data-t="${id}" data-u="${u}" data-v="-1" aria-label="${u === 'h' ? '1시간' : '1분'} 내리기">▼</button></div>`;
+  return `<div class="dytp${empty && !h ? ' empty' : ''}" id="${id}-w"><input type="hidden" id="${id}" value="${h ? h + ':' + m : ''}">${col('h', h)}<b>:</b>${col('m', m)}<small class="dytpa" id="${id}-a">${h ? ampm(+h) : ''}</small></div>`;
+}
+const ampm = h => (h < 12 ? '오전 ' : '오후 ') + (h % 12 || 12) + '시';
+function tpSet(id, hm) {
+  const hid = $(id), w = $(id + '-w'); if (!hid || !w) return;
+  hid.value = hm || ''; const [h, m] = hm ? hm.split(':') : ['', ''];
+  w.querySelector('[data-u="h"].dytpi').value = h; w.querySelector('[data-u="m"].dytpi').value = m;
+  w.classList.toggle('empty', !hm); const a = $(id + '-a'); if (a) a.textContent = hm ? ampm(+h) : '';
+  if (window.__app) __app.sheetDirty();
+}
+function tpStep(id, u, d) {
+  const hid = $(id); if (!hid) return; let [h, m] = /^\d\d:\d\d$/.test(hid.value) ? hid.value.split(':').map(Number) : (() => { const n = new Date(); return [n.getHours(), n.getMinutes()]; })();
+  let t = h * 60 + m + (u === 'h' ? 60 : 1) * d; t = ((t % 1440) + 1440) % 1440;
+  tpSet(id, `${p2(Math.floor(t / 60))}:${p2(t % 60)}`);
+}
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.classList || !el.classList.contains('dytpi')) return;
+  const id = el.dataset.tp, w = $(id + '-w'); if (!w) return;
+  const hi = w.querySelector('[data-u="h"].dytpi'), mi = w.querySelector('[data-u="m"].dytpi');
+  el.value = el.value.replace(/\D/g, '').slice(0, 2);
+  const h = hi.value === '' ? NaN : Math.min(23, +hi.value), m = mi.value === '' ? (hi.value === '' ? NaN : 0) : Math.min(59, +mi.value);
+  if (isNaN(h)) { $(id).value = ''; w.classList.add('empty'); return; }
+  $(id).value = `${p2(h)}:${p2(m)}`; w.classList.remove('empty'); const a = $(id + '-a'); if (a) a.textContent = ampm(h);
+  if (el.dataset.u === 'h' && el.value.length === 2) mi.focus();
+});
+document.addEventListener('focusout', e => { const el = e.target; if (el.classList && el.classList.contains('dytpi') && el.value !== '') el.value = p2(Math.min(el.dataset.u === 'h' ? 23 : 59, +el.value)); });
 function pooSync() { document.querySelectorAll('#sheet .dypoo').forEach(x => x.classList.toggle('off', !F.poo)); }
 function grab() {
   const v = id => { const el = $(id); return el ? el.value.trim() : ''; }, m = [0, v('dy-d'), v('dy-t').slice(0, 5)];
@@ -396,7 +429,9 @@ document.addEventListener('click', async e => {
   if (a === 'timer') { startTimer(b.dataset.k); return; }
   if (a === 'end' || a === 'switch') { endTimer(b.dataset.id, a === 'switch'); return; }
   if (a === 'ml' || a === 'mlset') { const el = $('dy-ml'); if (!el) return; const n = a === 'ml' ? Math.max(0, num(el.value) + +v) : +v; el.value = n; document.querySelectorAll('#sheet .dyqk button').forEach(x => x.classList.toggle('on', +x.dataset.v === n)); if (window.__app) __app.sheetDirty(); return; }
-  if (a === 'now') { const el = $(b.dataset.t); if (el) { el.value = hmOf(new Date()); if (window.__app) __app.sheetDirty(); } return; }
+  if (a === 'now') { tpSet(b.dataset.t, hmOf(new Date())); return; }
+  if (a === 'tpx') { tpSet(b.dataset.t, ''); return; }
+  if (a === 'tp') { tpStep(b.dataset.t, b.dataset.u, +v); return; }
   if (a === 'min') { const el = $(b.dataset.t); if (el) { el.value = Math.max(0, num(el.value) + +v); if (window.__app) __app.sheetDirty(); } return; }
   if (a === 'minset') { ['dy-l', 'dy-r'].forEach(id => { const el = $(id); if (el) el.value = v; }); if (window.__app) __app.sheetDirty(); return; }
   if (a === 'pp') { if (!F) return; F[v] = !F[v]; b.classList.toggle('on', F[v]); pooSync(); if (window.__app) __app.sheetDirty(); return; }
@@ -491,7 +526,15 @@ css.textContent = `
 .dyside span{flex:1;display:flex;align-items:baseline;justify-content:center;gap:4px}.dyside input{width:72px;border:0;border-bottom:3px solid var(--red);background:none;text-align:center;font-family:var(--display);font-size:34px;color:var(--red)}
 .dyside small{font-size:15px;color:var(--red)}
 .dytimer{width:100%;min-height:48px;margin:2px 0 12px;font-size:15px}
-.dyeq{display:flex;flex-direction:column}.dyeq button{min-height:44px;font-size:14px;padding:0 8px}
+.dytpr{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dytpr.one{grid-template-columns:1fr}
+.field .dytp{display:flex;flex-direction:row;align-items:center;gap:4px;flex-wrap:wrap}.dytp>b{font-family:var(--display);font-size:26px;color:var(--navy)}
+.field .dytpc{display:flex;width:auto;flex-direction:column;align-items:center;gap:2px}
+.field .dytpc button{width:52px;padding:0;height:34px;border-radius:10px;border:1.5px solid var(--line);background:#FFFDF7;color:var(--navy);font-size:15px;line-height:1}
+.dytpc button:active{background:var(--navy);color:#fff}
+.field .dytp .dytpi{display:block;width:52px;min-width:0;min-height:0;flex:none;height:46px;margin:0;text-align:center;font-family:var(--display);font-size:26px;color:var(--red);border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:0}
+.field .dytp.empty .dytpi{color:var(--muted)}
+.field .dytpa{flex-basis:100%;font-size:12px;color:var(--muted);min-height:16px}
+.dytpq{display:flex;gap:6px;margin-top:4px}.dytpq button{flex:1;min-height:38px;font-size:13px;padding:0 6px}
 .dyguide{margin-top:16px}
 .dymulti button{min-height:46px;font-size:15px;padding:0 18px}
 .dypoo.off{opacity:.4;pointer-events:none}
