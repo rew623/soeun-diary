@@ -493,6 +493,26 @@ document.addEventListener('change', e => {
   if (D.mode === 'week') D.wk = monday(d); else D.date = d;
   D.sel = {}; render();
 });
+// 앱이 열려 있을 때 수유 예정 시각이 되면 소리 + 창 (알람 켬일 때, 예정 시각마다 이 폰에서 한 번)
+let ringAC = null, ringOn = null;
+function ring() {
+  try {
+    ringAC = ringAC || new (window.AudioContext || window.webkitAudioContext)(); if (ringAC.state === 'suspended') ringAC.resume();
+    const ac = ringAC, g = ac.createGain(); g.connect(ac.destination); g.gain.value = .25; const t0 = ac.currentTime;
+    for (let i = 0; i < 20; i++) [880, 1175, 1568].forEach((f, j) => { const o = ac.createOscillator(), e = ac.createGain(); o.type = 'triangle'; o.frequency.value = f; o.connect(e); e.connect(g); const s = t0 + i * 1.5 + j * .16; e.gain.setValueAtTime(0, s); e.gain.linearRampToValueAtTime(1, s + .02); e.gain.exponentialRampToValueAtTime(.001, s + .5); o.start(s); o.stop(s + .55); });
+    ringOn = g; if (navigator.vibrate) navigator.vibrate([600, 200, 600, 200, 1200]);
+  } catch (e) {}
+}
+function ringStop() { try { if (ringOn) { ringOn.disconnect(); ringOn = null; } if (navigator.vibrate) navigator.vibrate(0); } catch (e) {} }
+setInterval(() => {
+  if (S.mode !== 'ok' || !S.profile) return; const f = nextFeed(); if (!f.c.on || !f.due) return;
+  const at = f.due - (+f.c.pre || 0) * 60e3; if (Date.now() < at || Date.now() > f.due + 30 * 60e3) return;
+  let done = ''; try { done = localStorage.getItem('soeun-feed-rang') || ''; } catch (e) {} if (done === String(f.due)) return;
+  try { localStorage.setItem('soeun-feed-rang', String(f.due)); } catch (e) {}
+  ring();
+  ask(`🍼 수유 시간이에요\n${hmOf(new Date(f.due))} 예정 · 마지막 수유 ${f.last.t}`, { ok: '🍼 분유 바로 남기기', no: '소리 끄기' }).then(ok => { ringStop(); if (ok) { S.tab = 'day'; S.view = ''; render(); quickAdd('formula'); } });
+}, 20000);
+document.addEventListener('pointerdown', () => { try { if (!ringAC) ringAC = new (window.AudioContext || window.webkitAudioContext)(); if (ringAC.state === 'suspended') ringAC.resume(); } catch (e) {} }, { once: true, capture: true });   // 소리를 낼 수 있게 첫 터치 때 미리 깨워 둬요
 // 성장 수사 첫 화면 등에서 쓰는 오늘 요약 (마지막 수유 등)
 function summary() { const s = stats(today()); return s; }
 

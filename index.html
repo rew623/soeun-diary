@@ -1427,6 +1427,8 @@ window.addEventListener('pagehide',staySave);
 const flushCache=()=>{if(cacheD&&!DEMO){clearTimeout(cacheT);try{localStorage.setItem(CK,cacheJSON(cacheD))}catch(e){}}};
 window.addEventListener('pagehide',flushCache);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushCache()});
 window.addEventListener('touchstart',()=>{stayY=null},{passive:true,once:true});   // 손으로 움직이기 시작하면 위치 되돌리기는 그만
+try{const q=new URLSearchParams(location.search).get('tab');if(['day','grow','town','album','vac','food','sick'].includes(q)){S.tab=q;S.view='';stayY=null;history.replaceState(history.state,'',location.pathname)}}catch(e){}   // 알림에서 연 탭 (수유 알람 → 하루 수사)
+if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{const t=e.data&&e.data.tab;if(['day','grow','town','album','vac','food','sick'].includes(t)){closeSheet();S.tab=t;S.view='';render();scrollTo(0,0)}});
 loadCache();
 refresh();
 setInterval(()=>{if(S.tab==='sick'&&S.mode==='ok'&&!$sheet.classList.contains('open'))render()},60000);

@@ -1,4 +1,4 @@
-# 수유 알람: 마지막 수유 + 낮/밤 간격이 되면 폰으로 알려요 (10분마다 확인 — GitHub가 바쁘면 조금 늦을 수 있어요)
+# 수유 알람 예비: Firebase 서버(functions/feedAlarm, 1분마다)가 멈췄을 때만 대신 보내요 (10분마다 확인)
 name: 수유 알람 보내기
 
 on:
@@ -21,7 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            functions
       - uses: actions/setup-node@v4
         with:
           node-version: 20
