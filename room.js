@@ -95,6 +95,9 @@ function state() {
     save(s);
   }
   if (addNew(s) && !S.game) save(s);
+  // 방에 놓여 있는데 산 목록(room)에 없는 물건은 산 걸로 (두 폰이 합쳐질 때 목록에서 빠진 경우 — '모은 물건' 숫자가 안 맞던 것)
+  const lost = Object.values(s.slot || {}).filter(id => { const c = id && item(id); return c && c[3] > 0 && !s.room.includes(id); });
+  if (lost.length) { s.room = s.room.concat(lost); save(s); }
   return s;
 }
 // 함께 있는 수사관은 기본으로 둘 다, 기본 나무 액자는 무료로 걸어 둠 (다른 액자는 사야 함)
@@ -307,7 +310,7 @@ function shopHtml() {
     }).join('')}</div></div>`;
   }).join('') + bar;
 }
-function count() { const s = state(); return { own: CAT.filter(c => c[3] > 0 && s.room.includes(c[0])).length, all: CAT.filter(c => c[3] > 0).length }; }
+function count() { const s = state(); return { own: CAT.filter(c => owns(s, c[0])).length, all: CAT.length }; }   // 자리별 숫자와 같게 (무료 물건도 셈)
 
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-roomfold]');

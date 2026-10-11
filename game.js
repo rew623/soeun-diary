@@ -318,6 +318,7 @@ function owns(s, who, kind, id) {
   const it = KIT[who][kind].find(x => x[0] === id); if (!it) return false; if (!it[2]) return true;
   const L = s[KINDS.find(k => k[0] === kind)[2]] || [];
   if (L.includes(who + '.' + id)) return true;
+  if (cur(s, who, kind) === id) return true;   // 지금 쓰고·입고·들고 있는 건 가진 걸로 (두 폰 합칠 때 목록에서 빠진 경우)
   if (L.includes(id) && (who === 'baby' || cur(s, who, kind) === id)) return true;
   return kind === 'prop' && who === 'baby' && (s.room || []).includes('p-' + id);
 }
@@ -377,8 +378,8 @@ function kitHtml(s) {
     <p class="hint" style="margin:0 0 8px">소은·엄마·아빠가 각자 어울리는 물건을 따로 사요. 산 물건은 그 사람만 써요.${e && s.hat === 'det' ? ` 오늘은 ${e[1]}! 소은이가 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.` : ''}</p>
     ${whoSeg()}
     <div class="gwear">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${CHARS.svg(k, cur(s, k, 'prop'), { size: 78 })}<b>${l}</b></button>`).join('')}</div>
-    ${bar}${KINDS.map(([kind, label]) => { const L = KIT[who][kind], c = cur(s, who, kind), ci = L.find(x => x[0] === c), have = L.filter(x => x[2] && owns(s, who, kind, x[0])).length;
-      return `<div class="amon rgrp${isFold(`k-${kind}`, true) ? ' folded' : ''}"><h3 class="agh" data-fold="k-${kind}"><span>${label}</span><small class="rcur">${ci ? ci[1] : ''} · ${have}/${L.length - 1}</small></h3>
+    ${bar}${KINDS.map(([kind, label]) => { const L = KIT[who][kind], c = cur(s, who, kind), ci = L.find(x => x[0] === c), have = L.filter(x => owns(s, who, kind, x[0])).length;   // 무료 물건도 셈 (자리 숫자 = 가진 것 / 전체)
+      return `<div class="amon rgrp${isFold(`k-${kind}`, true) ? ' folded' : ''}"><h3 class="agh" data-fold="k-${kind}"><span>${label}</span><small class="rcur">${ci ? ci[1] : ''} · ${have}/${L.length}</small></h3>
         <div class="ghats${kind === 'hat' ? '' : ' gcl'}">${L.map(([id, n, cost]) => { const has = owns(s, who, kind, id), on = c === id;
           return `<button class="ghat${on ? ' cur' : ''}${has ? '' : ' lock'}" data-game="kit" data-k="${kind}" data-id="${id}">${kpv(who, kind, id, kind === 'hat' ? 58 : 64)}<b>${n}</b><small>${on ? (kind === 'hat' ? '쓰는 중' : kind === 'cloth' ? '입는 중' : '드는 중') : has ? (kind === 'hat' ? '쓰기' : kind === 'cloth' ? '입히기' : '들기') : `🌰 ${cost}`}</small></button>`; }).join('')}</div></div>`; }).join('')}${bar}
     <p class="foot" style="margin-top:6px">${nm} 몫으로 산 물건은 ${nm}만 써요. 엄마·아빠 폰에는 똑같이 보여요.</p></section>`;
