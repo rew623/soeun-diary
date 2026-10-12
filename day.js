@@ -320,10 +320,10 @@ function openForm(k, c) {
   F = { k, id: c ? c.id : newCid(), old: c ? c.date : '', edit: !!c, live: c ? c.live : 0, side: c ? c.side : '', seg: liveBr ? Date.now() : c ? c.seg : 0, at: c ? c.at : 0, pee: c ? !!c.pee : true, poo: c ? !!c.poo : false };
   const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = k === 'diaper' ? DIA : kk.i;
   // 시각은 폰 시계 창(헷갈려요) 대신 숫자 칸 + ▲▼ (사용자 요청)
-  const hasE = ['formula', 'pump', 'breast', 'sleep'].includes(k);
+  const hasE = ['formula', 'pump', 'breast', 'sleep', 'bath'].includes(k), e0 = (c && c.e) || (k === 'bath' && c && +c.dur && /^\d\d:\d\d$/.test(c.t) ? hmOf(new Date(msOf('2000-01-01', c.t) + c.dur * 60000)) : '');   // 예전 목욕 기록은 분 → 끝난 시각으로 보여 줘요
   const tIn = `<label class="field"><span>날짜</span><input id="dy-d" type="date" value="${d0}" min="${S.profile.birth}" max="${today()}"></label>
     <div class="dytpr${hasE ? '' : ' one'}"><div class="field"><span>${k === 'sleep' ? '잠든 시각' : k === 'breast' || k === 'bath' ? '시작 시각' : '시각'}</span>${tpick('dy-t', t0)}</div>
-    ${hasE ? `<div class="field"><span>${k === 'sleep' ? '깬 시각' : '끝난 시각'} <small>(선택)</small></span>${tpick('dy-e', (c && c.e) || '', true)}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-t="dy-e">${k === 'sleep' ? '지금 깼어요' : '지금 끝'}</button><button type="button" class="ghost" data-dy="tpx" data-t="dy-e" aria-label="끝난 시각 지우기">비우기</button></div></div>` : ''}</div>`;
+    ${hasE ? `<div class="field"><span>${k === 'sleep' ? '깬 시각' : '끝난 시각'} <small>(선택)</small></span>${tpick('dy-e', e0, true)}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-t="dy-e">${k === 'sleep' ? '지금 깼어요' : '지금 끝'}</button><button type="button" class="ghost" data-dy="tpx" data-t="dy-e" aria-label="끝난 시각 지우기">비우기</button></div></div>` : ''}</div>`;
   let body = '';
   if (k === 'formula' || k === 'pump') {
     const v = c ? +c.ml : lastMl(k);
@@ -340,8 +340,8 @@ function openForm(k, c) {
   } else if (k === 'sleep') {
     body = c ? '' : '<button type="button" class="ghost dytimer" data-dy="timer" data-k="sleep">⏱ 지금 잠들었어요 (깨면 위 카드에서 \'깼어요\')</button>';
   } else if (k === 'bath') {
-    body = `<div class="field"><span>목욕 시간</span></div><div class="dyamt sm"><button type="button" data-dy="min" data-t="dy-dur" data-v="-5" aria-label="5분 빼기">−</button><span><input id="dy-dur" inputmode="numeric" value="${c ? +c.dur || '' : 10}" aria-label="목욕 시간(분)"><small>분</small></span><button type="button" data-dy="min" data-t="dy-dur" data-v="5" aria-label="5분 더하기">＋</button></div>
-      <div class="quick dyqk">${[5, 10, 15, 20, 30].map(x => `<button type="button" data-act="fill" data-t="dy-dur" data-v="${x}">${x}분</button>`).join('')}</div>`;
+    body = `<div class="field"><span>걸린 시간 <small>(누르면 끝난 시각이 맞춰져요)</small></span></div>
+      <div class="quick dyqk">${[5, 10, 15, 20, 30].map(x => `<button type="button" data-dy="bdur" data-v="${x}">${x}분</button>`).join('')}</div>`;
   }
   openSheet(`<h3>${icon} ${title} ${c ? '수정' : '기록'}</h3>${body}${tIn}
     <label class="field"><span>${k === 'memo' ? '메모' : '메모 (선택)'}</span><textarea id="dy-memo" maxlength="300" placeholder="${PH[k] || '예: 메모'}">${esc((c && c.memo) || '')}</textarea></label>
@@ -389,7 +389,7 @@ function grab() {
   if (F.k === 'formula' || F.k === 'pump') { it.ml = num(v('dy-ml')); if (!it.ml) return { err: '양(ml)을 적어 주세요' }; }
   if (F.k === 'breast') { it.l = num(v('dy-l')); it.r = num(v('dy-r')); }
   if (F.k === 'diaper') { if (!F.pee && !F.poo) return { err: '소변·대변 중 하나는 골라 주세요' }; it.pee = F.pee; it.poo = F.poo; const a = document.querySelector('#dy-amt .on'), s = document.querySelector('#dy-st .on'); it.amt = F.poo && a ? a.dataset.v : ''; it.st = F.poo && s ? s.dataset.v : ''; }
-  if (F.k === 'bath') it.dur = num(v('dy-dur'));
+  if (F.k === 'bath') it.dur = it.e ? (msOf('2000-01-01', it.e) - msOf('2000-01-01', it.t) + 864e5) % 864e5 / 60000 : 0;   // 끝난 시각이 있으면 걸린 시간(분)은 거기서
   if (F.k === 'memo' && !it.memo) return { err: '메모를 적어 주세요' };
   if (it.e && F.live) it.live = 0;   // 끝난 시각을 적으면 타이머는 끝
   return { date: m[1], it };
@@ -420,6 +420,7 @@ async function quickAdd(k, btn) {
   const now = new Date(), it = { id: newCid(), k, t: hmOf(now), e: '', memo: '', live: 0, at: Date.now() };
   ['ml', 'l', 'r', 'dur', 'pee', 'poo', 'amt', 'st'].forEach(x => { if (last[x] != null && last[x] !== '') it[x] = last[x]; });
   if (/^\d\d:\d\d$/.test(last.e || '') && k !== 'breast') { const d = (msOf('2000-01-01', last.e) - msOf('2000-01-01', last.t) + 864e5) % 864e5; if (d && d < 4 * 36e5) it.e = hmOf(new Date(now.getTime() + d)); }   // 걸린 시간도 최근과 같게 (끝 시각 = 지금 + 그만큼)
+  if (k === 'bath' && !it.e && +it.dur) it.e = hmOf(new Date(now.getTime() + it.dur * 60000));
   if (btn) btn.disabled = true;
   const res = await write('careSave', ymdOf(now), it, '');
   if (btn) btn.disabled = false;
@@ -644,6 +645,7 @@ document.addEventListener('click', async e => {
   if (a === 'resume') { b.disabled = true; startTimer('sleep'); return; }
   if (a === 'end' || a === 'switch') { endTimer(b.dataset.id, a === 'switch'); return; }
   if (a === 'ml' || a === 'mlset') { const el = $('dy-ml'); if (!el) return; const n = a === 'ml' ? Math.max(0, num(el.value) + +v) : +v; el.value = n; document.querySelectorAll('#sheet .dyqk button').forEach(x => x.classList.toggle('on', +x.dataset.v === n)); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'bdur') { const t = ($('dy-t') || {}).value; if (/^\d\d:\d\d/.test(t)) tpSet('dy-e', hmOf(new Date(msOf('2000-01-01', t.slice(0, 5)) + +v * 60000))); return; }
   if (a === 'now') { tpSet(b.dataset.t, hmOf(new Date())); return; }
   if (a === 'tpx') { tpSet(b.dataset.t, ''); return; }
   if (a === 'tp') { tpStep(b.dataset.t, b.dataset.u, +v); return; }
