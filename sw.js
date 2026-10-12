@@ -1,7 +1,7 @@
 // ★ 파일을 바꿔 올릴 때마다 아래 VERSION만 바꾸면 앱에 "새 버전 있음"이 떠요
-const VERSION = '2026.10.12-56';
+const VERSION = '2026.10.12-57';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.webmanifest',
-  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './music.js', './movie.js', './wanted.js', './look.js', './capsule.js', './paper.js', './explore.js', './walk.js', './day.js', './dupes.js', './settings.js', './focus.js', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+  './hospitals.js', './map-key.js', './viewer.js', './board.js', './recipes.js', './checkups.js', './album.js', './charges.js', './characters.js', './town.js', './posts.js', './game.js', './family.js', './push-key.js', './memories.js', './dev.js', './book.js', './fun.js', './room.js', './studio.js', './posecam.js', './music.js', './movie.js', './wanted.js', './look.js', './capsule.js', './paper.js', './explore.js', './walk.js', './day.js', './dupes.js', './settings.js', './focus.js', './icons/icon-192.png', './icons/badge-96.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const SHELL_CACHE = 'shell-' + VERSION, LIB = 'lib-v1', PHOTO = 'photo-v1', DATA = 'data-v1';
 
 self.addEventListener('install', e => {
@@ -20,7 +20,7 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(d.title || '성장 수사 일지', {
     body: d.body || '', tag: d.tag || 'soeun', renotify: true,
     ...(d.alarm === '1' ? { requireInteraction: true, vibrate: [600, 200, 600, 200, 1200], silent: false } : {}),   // 수유 알람: 길게 진동하고 누를 때까지 화면에 남아요
-    icon: './icons/icon-192.png', badge: './icons/icon-192.png', data: { url: d.url || self.registration.scope }
+    icon: './icons/icon-192.png', badge: './icons/badge-96.png', data: { url: d.url || self.registration.scope }
   }));
 });
 self.addEventListener('notificationclick', e => {

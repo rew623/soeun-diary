@@ -705,7 +705,7 @@ document.addEventListener('click', async e => {
     return;
   }
   if (act === 'push-test') {
-    try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('🐿️ 소은 탐정 시험 알림', { body: '알림이 이렇게 와요. 챙길 일이 있는 날 아침에만 와요', icon: './icons/icon-192.png', tag: 'test' }); } catch (x) { app().toast('알림을 띄우지 못했어요: ' + (x.message || '')); }
+    try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('🐿️ 소은 탐정 시험 알림', { body: '알림이 이렇게 와요. 챙길 일이 있는 날 아침에만 와요', icon: './icons/icon-192.png', badge: './icons/badge-96.png', tag: 'test' }); } catch (x) { app().toast('알림을 띄우지 못했어요: ' + (x.message || '')); }
     return;
   }
   if (act === 'share') {
@@ -838,7 +838,8 @@ if ('serviceWorker' in navigator) {
       } catch (e) {}
       polling = false;
     };
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { upd(); poll(); } });
+    const clearNotes = () => { try { navigator.serviceWorker.getRegistration().then(r => r && r.getNotifications().then(L => L.forEach(n => n.close()))); } catch (e) {} };   // 앱을 열면(보면) 알림 칸에 남은 알림과 앱 아이콘 숫자를 치워요
+    clearNotes(); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { upd(); poll(); clearNotes(); } });
     window.addEventListener('focus', () => { upd(); poll(); });
     setInterval(() => { upd(); poll(); }, 60 * 1000);
     setTimeout(poll, 4000);
