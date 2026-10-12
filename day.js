@@ -172,12 +172,20 @@ function quickRow() {
 }
 function liveCards() {
   const L = (S.cares || []).filter(c => c.live);
-  if (!L.length) return '';
+  if (!L.length) return pauseCard();
   return L.map(c => {
     const kk = K[c.k] || K.memo, br = c.k === 'breast';
     return `<div class="dylive" style="--c:${kk.c}"><span class="dyli">${kk.i}</span><div><b>${br ? '모유수유 중' : c.k === 'sleep' ? '자는 중' : kk.n + ' 중'}</b><small>${c.date !== today() ? fmtMD(c.date) + ' ' : ''}${c.t} 시작 · <b data-el="${c.id}"></b>${br ? ` · 지금 <u>${c.side === 'r' ? '오른쪽' : '왼쪽'}</u>` : ''}</small></div>
-      <div class="dylb">${br ? `<button data-dy="switch" data-id="${c.id}">↔ ${c.side === 'r' ? '왼쪽' : '오른쪽'}으로</button>` : ''}<button class="go" data-dy="end" data-id="${c.id}">${c.k === 'sleep' ? '■ 깼어요' : '■ 끝'}</button></div></div>`;
-  }).join('');
+      <div class="dylb">${br ? `<button data-dy="switch" data-id="${c.id}">↔ ${c.side === 'r' ? '왼쪽' : '오른쪽'}으로</button>` : ''}${c.k === 'sleep' ? `<button data-dy="pause" data-id="${c.id}">⏸ 잠깐 깼어요</button>` : ''}<button class="go" data-dy="end" data-id="${c.id}">${c.k === 'sleep' ? '■ 깼어요' : '■ 끝'}</button></div></div>`;
+  }).join('') + pauseCard();
+}
+// 자다가 잠깐 깼을 때(⏸): 그때까지를 한 번의 잠으로 끝내 두고 '잠깐 깨어 있어요' 카드 → 다시 잠들면 새 잠이 이어져요 (두 번의 잠으로 기록돼 24시간 시계에도 깬 자리가 보여요)
+function pauseCard() {
+  if ((S.cares || []).some(c => c.live && c.k === 'sleep')) return '';
+  const sl = evs().filter(e => e.src === 'care' && e.k === 'sleep').pop();
+  if (!sl || !sl.raw.pz || !sl.e || Date.now() - sl.e > 3 * 36e5 || sl.e > Date.now() + 6e4) return '';
+  return `<div class="dylive" style="--c:${K.sleep.c}"><span class="dyli">😶</span><div><b>잠깐 깨어 있어요</b><small><b data-pzat="${sl.e}"></b> 째 깨어 있음</small></div>
+    <div class="dylb"><button class="go" data-dy="resume">▶ 다시 잠들었어요</button><button data-dy="unpause" data-id="${sl.id}">✕ 그냥 깼어요</button></div></div>`;
 }
 function dayLog() {
   const st = stats(D.date), isT = D.date === today(), L = ofDay(D.date).slice().reverse();
@@ -579,10 +587,24 @@ async function endTimer(id, sw) {
   const res = await write('careSave', c.date, it, ''); if (!res) return;
   render(); if (!sw) toast(c.k === 'sleep' ? `😴 ${durTxt((now - msOf(c.date, c.t)) / 60000)} 잤어요` : `🤱 수유 끝 · 왼쪽 ${Math.round(it.l || 0)}분 · 오른쪽 ${Math.round(it.r || 0)}분`);
 }
+async function pauseSleep(id) {
+  const c = (S.cares || []).find(x => x.id === id); if (!c) return;
+  const it = Object.assign({}, c), now = new Date(); delete it.date; it.live = 0; it.seg = 0; it.e = hmOf(now); it.pz = 1;
+  if (Date.now() - msOf(c.date, c.t) > 26 * 36e5) it.e = '';
+  const res = await write('careSave', c.date, it, ''); if (!res) return;
+  render(); toast(`⏸ ${durTxt((Date.now() - msOf(c.date, c.t)) / 60000)} 자고 잠깐 깼어요\n다시 자면 '다시 잠들었어요'를 눌러요`);
+}
+async function unpauseSleep(id) {
+  const c = (S.cares || []).find(x => x.id === id); if (!c) return;
+  const it = Object.assign({}, c); delete it.date; it.pz = 0;
+  const res = await write('careSave', c.date, it, ''); if (!res) return;
+  render();
+}
 // 진행 중 시간 글자만 고쳐요 (화면 전체를 다시 그리지 않게)
 function tick() {
-  const L = (S.cares || []).filter(c => c.live), fl = document.querySelectorAll('[data-feedleft]');
-  if ((!L.length && !fl.length) || S.tab !== 'day' || S.view) { clearInterval(D.iv); D.iv = 0; return; }
+  const L = (S.cares || []).filter(c => c.live), fl = document.querySelectorAll('[data-feedleft]'), pz = document.querySelectorAll('[data-pzat]');
+  if ((!L.length && !fl.length && !pz.length) || S.tab !== 'day' || S.view) { clearInterval(D.iv); D.iv = 0; return; }
+  pz.forEach(el => { el.textContent = durTxt(Math.max(0, Date.now() - +el.dataset.pzat) / 60000); });
   fl.forEach(el => { el.textContent = leftTxt(+el.dataset.feedleft); el.closest('.dynext').classList.toggle('late', +el.dataset.feedleft < Date.now()); });
   L.forEach(c => {
     const t = Date.now() - msOf(c.date, c.t), txt = c.k === 'breast' ? (() => { const add = c.seg ? (Date.now() - c.seg) / 60000 : 0, l = (+c.l || 0) + (c.side !== 'r' ? add : 0), r = (+c.r || 0) + (c.side === 'r' ? add : 0); return `왼쪽 ${Math.floor(l)}분 · 오른쪽 ${Math.floor(r)}분`; })() : `${durTxt(t / 60000)}째`;
@@ -591,7 +613,7 @@ function tick() {
 }
 function afterRender() {
   if (S.tab !== 'day' || S.view) return;
-  tick(); if (((S.cares || []).some(c => c.live) || document.querySelector('[data-feedleft]')) && !D.iv) D.iv = setInterval(tick, 15000);
+  tick(); if (((S.cares || []).some(c => c.live) || document.querySelector('[data-feedleft],[data-pzat]')) && !D.iv) D.iv = setInterval(tick, 15000);
 }
 
 document.addEventListener('click', async e => {
@@ -617,6 +639,9 @@ document.addEventListener('click', async e => {
     return;
   }
   if (a === 'timer') { startTimer(b.dataset.k); return; }
+  if (a === 'pause') { pauseSleep(b.dataset.id); return; }
+  if (a === 'unpause') { unpauseSleep(b.dataset.id); return; }
+  if (a === 'resume') { b.disabled = true; startTimer('sleep'); return; }
   if (a === 'end' || a === 'switch') { endTimer(b.dataset.id, a === 'switch'); return; }
   if (a === 'ml' || a === 'mlset') { const el = $('dy-ml'); if (!el) return; const n = a === 'ml' ? Math.max(0, num(el.value) + +v) : +v; el.value = n; document.querySelectorAll('#sheet .dyqk button').forEach(x => x.classList.toggle('on', +x.dataset.v === n)); if (window.__app) __app.sheetDirty(); return; }
   if (a === 'now') { tpSet(b.dataset.t, hmOf(new Date())); return; }

@@ -81,7 +81,7 @@ function careRow(it) {
   it = it || {}; const hm = v => /^\d{2}:\d{2}$/.test(v || '') ? v : '', num = (v, max, dp) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.min(max, Math.round(n * (dp || 1)) / (dp || 1)) : 0; };
   const id = /^c[a-z0-9]{4,24}$/.test(it.id || '') ? it.id : newId('c').toLowerCase().replace(/[^a-z0-9]/g, '');
   return { id, k: CARE_K.includes(it.k) ? it.k : 'memo', t: hm(it.t) || '00:00', e: hm(it.e), ml: num(it.ml, 2000), l: num(it.l, 600, 10), r: num(it.r, 600, 10), dur: num(it.dur, 600),
-    pee: it.pee ? 1 : 0, poo: it.poo ? 1 : 0, amt: txt(it.amt, 10), st: txt(it.st, 10), memo: txt(it.memo, 300), live: it.live ? 1 : 0, side: it.side === 'l' || it.side === 'r' ? it.side : '', seg: num(it.seg, 9e15),
+    pee: it.pee ? 1 : 0, poo: it.poo ? 1 : 0, amt: txt(it.amt, 10), st: txt(it.st, 10), memo: txt(it.memo, 300), live: it.live ? 1 : 0, pz: it.pz ? 1 : 0, side: it.side === 'l' || it.side === 'r' ? it.side : '', seg: num(it.seg, 9e15),
     by: role_(it.by) || myRole(), at: num(it.at, 9e15) || Date.now() };
 }
 
