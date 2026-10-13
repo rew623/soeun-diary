@@ -151,12 +151,12 @@ function line(e) {
   const r = e.raw, k = e.k;
   let name = (K[k] || K.memo).n, det = '';
   const dur = e.e && e.e > e.s ? durTxt((e.e - e.s) / 60000) : '', rng = dur ? `${r.t}~${hmOf(new Date(e.e))}` : '';   // 걸린 시간 (끝 시각·목욕 분이 있으면)
-  let main = '', sub = [], tm = [];
-  if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) tm.push(`⏱${dur}`, `~${hmOf(new Date(e.e))}`); }
-  else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) tm.push(`⏱${dur}`, `~${hmOf(new Date(e.e))}`); }
+  let main = '', sub = [];
+  if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) sub.push(`⏱ ${dur} (${rng})`); }
+  else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
-  else if (k === 'sleep') { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) tm.push(`~${hmOf(new Date(e.e))}`); }
-  else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) tm.push(`~${hmOf(new Date(e.e))}`); }
+  else if (k === 'sleep') { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); }
+  else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
   else if (k === 'solid') { main = esc(r.amount || ''); sub = [r.menu, r.eat].filter(Boolean).map(esc); }
   else if (k === 'temp') main = `${esc(r.value)}℃`;
   else if (k === 'med') { main = esc(r.value || ''); if (r.dose) sub.push(esc(r.dose)); }
@@ -165,10 +165,8 @@ function line(e) {
   const dot = k === 'diaper' ? (r.poo ? K.poo.c : K.pee.c) : (K[k] || K.memo).c;
   const act = e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
   const ik = k === 'diaper' ? (r.poo ? 'poo' : 'pee') : k;
-  if (memo) sub.push(esc(memo));
-  const byH = [...tm, r.by ? esc(r.by) : ''].filter(Boolean).map(x => `<em>${x}</em>`).join(''), inl = !sub.length && byH;   // 아래 줄에 쓸 말이 없으면 이름을 제목 줄 끝에 (한 줄로)
-  if (byH && !inl) sub.push(byH);
-  return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${tm.length ? ' dtm' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}${inl ? ` ${byH}` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
+  if (memo) sub.push(esc(memo)); if (r.by) sub.push(`<em>${esc(r.by)}</em>`);
+  return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
 }
 
 // ---------- 화면 ----------
@@ -756,8 +754,9 @@ css.textContent = `
 .dyt{flex:0 0 46px;font-family:var(--display);font-size:16.5px;color:var(--navy)}.dyt small{font-size:11px;margin-left:1px}
 .dyib{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,#FFFDF7);border:2px solid var(--c)}.dyib .dyico{display:block}
 .dyb{flex:1;min-width:0}.dyb>b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);line-height:1.3}.dyb>b u{text-decoration:none;color:var(--c);margin-left:3px;font-size:16.5px}
-.dyb small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}.dyb em{font-style:normal;font-size:12px;color:var(--muted)}.dyb>b em{font-family:var(--body);font-size:11.5px;margin-left:5px;white-space:nowrap}.dyb>b em+em{margin-left:3px}.dyb>b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dyrow.dpoo .dyb>b,.dyrow.dpoo .dyb>b u,.dyrow.dtm .dyb>b,.dyrow.dtm .dyb>b u{font-size:14.5px}.dyrow.dtm .dyb>b em{font-size:11px;margin-left:4px}.dyrow.dtm .dyb>b em+em{margin-left:6px}.dyrow.dtm{gap:6px}.dyrow.dtm .dyt{flex-basis:44px;font-size:16px}   /* 소변·대변은 한 줄에 다 들어가게 */
+.dyb small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}.dyb em{font-style:normal;font-size:12px;color:var(--muted)}
 .dyrow i{font-style:normal;color:var(--line);font-size:18px}
+.dyrow.dpoo .dyb>b{white-space:nowrap;font-size:14.5px}.dyrow.dpoo .dyb>b u{font-size:14.5px}   /* 소변·대변 + 양·상태는 한 줄 (기록자는 아래 줄 그대로) */
 .dynext{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#FFFDF7;border:2px solid var(--navy);border-radius:16px;padding:10px 12px;margin:2px 0 12px;box-shadow:0 3px 0 rgba(31,42,68,.15)}
 .dynext>span{font-size:28px}.dynext>div{flex:1;min-width:0}.dynext small{display:block;font-size:12px;color:var(--muted)}
 .dynext b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--navy);margin-right:8px}.dynext b.sm{font-size:15px;display:block}.dynext em{font-style:normal;font-size:14px;color:var(--ink)}
