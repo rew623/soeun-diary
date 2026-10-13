@@ -30,7 +30,7 @@
 | 동네 탐문 (날씨·탐험 지도·탐문 기록) | town.js, explore.js, walk.js | docs/town.md |
 | 사건 앨범·사진 도구·영상·신문·봉인·닮은꼴 | album.js, family.js, dupes.js, memories.js, viewer.js, board.js, focus.js, studio.js, posecam.js, movie.js, music.js, paper.js, book.js, capsule.js, look.js | docs/album.md |
 | 놀이 (계급·도토리·방·캐릭터·깍정이) | game.js, fun.js, room.js, characters.js, wanted.js, charges.js | docs/game.md |
-| 예방접종·검진·발달·급식·긴급 출동 | index.html 일부, checkups.js, dev.js, recipes.js, hospitals.js | docs/health.md |
+| 예방접종·검진·발달·급식·긴급 출동 | main-render.js·main-sick.js·main-meal.js, checkups.js, dev.js, recipes.js, hospitals.js | docs/health.md |
 | 서버·자동 작업 (Actions·Functions·data/*.json·알림) | .github/, functions/, data/ | docs/ops.md |
 | Firestore 구조 | — | docs/data.md |
 | 연관 지도 (자동) | — | docs/deps.md |

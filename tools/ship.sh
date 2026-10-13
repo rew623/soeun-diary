@@ -8,7 +8,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MSG="$(cat)"; [ -n "$MSG" ] || { echo "커밋 글을 stdin으로 주세요"; exit 1; }
-git pull -q --rebase origin main || true
 # VERSION: 오늘(KST) 날짜 + 지금 번호 +1
 node - <<'JS'
 const fs = require('fs'), s = fs.readFileSync('sw.js', 'utf8'), m = /const VERSION = '(\d{4}\.\d{2}\.\d{2})-(\d+)';/.exec(s);
@@ -20,5 +19,5 @@ JS
 for f in $(git diff --name-only HEAD -- '*.js' '*.mjs'; git ls-files --others --exclude-standard -- '*.js' '*.mjs'); do [ -f "$f" ] && node --check "$f"; done
 if [ "${SMOKE:-0}" = 1 ]; then node tools/test/smoke.mjs /tmp/smoke | tail -3; fi
 git add -A && git commit -q -F - <<<"$MSG"
-for i in 1 2 3 4; do git push -q origin HEAD:main && break || { sleep $((2 ** i)); git pull -q --rebase origin main; }; done
+for i in 1 2 3 4; do git pull -q --rebase origin main && git push -q origin HEAD:main && break || sleep $((2 ** i)); done
 git log --oneline -1; grep -o "const VERSION = '[^']*'" sw.js
