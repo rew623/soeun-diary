@@ -266,6 +266,27 @@ function paint() {
   if (made === id) return; made = id;
   let st = document.getElementById('themeart'); if (!st) { st = document.createElement('style'); st.id = 'themeart'; document.head.appendChild(st); }
   try { st.textContent = css(id); } catch (e) { st.textContent = ''; console.warn('테마 그림', e); }
+  bake(id, st);
+}
+// 큰 바탕 SVG는 화면 움직일 때마다 다시 그려져 버벅임 → 한 번 PNG로 구워 바꿔 끼움
+let baked = {};
+function bake(id, st) {
+  if (!ART[id] || !window.HTMLCanvasElement) return;
+  const swap = u => { if (made === id) st.textContent = st.textContent.replace(/body\{background:url\("data:image\/svg[^"]*"\)/, `body{background:url("${u}")`); };
+  if (baked[id]) return swap(baked[id]);
+  const go = () => {
+    const m = /body\{background:url\("(data:image\/svg[^"]*)"\)/.exec(st.textContent); if (!m) return;
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const d = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas');
+        c.width = 410 * d; c.height = 650 * d; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => { if (!b) return; baked[id] = URL.createObjectURL(b); swap(baked[id]); }, 'image/png');
+      } catch (e) {}
+    };
+    img.src = m[1];
+  };
+  (window.requestIdleCallback || setTimeout)(go, { timeout: 800 });
 }
 function apply(id) {
   id = LIST.some(t => t[0] === id) ? id : 'det';
