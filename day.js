@@ -703,7 +703,7 @@ function ring() {
     ringOn = g; if (navigator.vibrate) navigator.vibrate([600, 200, 600, 200, 1200]);
   } catch (e) {}
 }
-function ringStop() { try { if (ringOn) { ringOn.disconnect(); ringOn = null; } if (navigator.vibrate) navigator.vibrate(0); } catch (e) {} }
+function ringStop() { try { if (ringOn) { ringOn.disconnect(); ringOn = null; } if (ringAC) ringAC.suspend(); if (navigator.vibrate) navigator.vibrate(0); } catch (e) {} }
 setInterval(() => {
   if (S.mode !== 'ok' || !S.profile) return; const f = nextFeed(); if (!f.c.on || !f.due) return;
   const at = f.due - (+f.c.pre || 0) * 60e3; if (Date.now() < at || Date.now() > f.due + 30 * 60e3) return;
@@ -712,7 +712,10 @@ setInterval(() => {
   ring();
   ask(`🍼 수유 시간이에요\n${hmOf(new Date(f.due))} 예정 · 마지막 수유 ${f.last.t}`, { ok: '🍼 분유 바로 남기기', no: '소리 끄기' }).then(ok => { ringStop(); if (ok) { S.tab = 'day'; S.view = ''; render(); quickAdd('formula'); } });
 }, 20000);
-document.addEventListener('pointerdown', () => { try { if (!ringAC) ringAC = new (window.AudioContext || window.webkitAudioContext)(); if (ringAC.state === 'suspended') ringAC.resume(); } catch (e) {} }, { once: true, capture: true });   // 소리를 낼 수 있게 첫 터치 때 미리 깨워 둬요
+// 아이폰: 소리 장치를 켜 두면 다른 앱 음악이 멈추거나 '지금 재생 중'이 떠요 → 수유 알람이 켜져 있을 때만 깨우고, 깨운 뒤엔 바로 재워 둠. 다른 소리와 섞이게(ambient)
+try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) {}
+function ringWake() { try { if (S.mode !== 'ok' || !S.profile || !nextFeed().c.on) return; document.removeEventListener('pointerdown', ringWake, true); ringAC = ringAC || new (window.AudioContext || window.webkitAudioContext)(); const p = ringAC.resume(); if (p && p.then) p.then(() => { if (!ringOn) ringAC.suspend(); }); } catch (e) {} }
+document.addEventListener('pointerdown', ringWake, true);   // 소리를 낼 수 있게 첫 터치 때 미리 깨워 둬요
 // 성장 수사 첫 화면 등에서 쓰는 오늘 요약 (마지막 수유 등)
 function summary() { const s = stats(today()); return s; }
 

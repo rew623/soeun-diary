@@ -125,7 +125,7 @@ function nextDay() {
   const m = L[i], pv = L[Math.max(0, i - 1)];
   return { t: m[1], d: m[0] - n, f: m[0] === pv[0] ? 1 : Math.max(0, Math.min(1, (n - pv[0]) / (m[0] - pv[0]))) };
 }
-let AC = null; const ac = () => { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; };
+let AC = null; const ac = () => { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); clearTimeout(ac.t); ac.t = setTimeout(() => { try { AC.suspend(); } catch (e) {} }, 12000); return AC; };   // 다 울리면 소리 장치 재움 (아이폰 다른 앱 소리 방해 X)
 // 오르골 모빌: 누르면 자장가 10초, 한 번 더 누르면 꺼져요 (예전엔 누를 때마다 겹쳐 울렸어요)
 function playTune() {
   if (R.tune) { try { R.tune.p.stop(); } catch (e) {} clearTimeout(R.tune.t); R.tune = null; R.music = 0; render(); toast('🎶 오르골을 껐어요'); return; }
