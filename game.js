@@ -608,9 +608,9 @@ css.textContent = `
 .ghub{margin-top:10px}.ghub button{font-size:13.5px}
 .ghh{font-size:13px;color:var(--navy);margin:12px 0 0}
 button.gchip{min-height:30px}
-.gtop{display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:nowrap}.gtop .gchip{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:3px 9px;font-size:12px}
+.gtop{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:10px;flex-wrap:nowrap}.gtop .gchip{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:3px 9px;font-size:12px}
 .gchip{font-size:12.5px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:99px;padding:3px 10px;white-space:nowrap}
-.gtop .ghost{margin-left:auto;flex:0 0 auto;min-height:32px;padding:3px 10px;font-size:12px;white-space:nowrap}
+.gtop .ghost{margin:0;flex:0 0 auto;min-height:32px;padding:3px 10px;font-size:12px;white-space:nowrap}
 .gms{display:flex;flex-direction:column;gap:6px}
 .gm{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:9px 12px;min-height:46px;font-size:14.5px}
 .gm i{width:24px;height:24px;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center;font-style:normal;font-weight:700;flex-shrink:0;color:#fff}
