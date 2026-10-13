@@ -165,8 +165,10 @@ function line(e) {
   const dot = k === 'diaper' ? (r.poo ? K.poo.c : K.pee.c) : (K[k] || K.memo).c;
   const act = e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
   const ik = k === 'diaper' ? (r.poo ? 'poo' : 'pee') : k;
-  if (memo) sub.push(esc(memo)); if (r.by) sub.push(`<em>${esc(r.by)}</em>`);
-  return `<button class="dyrow${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
+  if (memo) sub.push(esc(memo));
+  const byH = r.by ? `<em>${esc(r.by)}</em>` : '', inl = !sub.length && byH;   // 아래 줄에 쓸 말이 없으면 이름을 제목 줄 끝에 (한 줄로)
+  if (byH && !inl) sub.push(byH);
+  return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}${inl ? ` ${byH}` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
 }
 
 // ---------- 화면 ----------
@@ -754,7 +756,7 @@ css.textContent = `
 .dyt{flex:0 0 46px;font-family:var(--display);font-size:16.5px;color:var(--navy)}.dyt small{font-size:11px;margin-left:1px}
 .dyib{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,#FFFDF7);border:2px solid var(--c)}.dyib .dyico{display:block}
 .dyb{flex:1;min-width:0}.dyb>b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);line-height:1.3}.dyb>b u{text-decoration:none;color:var(--c);margin-left:3px;font-size:16.5px}
-.dyb small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}.dyb em{font-style:normal;font-size:12px;color:var(--muted)}
+.dyb small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}.dyb em{font-style:normal;font-size:12px;color:var(--muted)}.dyb>b em{font-family:var(--body);margin-left:4px;white-space:nowrap}.dyb>b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dyrow.dpoo .dyb>b,.dyrow.dpoo .dyb>b u{font-size:14.5px}   /* 소변·대변은 한 줄에 다 들어가게 */
 .dyrow i{font-style:normal;color:var(--line);font-size:18px}
 .dynext{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#FFFDF7;border:2px solid var(--navy);border-radius:16px;padding:10px 12px;margin:2px 0 12px;box-shadow:0 3px 0 rgba(31,42,68,.15)}
 .dynext>span{font-size:28px}.dynext>div{flex:1;min-width:0}.dynext small{display:block;font-size:12px;color:var(--muted)}
