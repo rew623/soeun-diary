@@ -65,6 +65,17 @@ const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Numb
 const fref = () => doc(db, 'families', M.fid);
 const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'regrant', 'wanted', 'look', 'bpos', 'whome', 'paper', 'feed'];   // feed: 수유 알람 설정 {on, day, night, ns, ne, pre}   // whome: 탐문 기록 기본 출발지 {g:'위도,경도', n:이름}   // look: 캐릭터 컨셉 옷을 한 번 입힌 표시
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
+// 아직 서버에 안 닿은 내 놀이 저장 (2026.10.13): 트랜잭션(도토리 쓰기)은 폰 안 사본에 바로 안 들어가서, 그 사이 다른 데이터가 와서 화면을 다시 그리면 방금 산 물건·도토리가 옛 값으로 돌아갔다 서버 값이 오면 다시 나타났어요
+// → 서버에서 같은 값이 확인될 때까지(최대 20초) 내 값을 위에 덮어 보여 줘요
+const OV = { f: {}, a: null };
+const jeq = (a, b) => JSON.stringify(a) === JSON.stringify(b), jcl = v => v === undefined ? v : JSON.parse(JSON.stringify(v));
+function ovApply(g, clean) {
+  const now = Date.now();
+  const done = o => clean && o.ack && now - o.t > 3000;   // 서버가 받았다고 했고 3초 지났으면 이제 서버 값을 믿어요 (그 사이 다른 폰이 바꾼 것도 보이게)
+  Object.keys(OV.f).forEach(k => { const o = OV.f[k]; if (now - o.t > 20000 || done(o) || (clean && jeq(g[k], o.v))) { delete OV.f[k]; return; } g[k] = jcl(o.v); });
+  if (OV.a) { if (now - OV.a.t > 8000 || done(OV.a) || (clean && +g.acorn === OV.a.v)) OV.a = null; else g.acorn = OV.a.v; }
+  return g;
+}
 const list = c => [...M.col[c].values()].sort((a, b) => ((a._o ?? 0) - (b._o ?? 0)) || String(a.id).localeCompare(String(b.id)));
 const app = () => window.__app;
 
@@ -347,29 +358,36 @@ const H = {
     if (JSON.stringify(obj || {}).length > 50000) throw new Error('놀이 저장이 너무 커요');
     // mergeFields: 보낸 칸만 통째로 바꿔요 (slot·wear 같은 묶음에서 뺀 자리도 다른 폰에 반영)
     const ref = dref('game', 'shared'), data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, row);
+    const keys = GAME_KEYS.filter(k => k !== 'acorn' && obj && obj[k] !== undefined), prev = {};
+    if (M.game) { keys.forEach(k => { prev[k] = jcl(M.game[k]); }); prev.acorn = M.game.acorn; }
+    const overlay = () => { if (!M.game || !keys.length) return; keys.forEach(k => { OV.f[k] = { v: jcl(obj[k]), t: Date.now() }; M.game[k] = jcl(obj[k]); }); };
+    const rollback = () => { keys.forEach(k => { delete OV.f[k]; if (M.game) { if (prev[k] === undefined) delete M.game[k]; else M.game[k] = prev[k]; } }); OV.a = null; if (M.game && prev.acorn !== undefined) M.game.acorn = prev.acorn; onRemote(); };
+    const withOv = async f => { overlay(); try { const r = await f(); keys.forEach(k => { if (OV.f[k]) OV.f[k].ack = true; }); return r; } catch (e) { rollback(); throw e; } };
     // 도토리를 쓸 때는 서버의 진짜 잔액을 다시 읽고 모자라면 안 사요 (다른 폰이 먼저 써서 화면 숫자가 옛날 것일 때 마이너스가 되지 않게)
     // 한 번만 주는 보상(once): 서버의 그 칸(예: regrant)을 다시 읽고 이미 받았으면 안 줘요 (두 폰이 동시에 받지 않게)
     // once가 { key, val }이면 그 칸에 val(예: 수배범 주 '2026-10-05')보다 같거나 늦은 값이 있을 때 이미 받은 걸로 (주마다 한 번)
     if (once) {
       const key = typeof once === 'string' ? once : String(once.key || ''), val = typeof once === 'string' ? null : String(once.val || '');
       if (!GAME_KEYS.includes(key) || key === 'acorn' || (val !== null && !val)) throw new Error('보상 칸이 올바르지 않아요');
-      await runTransaction(db, async tx => {
+      await withOv(() => runTransaction(db, async tx => {
         const cur = (await tx.get(ref)).data() || {};
         if (val === null ? cur[key] : (cur[key] && String(cur[key]) >= val)) throw Object.assign(new Error('이미 받은 보상이에요'), { code: 'already' });
         data[key] = val === null ? ((obj && obj[key]) || true) : val; data.acorn = (+cur.acorn || 0) + Math.round(+acornDelta || 0); if (setBal) setBal(data.acorn);
         tx.set(ref, data, { mergeFields: Object.keys(data) });
-      });
+      }));
+      if (M.game && data.acorn != null) { M.game.acorn = data.acorn; OV.a = { v: data.acorn, t: Date.now(), ack: true }; M.game[key] = data[key]; OV.f[key] = { v: data[key], t: Date.now(), ack: true }; onRemote(); }
       return { ok: true };
     }
     if (obj && obj.acornSet == null && acornDelta < 0) {
-      await runTransaction(db, async tx => {
+      await withOv(() => runTransaction(db, async tx => {
         const cur = +(((await tx.get(ref)).data() || {}).acorn) || 0, next = cur + Math.round(+acornDelta);
         if (next < 0) throw Object.assign(new Error(`도토리가 ${-next}개 모자라요 (다른 폰에서 먼저 썼어요)`), { code: 'acorn-short' });
         data.acorn = next; if (setBal) setBal(next); tx.set(ref, data, { mergeFields: Object.keys(data) });
-      });
+      }));
+      if (M.game && data.acorn != null) { M.game.acorn = data.acorn; OV.a = { v: data.acorn, t: Date.now(), ack: true }; onRemote(); }
       return { ok: true };
     }
-    await commit(setDoc(ref, data, { mergeFields: Object.keys(data) }));
+    await withOv(() => commit(setDoc(ref, data, { mergeFields: Object.keys(data) })));
     return { ok: true };
   },
 
@@ -385,6 +403,7 @@ const H = {
       data.acorn = Math.max(0, (+cur.acorn || 0) + Math.round(+out.add || 0)); bal = data.acorn;
       tx.set(ref, data, { mergeFields: Object.keys(data) });
     });
+    if (out && M.game && bal != null) { M.game.acorn = bal; OV.a = { v: bal, t: Date.now(), ack: true }; Object.keys(out.set || {}).forEach(k => { if (GAME_KEYS.includes(k)) { M.game[k] = jcl(out.set[k]); OV.f[k] = { v: jcl(out.set[k]), t: Date.now(), ack: true }; } }); onRemote(); }
     if (out && out.add) await H.ledgerAdd({ d: out.add, why: out.why || '보상', bal });
     return out;
   },
@@ -578,7 +597,7 @@ function start(fid) {
     onRemote();
   }, e => console.warn('레시피를 불러오지 못했어요', e)));
   unsubs.push(onSnapshot(doc(db, 'families', fid, 'game', 'shared'), { includeMetadataChanges: true }, s => {
-    M.game = s.exists() ? s.data() : {}; if (!s.metadata.fromCache) M.gameSrv = true;
+    M.game = ovApply(s.exists() ? s.data() : {}, !s.metadata.fromCache && !s.metadata.hasPendingWrites); if (!s.metadata.fromCache) M.gameSrv = true;
     onRemote();
   }, e => console.warn('놀이 저장을 불러오지 못했어요', e)));
   // 하루 수사 (families/{fid}/care/{YYYY-MM-DD}: { items: { 기록id: {...} } }) — 하루에 문서 하나라 기록이 많아도 읽기가 적어요
