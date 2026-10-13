@@ -116,15 +116,112 @@ function bear(o = {}) {
   s += `<circle cx="-7" cy="-3" r="2" fill="${K}"/><circle cx="7" cy="-3" r="2" fill="${K}"/><ellipse cx="0" cy="4" rx="3.4" ry="2.4" fill="#5B3618"/><path d="M-3 9q3 2.5 6 0" fill="none" ${ln(1.3)}/>`;
   return s;
 }
+// ---------- 명탐정 코난 컨셉 등장인물 (사람, 2등신으로 직접 그림) — 2026.10.13 사용자 요청 '등장인물 그림이 없어' ----------
+const SK = '#F9DDC6';
+// 몸: 옷 색·팔 모양(down|up|fist|point|hold)·긴바지(long)·넥타이 등 장식(tie)
+function human(o) {
+  const coat = o.coat, pt = o.pants || '#5A6275', shoe = o.shoe || '#5B3A2E';
+  let s = '';
+  if (o.long) s += `<path d="M-12 36h24l-1 15h-9l-2-8-2 8h-9z" fill="${pt}" ${ln(1.8)}/>`;
+  else s += `<rect x="-9" y="42" width="5" height="8" fill="${SK}" ${ln(1.5)}/><rect x="4" y="42" width="5" height="8" fill="${SK}" ${ln(1.5)}/><path d="M-13 36h26l-1 8H1l-1-3-1 3h-12z" fill="${pt}" ${ln(1.8)}/>`;
+  s += `<ellipse cx="-7" cy="52" rx="6" ry="3.4" fill="${shoe}" ${ln(1.6)}/><ellipse cx="7" cy="52" rx="6" ry="3.4" fill="${shoe}" ${ln(1.6)}/>`;
+  s += `<path d="M-12 18C-15 24-15 32-13 38h26c2-6 2-14-1-20z" fill="${coat}" ${ln(1.8)}/><path d="M-5 18l5 8 5-8z" fill="${o.shirt || '#fff'}" ${ln(1.3)}/>`;
+  const arm = (x1, y1, x2, y2) => `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${K}" stroke-width="9.5" stroke-linecap="round"/><path d="M${x1} ${y1}L${x2} ${y2}" stroke="${o.sleeve || coat}" stroke-width="6.5" stroke-linecap="round"/><circle cx="${(x2 + (x2 - x1) * .12).toFixed(1)}" cy="${(y2 + (y2 - y1) * .12).toFixed(1)}" r="3.8" fill="${SK}" ${ln(1.6)}/>`;
+  const L = o.armL || 'down', R = o.armR || 'down';
+  s += L === 'up' ? arm(-11, 22, -21, 8) : L === 'fist' ? arm(-11, 23, -24, 22) : arm(-11, 22, -17, 33);
+  s += R === 'point' ? arm(11, 22, 25, 15) + `<path d="M29 13.6l6-2.2" stroke="${K}" stroke-width="4.4" stroke-linecap="round"/><path d="M29 13.6l6-2.2" stroke="${SK}" stroke-width="2.2" stroke-linecap="round"/>`
+    : R === 'up' ? arm(11, 22, 21, 8) : R === 'fist' ? arm(11, 23, 27, 20) : R === 'hold' ? arm(11, 23, 20, 30) : arm(11, 22, 17, 33);
+  return s + (o.tie || '');
+}
+// 얼굴: 귀·얼굴·눈(보통|반쯤 감은 half|잠 sleep)·볼·입(smile|open|smirk|flat|o)
+function hface(o = {}) {
+  let s = `<ellipse cx="-20" cy="3" rx="3.8" ry="4.8" fill="${SK}" ${ln(1.6)}/><ellipse cx="20" cy="3" rx="3.8" ry="4.8" fill="${SK}" ${ln(1.6)}/><path d="M-20-4C-20-17-10-22 0-22S20-17 20-4 11 20 0 20-20 9-20-4z" fill="${SK}" ${ln(2)}/>`;
+  const ec = o.eye || '#2A2F45';
+  if (o.sleep) s += `<path d="M-12 4q4 3 8 0M4 4q4 3 8 0" fill="none" ${ln(1.8)}/>`;
+  else if (o.half) s += [-8, 8].map(x => `<path d="M${x - 3.4} 3a3.4 3.6 0 0 0 6.8 0z" fill="${ec}"/><path d="M${x - 4.2} 3h8.4" ${ln(1.7)}/>`).join('');
+  else s += [-8, 8].map(x => `<ellipse cx="${x}" cy="3" rx="3.3" ry="4.5" fill="${ec}"/><circle cx="${x + 1.1}" cy="1.4" r="1.3" fill="#fff"/>`).join('');
+  s += `<g fill="#F4A9A0" opacity=".55"><ellipse cx="-13" cy="10" rx="3.4" ry="2.2"/><ellipse cx="13" cy="10" rx="3.4" ry="2.2"/></g>`;
+  const m = o.mouth || 'smile';
+  s += m === 'open' ? `<path d="M-3.5 11q3.5 6 7 0z" fill="#B5463F" ${ln(1.3)}/>` : m === 'smirk' ? `<path d="M-2 12.5q3.5 1.5 6.5-1.8" fill="none" ${ln(1.5)}/>` : m === 'flat' ? `<path d="M-2.5 12h5" ${ln(1.4)}/>` : m === 'o' ? `<ellipse cx="0" cy="12" rx="1.8" ry="2.2" fill="#B5463F" ${ln(1.1)}/>` : `<path d="M-3 11q3 3 6 0" fill="none" ${ln(1.5)}/>`;
+  return s;
+}
+const thick = (d, c, w) => `<path d="${d}" fill="none" stroke="${K}" stroke-width="${w + 2.2}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+// 꼬마 명탐정 (코난 느낌): 삐친 머리카락·큰 동그란 안경·파란 재킷·빨간 나비넥타이·반바지
+function conanBoy(o = {}) {
+  const pose = o.pose || 'face';
+  let s = '';
+  if (pose === 'skate') s += g(0, 58, 0, .95, skate(1));
+  if (pose !== 'face') s += human({ coat: '#3D63B0', shirt: '#fff', pants: '#5A6275', armR: pose === 'point' ? 'point' : pose === 'lens' ? 'hold' : pose === 'kick' ? 'up' : 'down', armL: pose === 'skate' ? 'up' : 'down', tie: g(0, 19.5, 0, .4, bowtie(1)) });
+  if (pose === 'lens') s += g(25, 30, -20, .6, lens(1));
+  if (pose === 'kick') s += g(22, 47, 0, .62, ball(1));
+  s += hface({ eye: '#2A2F45', mouth: pose === 'point' ? 'open' : 'smile' });
+  s += `<path d="M-21 4C-23-14-12-25 1-25S24-14 21 4L18-4 15-1 13-10 9-4 6-11 2-5-2-11-5-4-9-11-12-4-15-9-18-1z" fill="#3A2E2A" ${ln(1.8)}/>` + thick('M4-24C5-33 14-35 14-29', '#3A2E2A', 3);
+  s += `<g fill="#fff" fill-opacity="${o.shine ? '.9' : '.22'}"><circle cx="-8" cy="3" r="7.6" stroke="${K}" stroke-width="2.4"/><circle cx="8" cy="3" r="7.6" stroke="${K}" stroke-width="2.4"/></g><path d="M-.6 2.5h1.2M-15.6 2L-20 1M15.6 2L20 1" ${ln(2.2)}/>`;
+  if (o.shine) s += `<path d="M-12 1l5-5M4 1l5-5" stroke="#9EC5EA" stroke-width="1.8" stroke-linecap="round"/>`;
+  return s;
+}
+// 가라테 누나 (란 느낌): 긴 머리·앞머리 뿔·도복·검은 띠
+function ranGirl(o = {}) {
+  let s = `<path d="M-21-2C-25 10-24 32-19 44h38c5-12 6-34 2-46C21-18 11-25 0-25S-21-18-21-2z" fill="#4B342A" ${ln(1.8)}/>`;
+  s += human({ coat: '#FAFAF7', shirt: '#FAFAF7', pants: '#FAFAF7', long: true, shoe: SK, armL: 'fist', armR: o.punch ? 'fist' : 'down',
+    tie: `<path d="M-7 18l7 10 7-10" fill="none" ${ln(1.3)}/><path d="M-13 33h26v3.6h-26z" fill="#2E2A2A"/><path d="M-1 36l-4 7M1 36l4 7" stroke="#2E2A2A" stroke-width="2.6" stroke-linecap="round"/>` });
+  s += hface({ eye: '#5A3A2E', mouth: o.punch ? 'open' : 'smile' });
+  s += `<path d="M-21 4C-23-14-12-24 0-24S23-14 21 4C19-4 15-11 8-13 5-7-2-7-6-12-12-9-17-3-21 4z" fill="#4B342A" ${ln(1.8)}/><path d="M-2-21C0-30 4-35 9-37 7-30 6-25 4-20z" fill="#4B342A" ${ln(1.8)}/>`;
+  if (o.punch) s += `<path d="M34 15h7M34 20h9M34 25h7" stroke="#8796B5" stroke-width="1.8" stroke-linecap="round"/>`;
+  return s;
+}
+// 괴도 신사 (키드 느낌): 흰 실크햇·외눈 안경·흰 정장·빨간 안감 망토·카드
+function kidThief() {
+  let s = `<path d="M-13 18C-30 28-33 44-27 56h54c6-12 3-28-14-38z" fill="#fff" ${ln(1.8)}/><path d="M13 18C27 27 32 42 27 56h-6c3-13-1-26-10-34z" fill="#C8403A"/>`;
+  s += human({ coat: '#fff', shirt: '#3E5FA8', pants: '#fff', long: true, shoe: '#fff', armR: 'hold', tie: `<path d="M0 20l-2 3 2 7 2-7z" fill="#C8403A"/>` });
+  s += g(25, 26, -20, .45, card(1));
+  s += hface({ eye: '#3A3F66', mouth: 'smirk' });
+  s += `<path d="M-21 4C-22-8-17-14-11-16L-13-8-8-11-9-2-14-6-17 2zM21 4C22-8 17-14 11-16L13-8 8-11 9-2 14-6 17 2z" fill="#3A2E2A" ${ln(1.4)}/>`;
+  s += `<g transform="rotate(-8 0 -14)"><path d="M-14-15V-38h28v23" fill="#fff" ${ln(1.8)}/><rect x="-14" y="-21" width="28" height="5" fill="#3E5FA8" ${ln(1.2)}/><ellipse cx="0" cy="-14" rx="25" ry="5.5" fill="#fff" ${ln(1.8)}/></g>`;
+  s += `<circle cx="-8" cy="3" r="6.8" fill="#fff" fill-opacity=".25" ${ln(1.6)}/><path d="M-14.5 6C-18 12-17 18-14 22" fill="none" stroke="#B9A76A" stroke-width="1.2"/><g fill="#7DBB6A"><circle cx="-15.5" cy="23" r="1.7"/><circle cx="-12.5" cy="23" r="1.7"/><circle cx="-14" cy="21.5" r="1.7"/><circle cx="-14" cy="24.5" r="1.7"/></g>`;
+  return s;
+}
+// 발명가 박사 (아가사 느낌): 대머리·흰 옆머리·흰 콧수염·둥근 코·흰 가운·플라스크
+function agasa() {
+  let s = `<rect x="-11" y="43" width="8" height="7" fill="#5A6275" ${ln(1.4)}/><rect x="3" y="43" width="8" height="7" fill="#5A6275" ${ln(1.4)}/><ellipse cx="-7" cy="52" rx="6.5" ry="3.3" fill="#5B3A2E" ${ln(1.5)}/><ellipse cx="7" cy="52" rx="6.5" ry="3.3" fill="#5B3A2E" ${ln(1.5)}/>`;
+  s += `<path d="M-15 19C-23 27-22 41-15 46h30c7-5 8-19 0-27z" fill="#fff" ${ln(1.8)}/><path d="M-6 19c-2 9-1 18 1 27h10c2-9 3-18 1-27z" fill="#8DAA6E" ${ln(1.4)}/><path d="M0 19l-2 3 2 6 2-6z" fill="#C8403A"/>`;
+  const arm = (x1, y1, x2, y2) => `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${K}" stroke-width="9.5" stroke-linecap="round"/><path d="M${x1} ${y1}L${x2} ${y2}" stroke="#fff" stroke-width="6.5" stroke-linecap="round"/><circle cx="${x2}" cy="${y2 + 2}" r="3.8" fill="${SK}" ${ln(1.6)}/>`;
+  s += arm(-14, 24, -19, 35) + arm(14, 24, 22, 30);
+  s += `<g transform="translate(27 26)"><path d="M-2-8v5l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9v-5z" fill="#DDEFFB" ${ln(1.3)}/><path d="M-5.2 4h10.4l1.6 2.6a2 2 0 0 1-2 2.4H-5.6a2 2 0 0 1-2-2.4z" fill="#8FD18A"/><circle cx="3" cy="-12" r="1.6" fill="#BFE3F7"/><circle cx="-1" cy="-16" r="1.1" fill="#BFE3F7"/></g>`;
+  s += `<ellipse cx="-20" cy="4" rx="3.8" ry="4.8" fill="${SK}" ${ln(1.6)}/><ellipse cx="20" cy="4" rx="3.8" ry="4.8" fill="${SK}" ${ln(1.6)}/><path d="M-21-3C-21-17-11-23 0-23S21-17 21-3 12 21 0 21-21 11-21-3z" fill="${SK}" ${ln(2)}/>`;
+  s += `<path d="M-21 6c-6-3-6-13 0-15 0 4 2 6 4 7-3 2-4 5-4 8zM21 6c6-3 6-13 0-15 0 4-2 6-4 7 3 2 4 5 4 8z" fill="#F2F2F2" ${ln(1.4)}/><path d="M-8-17q6-4 13-2" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".85"/>`;
+  s += `<circle cx="-7" cy="1" r="1.9" fill="${K}"/><circle cx="7" cy="1" r="1.9" fill="${K}"/><path d="M-11-4h6M5-4h6" stroke="#D6D6D6" stroke-width="2.6" stroke-linecap="round"/>`;
+  s += `<ellipse cx="0" cy="6" rx="4.6" ry="3.6" fill="#F4B9A2" ${ln(1.4)}/><path d="M0 9.5C-4 7.5-11 8.5-14 12.5-9 14.5-4 13.5 0 11.5 4 13.5 9 14.5 14 12.5 11 8.5 4 7.5 0 9.5z" fill="#F2F2F2" ${ln(1.4)}/>`;
+  return s;
+}
+// 쿨한 과학자 소녀 (하이바라 느낌): 적갈색 단발·반쯤 감은 눈·흰 가운
+function haibara() {
+  let s = human({ coat: '#fff', shirt: '#8C3B3B', pants: '#5A4A6A', shoe: '#8C3B3B' });
+  s += hface({ eye: '#3B4E5E', half: true, mouth: 'flat' });
+  s += `<path d="M-23 12C-26-6-17-25 0-25S26-6 23 12l-6 1C18 3 16-5 11-9 3-5-7-3-15-9-17-3-17 5-17 13z" fill="#B4653B" ${ln(1.8)}/>`;
+  return s;
+}
+// 잠자는 탐정 아저씨 (코고로 느낌): 콧수염·정장·넥타이·졸음
+function kogoro() {
+  let s = human({ coat: '#4E5A72', shirt: '#fff', pants: '#4E5A72', long: true, shoe: '#2E2A2A', tie: `<path d="M0 19l-2.4 3 2.4 9 2.4-9z" fill="#9B2D2D" ${ln(1)}/>` });
+  s += hface({ sleep: true, mouth: 'o' });
+  s += `<path d="M-21 2C-23-15-12-24 0-24S23-15 21 2L19-6 13-12 7-8 1-14-5-8-11-12-17-5z" fill="#2E2A2A" ${ln(1.8)}/><path d="M0 8.5C-2.5 7.5-6 8-8.5 10M0 8.5C2.5 7.5 6 8 8.5 10" fill="none" stroke="#2E2A2A" stroke-width="2.2" stroke-linecap="round"/>`;
+  return s + zz;
+}
+// 소년 탐정단 (아유미·겐타 느낌 얼굴)
+const ayumi = () => hface({ eye: '#5A3A2E', mouth: 'open' }) + `<path d="M-22 8C-24-10-13-24 0-24S24-10 22 8l-4-6C17-5 12-11 6-11 2-8-4-8-8-11-14-10-17-5-18 2z" fill="#7A4A32" ${ln(1.8)}/><path d="M-18-10C-11-18 11-18 18-10" fill="none" stroke="#F4A6C6" stroke-width="4" stroke-linecap="round"/>`;
+const genta = () => `<ellipse cx="-22" cy="3" rx="4" ry="5" fill="${SK}" ${ln(1.6)}/><ellipse cx="22" cy="3" rx="4" ry="5" fill="${SK}" ${ln(1.6)}/><ellipse rx="23" ry="21" fill="${SK}" ${ln(2)}/><path d="M-21-4C-21-16-11-22 0-22S21-16 21-4C15-10 7-12 0-12S-15-10-21-4z" fill="#2E2A2A" ${ln(1.6)}/><path d="M-3-12l3-7 3 7z" fill="#2E2A2A" ${ln(1.2)}/><circle cx="-8" cy="1" r="2.2" fill="${K}"/><circle cx="8" cy="1" r="2.2" fill="${K}"/><path d="M-8 9q8 9 16 0z" fill="#B5463F" ${ln(1.4)}/><g fill="#F4A9A0" opacity=".55"><ellipse cx="-14" cy="8" rx="3.4" ry="2.2"/><ellipse cx="14" cy="8" rx="3.4" ry="2.2"/></g>`;
+
 // 우리 식구 (다람쥐 — characters.js 그대로) 를 바탕 그림에 끼워 넣기
 const fam = (who, prop, o, sz) => { if (!window.CHARS) return ''; const v = CHARS.svg(who, prop, Object.assign({ size: sz }, o)); return v.replace(/^<svg class="chr" width="[^"]*" height="[^"]*"/, `<svg x="${-sz / 2}" y="${-sz / 2}" width="${sz}" height="${sz}"`).replace(/ aria-hidden="true"/, ''); };
 
 // ---------- 컨셉마다 그릴 것 (큰 그림 13개 + 작은 반짝이) ----------
 const SLOTS = [[75, 78], [215, 62], [345, 96], [140, 200], [290, 205], [58, 318], [205, 335], [350, 330], [118, 455], [272, 462], [62, 572], [212, 590], [352, 566]];
 const ART = {
-  conan: () => ({ main: [fam('baby', 'lens', { outfit: 'conan', hat: 'none' }, 96), g(0, 0, 0, 1.4, lens(1)), fam('thief', 'card', {}, 90), g(0, 0, 0, 1.5, bowtie(1)), fam('dad', 'lens', { outfit: 'sherlock', hat: 'deer' }, 92), g(0, 0, 0, 1.5, ball(1)),
-      fam('baby', 'skate', { outfit: 'conan', hat: 'none' }, 92), g(0, 0, 0, 1.4, glasses(1)), fam('mom', 'note', { outfit: 'watson', hat: 'bowler' }, 90), g(0, 0, 0, 1.3, moon(1)) + g(16, 8, -10, .9, dove(1)), g(0, 0, 0, 1.5, skate(1)), g(0, 0, 0, 1.6, badge(1)), g(0, 0, 0, 1.6, card(1))],
-    small: [s => qmark(s, '#5B6E99'), s => shoe(s, '#8796B5'), s => star(6 * s, '#F2C230'), s => sparkle(s, '#C8403A')], op: .42 }),
+  conan: () => ({ main: [g(0, 0, 0, 1.05, conanBoy({ pose: 'point' })), g(0, 0, 0, 1.05, kidThief()), g(0, 0, 0, 1.4, lens(1)), g(0, 0, 0, 1.05, ranGirl({ punch: true })), g(0, 0, 0, 1.05, conanBoy({ pose: 'lens', shine: true })),
+      g(0, 0, 0, 1.05, agasa()), g(0, 0, 0, 1.5, bowtie(1)), g(0, 0, 0, 1.05, haibara()), g(0, 0, 0, 1.3, moon(1)) + g(16, 8, -10, .9, dove(1)), g(0, 0, 0, 1.05, kogoro()),
+      g(-18, 0, 0, .8, ayumi()) + g(20, 4, 0, .82, genta()), fam('baby', 'lens', { outfit: 'conan', hat: 'none' }, 92), g(0, 0, 0, 1.05, conanBoy({ pose: 'kick' }))],
+    small: [s => qmark(s, '#5B6E99'), s => shoe(s, '#8796B5'), s => star(6 * s, '#F2C230'), s => badge(s * .6)], op: .5 }),
   sanrio: () => ({ main: [g(0, 0, 0, 1.1, kitty({ body: true, wave: true })), g(0, 0, 0, 1.4, strawberry(1)), g(0, 0, 0, 1.05, purin({ body: true })), g(0, 0, 0, 1.4, candy(1, '#F4A6C6')), g(0, 0, 0, 1.05, cinna({ fly: true, body: true })), g(0, 0, 0, 1.1, melody({ body: true })),
       g(0, 0, 0, 1.6, cloud(1, '#fff', '#C9B6E4')), fam('baby', 'kittydoll', { hat: 'kittybow', outfit: 'kitty' }, 92), g(0, 0, 0, 1.15, kitty({ apple: true })), g(0, 0, 0, 1.3, pudding(1)), g(0, 0, 0, 1.05, cinna({ cup: true, body: true })), g(0, 0, 0, 1.5, heart(1.2, '#F4A6C6', 1.4)), g(0, 0, 0, 1.05, melody({}))],
     small: [s => heart(s * .6, '#F4A6C6'), s => star(6 * s, '#F6D46A'), s => sparkle(s, '#C9B6E4'), s => strawberry(s * .5)], op: .45 }),
@@ -180,7 +277,7 @@ function apply(id) {
 const current = () => document.documentElement.dataset.theme || 'det';
 // 설정 화면 견본: 그 컨셉의 대표 그림
 function icon(id) {
-  const b = { det: () => fam('baby', 'lens', { hat: 'det', outfit: '' }, 64), conan: () => fam('baby', 'lens', { outfit: 'conan', hat: 'none' }, 64), sanrio: () => g(0, 2, 0, .62, melody({})) , kitty: () => g(0, 4, 0, .72, kitty({})), purin: () => g(0, 4, 0, .72, purin({})), cinna: () => g(0, 4, 0, .62, cinna({})), disney: () => g(0, 6, 0, .7, mouse({ bow: true })) }[id];
+  const b = { det: () => fam('baby', 'lens', { hat: 'det', outfit: '' }, 64), conan: () => g(0, 5, 0, .7, conanBoy({})), sanrio: () => g(0, 2, 0, .62, melody({})) , kitty: () => g(0, 4, 0, .72, kitty({})), purin: () => g(0, 4, 0, .72, purin({})), cinna: () => g(0, 4, 0, .62, cinna({})), disney: () => g(0, 6, 0, .7, mouse({ bow: true })) }[id];
   return b ? `<svg viewBox="-32 -32 64 64" width="52" height="52" aria-hidden="true">${b()}</svg>` : '';
 }
 window.THEME = { list: LIST, apply, current, icon, paint };
