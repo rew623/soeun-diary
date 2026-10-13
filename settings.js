@@ -55,6 +55,9 @@ function render_() {
   <section class="stsec"><h2 class="sh"><span>첫 화면 카드</span><span>성장 수사</span></h2>
     <div class="stlist">${CARDS.map(([k, l]) => sw2(!home.includes(k), `data-stg="card" data-v="${k}"`, l, '')).join('')}</div>
     <div class="stbtns"><button class="ghost" data-stg="cards" data-v="core">🎯 핵심만 보기 (부가 카드 모두 끄기)</button><button class="ghost" data-stg="cards" data-v="all">모두 켜기</button></div></section>
+  <section class="stsec"><h2 class="sh"><span>🌰 도토리 기록</span><span>${window.GAME && S.game ? '지금 ' + GAME.store.get().acorn + '개' : ''}</span></h2>
+    <p class="sttip">도토리가 늘고 줄 때마다 한 줄씩 남아요 (언제·얼마·왜·누가·그때 잔액). 산 물건 값과 맞춰 볼 수 있고, 이상하면 '기록 복사'를 눌러 보내 주세요.</p>
+    <div class="stbtns"><button data-stg="ledger">📋 도토리 기록 보기·대조</button></div></section>
   <section class="stsec"><h2 class="sh"><span>💾 백업·내보내기</span><span>${(() => { const t = get('soeun-backup-at', ''); return t ? '마지막 백업 ' + t.slice(0, 10) : '아직 백업 안 함'; })()}</span></h2>
     <p class="sttip">기록 전체(성장·하루 수사·예방접종·급식·앨범 정보·탐문·놀이)를 파일 하나로 받아 두면, 실수로 지우거나 계정에 문제가 생겨도 되살릴 수 있어요. 한 달에 한 번 카톡 '나와의 채팅'이나 구글 드라이브에 보내 두세요. 사진은 파일 안에 주소만 들어 있어요(사진 자체는 서버에 그대로).${S.game ? ` <br>놀이 저장 칸 크기: ${Math.max(1, Math.round(new Blob([JSON.stringify(S.game)]).size / 1024))}KB / 한계 1,024KB` : ''}</p>
     <div class="stbtns"><button data-stg="backup">📦 전체 백업 파일 받기</button><button class="ghost" data-stg="csv">📊 하루 수사 기록 표(CSV)</button>${!(S.me && S.me.viewer) ? '<button class="ghost" data-stg="restore">♻️ 백업 파일로 되살리기</button>' : ''}</div></section>
@@ -76,6 +79,36 @@ function render_() {
   <button class="secondary" data-stg="back" style="width:100%;margin-top:12px">돌아가기</button>`;
 }
 // 그린 뒤 버전 칸만 다시
+// ---------- 도토리 기록·대조 (2026.10.13) ----------
+const hm = t => { const d = new Date(t || 0), p = n => String(n).padStart(2, '0'); return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+async function ledger() {
+  let L = []; try { L = await run('ledgerGet'); } catch (e) { toast('기록을 불러오지 못했어요: ' + ((e && e.message) || e)); return; }
+  const A = window.GAME ? GAME.audit() : null, sum = L.filter(x => x.ok !== 0).reduce((a, x) => a + (+x.d || 0), 0), fail = L.filter(x => x.ok === 0).length;
+  const line = x => `${hm(x.t)} ${x.ok === 0 ? '✗ 못함' : (x.d > 0 ? '+' : '') + x.d} ${x.why || ''}${x.bal != null ? ` (잔액 ${x.bal})` : ''}${x.by ? ` · ${x.by}` : ''}${x.err ? ` · ${x.err}` : ''}`;
+  const head = A ? [`지금 도토리 ${A.balance}개`, `산 물건 ${A.n}개 · 값 합계 ${A.spent}개 (스티커 ${A.stickers}종은 뽑기라 제외)`, `받은 훈장 ${A.medalN}개 → ${A.medals}개 · 승진 보상 ${A.rankSum}개`, `장부 기록 ${L.length}줄 · 증감 합계 ${sum > 0 ? '+' : ''}${sum}${fail ? ` · 못 산 시도 ${fail}번` : ''}`] : [];
+  window.__ledgerTxt = head.join('\n') + '\n\n' + (A ? A.rows.map(r => `산 것: ${r[0]} ${r[1]}`).join('\n') + '\n\n' : '') + L.map(line).join('\n');
+  openSheet(`<h3>🌰 도토리 기록·대조</h3>
+    <div class="ldg">${head.map(h => `<p>${esc(h)}</p>`).join('')}<p class="ldgs">※ 장부는 이 기능을 넣은 날부터 남아요. 그 전 일은 '산 물건 값'과 '받은 보상'으로만 짐작할 수 있어요.</p></div>
+    <div class="ldgl">${L.length ? L.map(x => `<div class="${x.ok === 0 ? 'bad' : x.d < 0 ? 'out' : 'in'}"><b>${x.ok === 0 ? '✗' : (x.d > 0 ? '+' : '') + x.d}</b><span>${esc(x.why || '')}<small>${hm(x.t)}${x.bal != null ? ' · 잔액 ' + x.bal : ''}${x.by ? ' · ' + esc(x.by) : ''}${x.err ? ' · ' + esc(x.err) : ''}</small></span></div>`).join('') : '<p class="vempty">아직 남은 기록이 없어요. 도토리가 늘거나 줄면 여기에 쌓여요.</p>'}</div>
+    <div class="actions"><button class="ghost" data-stg="ldgcopy">📋 기록 복사</button><button class="ghost" data-stg="ldgset">🔧 개수 직접 맞추기</button><button class="primary" data-act="close">닫기</button></div>`);
+}
+async function ledgerCopy() {
+  try { await navigator.clipboard.writeText(window.__ledgerTxt || ''); toast('📋 복사했어요. 카톡이나 대화창에 붙여넣어 보내 주세요'); }
+  catch (e) { const t = document.createElement('textarea'); t.value = window.__ledgerTxt || ''; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast('📋 복사했어요'); } catch (x) { toast('복사하지 못했어요'); } t.remove(); }
+}
+function ledgerSet() {
+  const cur = GAME.store.get().acorn;
+  openSheet(`<h3>🔧 도토리 개수 직접 맞추기</h3><p class="sttip">지금 ${cur}개로 보여요. 맞는 개수를 적으면 엄마·아빠 폰 모두에 적용되고, 기록에 남아요.</p>
+    <label class="field"><span>맞는 도토리 개수</span><input id="ldg-n" inputmode="numeric" value="${cur}"></label>
+    <div class="actions"><button class="ghost" data-stg="ldg">‹ 기록으로</button><button class="primary" data-stg="ldgdo" data-v="${cur}">맞추기</button></div>`);
+}
+async function ledgerDo(cur) {
+  const n = Math.max(0, Math.round(+(((document.getElementById('ldg-n') || {}).value || '').replace(/[^\d]/g, '')) || 0)); cur = +cur;
+  if (n === cur) { toast('같은 개수예요'); return; }
+  if (!(await ask(`도토리를 ${cur}개 → ${n}개로 맞출까요?`, { ok: '맞추기', danger: true }))) return;
+  try { await run('saveGame', { acornSet: n }, 0, undefined, undefined, `직접 맞춤 (${cur}개 → ${n}개)`); toast(`🌰 ${n}개로 맞췄어요`); closeSheet(); if (window.__app && __app.refresh) __app.refresh(); } catch (e) { toast((e && e.message) || '맞추지 못했어요'); }
+}
+
 // ---------- 백업·내보내기 (2026.10.13) ----------
 const stamp = () => today().replace(/-/g, '');
 async function give(blob, name, title) {
@@ -127,6 +160,11 @@ document.addEventListener('click', async e => {
   if (a === 'card') { const off = get('soeun-home-off', []); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-home-off', off); render(); return; }
   if (a === 'theme') { if (window.THEME) THEME.apply(v); render(); const t = THEMES().find(x => x[0] === v); toast(`🎨 ${t ? t[1] : ''} 테마로 바꿨어요`); return; }
   if (a === 'cards') { put('soeun-home-off', v === 'core' ? CARDS.map(c => c[0]) : []); render(); toast(v === 'core' ? '🎯 첫 화면엔 핵심만 보여요 (여기서 다시 켤 수 있어요)' : '첫 화면 카드를 모두 켰어요'); return; }
+  if (a === 'ledger') return ledger();
+  if (a === 'ldgcopy') return ledgerCopy();
+  if (a === 'ldgset') return ledgerSet();
+  if (a === 'ldg') return ledger();
+  if (a === 'ldgdo') return ledgerDo(b.dataset.v);
   if (a === 'backup') return backup();
   if (a === 'csv') return csv();
   if (a === 'restore') return restore();
@@ -143,7 +181,8 @@ const css = document.createElement('style');
 css.textContent = `
 .stsec .sh{margin-bottom:8px}
 .stver{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.stver div{background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:8px 12px}.stver small{display:block;font-size:12px;color:var(--muted)}.stver b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy);word-break:break-all}
-.stlist{display:flex;flex-direction:column;gap:6px}.sttheme{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.sttheme button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:16px;border:2px solid color-mix(in srgb,var(--t1) 55%,transparent);background:color-mix(in srgb,var(--t1) 9%,#FBF8F3);color:var(--t1);min-height:92px}.sttheme i{font-style:normal;display:block;height:52px}.sttheme b{font-family:var(--display);font-weight:400;font-size:13.5px}.sttheme button.on{box-shadow:0 0 0 3px var(--t1) inset,0 3px 0 rgba(0,0,0,.12)}.stbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.stbtns button{flex:1 1 auto;min-height:44px;font-size:14px}.sttip{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0 0 4px}
+.stlist{display:flex;flex-direction:column;gap:6px}.sttheme{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.sttheme button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:16px;border:2px solid color-mix(in srgb,var(--t1) 55%,transparent);background:color-mix(in srgb,var(--t1) 9%,#FBF8F3);color:var(--t1);min-height:92px}.sttheme i{font-style:normal;display:block;height:52px}.sttheme b{font-family:var(--display);font-weight:400;font-size:13.5px}.sttheme button.on{box-shadow:0 0 0 3px var(--t1) inset,0 3px 0 rgba(0,0,0,.12)}.stbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.stbtns button{flex:1 1 auto;min-height:44px;font-size:14px}.ldg{background:#FFFDF7;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:8px}.ldg p{margin:2px 0;font-size:14px}.ldg .ldgs{font-size:12px;color:var(--muted);margin-top:6px}.ldgl{max-height:46vh;overflow:auto}.ldgl>div{display:flex;gap:10px;align-items:flex-start;padding:6px 2px;border-top:1px dashed var(--line)}.ldgl b{flex:0 0 44px;font-family:var(--display);font-weight:400;font-size:17px;text-align:right}.ldgl .in b{color:#2E7D5B}.ldgl .out b{color:var(--red)}.ldgl .bad b{color:var(--muted)}.ldgl span{flex:1;min-width:0;font-size:14px}.ldgl small{display:block;font-size:12px;color:var(--muted)}
+.sttip{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0 0 4px}
 .stsw{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1.5px solid var(--line);background:#FFFDF7;border-radius:14px;padding:10px 12px;min-height:52px;color:var(--ink)}
 .stsw span{display:flex;flex-direction:column;min-width:0}.stsw b{font-weight:400;font-size:15px}.stsw small{font-size:12px;color:var(--muted)}
 .stsw i{flex-shrink:0;position:relative;width:46px;height:28px;border-radius:99px;background:#D8CEBF;transition:background .2s}.stsw i::after{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}

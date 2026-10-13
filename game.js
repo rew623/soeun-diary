@@ -28,7 +28,7 @@ const rewardTx = (now, on, act, sk) => cur => {
   if (act && att !== today()) { att = today(); add += 2; if (sk > 0 && sk % 7 === 0) { add += 5; msgs.push(`📅 오늘 출석 도장 + ${sk}일 연속 보너스! 도토리 🌰 +7`); } else msgs.push('📅 오늘 출석 도장 쾅! 도토리 🌰 +2'); }
   const np = { medals: [...pm], rank: pr, att };
   if (!add && same(np, { medals: paid.medals || [], rank: paid.rank || {}, att: paid.att || '' })) return null;
-  return { set: { paid: np }, add, msgs };
+  return { set: { paid: np }, add, msgs, why: msgs.map(m => m.replace(/ 도토리 🌰 \+\d+|^\S+ /g, '').replace(/[🎉🎁📅]/g, '').trim()).join(' / ').slice(0, 58) || '보상' };
 };
 function merge(L) {
   const g = S.game; if (merging || !canWrite()) return; merging = true;
@@ -43,28 +43,28 @@ function merge(L) {
   Object.keys(union).forEach(k => { g[k] = [...new Set([...(g[k] || []), ...union[k]])]; });
   Object.assign(g, clone(set)); g.acorn = (+g.acorn || 0) + add;
   L.synced = true; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (e) {}
-  run('saveGame', set, add, union).catch(e => { console.warn('놀이 저장 합치기 실패', e); L.synced = false; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (x) {} }).finally(() => { merging = false; });
+  run('saveGame', set, add, union, undefined, '처음 한 번 이 폰 도토리 합치기').catch(e => { console.warn('놀이 저장 합치기 실패', e); L.synced = false; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (x) {} }).finally(() => { merging = false; });
 }
 function st() {
   const s = local(), g = S.game;
   if (g && !s.synced && g.srv) merge(s);
   if (g && (s.synced || merging)) SHARED.forEach(k => { if (g[k] !== undefined && g[k] !== null) s[k] = clone(g[k]); });
   // 예전에 두 폰이 동시에 써서 마이너스가 된 잔액은 한 번 0으로 고쳐요 (화면엔 절대 0 아래로 안 보이게)
-  if ((+s.acorn || 0) < 0) { s.acorn = 0; if (g && s.synced && g.srv && canWrite() && !fixing) { fixing = true; g.acorn = 0; run('saveGame', { acornSet: 0 }).finally(() => { fixing = false; }); } }
+  if ((+s.acorn || 0) < 0) { s.acorn = 0; if (g && s.synced && g.srv && canWrite() && !fixing) { fixing = true; g.acorn = 0; run('saveGame', { acornSet: 0 }, 0, undefined, undefined, '마이너스 잔액을 0으로 고침').finally(() => { fixing = false; }); } }
   if (g && s.synced) snap(s);
   return s;
 }
 // 가져온 때의 같이 쓰는 값을 몰래 기억 (localStorage엔 안 들어감) — 예전엔 save가 '지금 서버 값과 다른 칸'을 다 보내서,
 // 창을 열어 둔 사이 다른 폰이 바꾼 값(도토리·받은 보상 paid 등)을 옛날 값으로 덮어써 도토리가 늘었다 줄었다 했어요 (2026.10.13)
 function snap(s) { Object.defineProperty(s, '__o', { value: Object.fromEntries(SHARED.map(k => [k, JSON.stringify(s[k] === undefined ? null : s[k])])), writable: true, configurable: true }); }
-function save(s) {
+function save(s, why) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
   const g = S.game; if (!g || !s.synced || !canWrite()) return;
   const o = {}, b = s.__o;
   SHARED.forEach(k => { if (k === 'acorn' || s[k] === undefined) return; if (b ? JSON.stringify(s[k]) === b[k] : same(s[k], g[k])) return; o[k] = clone(s[k]); g[k] = clone(s[k]); });
   const d = (+s.acorn || 0) - (b ? (+JSON.parse(b.acorn) || 0) : (+g.acorn || 0)); if (d) g.acorn = Math.max(0, (+g.acorn || 0) + d);   // 이 화면에서 늘리고 줄인 만큼만
   if (b) snap(s);
-  if (Object.keys(o).length || d) run('saveGame', o, d).catch(e => {
+  if (Object.keys(o).length || d) run('saveGame', o, d, undefined, undefined, why || (d ? (d > 0 ? '도토리 얻음' : '도토리 씀') : ''), g.acorn).catch(e => {
     // 못 샀으면(다른 폰이 먼저 써서 잔액 모자람 등) 서버의 진짜 상태로 화면을 되돌려요
     toast((e && e.message) || '놀이 저장 실패');
     if (window.__app && __app.refresh) __app.refresh();
@@ -258,7 +258,7 @@ function check() {
         for (const r of ['엄마', '아빠']) for (let lv = 2; lv <= now[r]; lv++) tot += rankReward(lv);
         if (tot) {
           regranting = true;
-          run('saveGame', { regrant: today() }, tot, undefined, 'regrant')
+          run('saveGame', { regrant: today() }, tot, undefined, 'regrant', '그동안 받은 훈장·계급 보상 다시 넣기')
             .then(() => { confetti(); toast(`🎁 그동안 받은 훈장 ${on.length}개·계급 보상을 다시 넣었어요! 도토리 🌰 +${tot}`); if (window.__app && __app.refresh) __app.refresh(); })
             .catch(() => {}).finally(() => { regranting = false; });
         }
@@ -276,8 +276,9 @@ function check() {
     }
     // 오늘의 지령 완수 → 도토리 3개
     const ms = missions();
-    if (ms.length && ms.every(m => m.on) && !s.done.includes(today())) { s.done.push(today()); s.done = s.done.slice(-400); s.acorn += 3; msgs.push('📜 오늘의 지령 완수! 도토리 🌰 +3'); }
-    save(s);
+    let why = '';
+    if (ms.length && ms.every(m => m.on) && !s.done.includes(today())) { s.done.push(today()); s.done = s.done.slice(-400); s.acorn += 3; why = '오늘의 지령 완수'; msgs.push('📜 오늘의 지령 완수! 도토리 🌰 +3'); }
+    save(s, why);
     if (msgs.length) { confetti(); msgs.forEach((m, i) => setTimeout(() => toast(m), i * 2300)); }
   }, 300);
 }
@@ -513,7 +514,7 @@ function quizEnd() {
   const q = G.q, s = st(); let gain = 0;
   if (s.played.quiz !== today()) gain++;
   if (q.score === q.rounds.length && q.rounds.length >= 5) gain += 2;
-  s.quizBest = Math.max(s.quizBest, q.score); s.played.quiz = today(); s.acorn += gain; save(s);
+  s.quizBest = Math.max(s.quizBest, q.score); s.played.quiz = today(); s.acorn += gain; save(s, '놀이터: 생후 며칠 퀴즈');
   if (gain) toast(`도토리 🌰 +${gain}`);
 }
 // 사진 짝맞추기 (사진이 6장 안 되면 그림 카드)
@@ -539,7 +540,7 @@ function memFlip(i) {
     [a.i, c.i].forEach(j => document.querySelector(`.gc[data-i="${j}"]`).classList.add('done'));
     if (!m.left) {
       const s = st(); let gain = s.played.mem !== today() ? 1 : 0; if (m.moves <= 10) gain += 2;
-      s.memBest = s.memBest ? Math.min(s.memBest, m.moves) : m.moves; s.played.mem = today(); s.acorn += gain; save(s);
+      s.memBest = s.memBest ? Math.min(s.memBest, m.moves) : m.moves; s.played.mem = today(); s.acorn += gain; save(s, '놀이터: 사진 짝맞추기');
       confetti(); setTimeout(() => { render(); if (gain) toast(`도토리 🌰 +${gain}`); }, 500);
     }
   } else {
@@ -568,16 +569,17 @@ document.addEventListener('click', async e => {
     case 'kitfold': { const who = G.wearWho || 'baby', v = b.dataset.v === 'close'; KINDS.forEach(([k]) => setFold(`k-${k}`, v)); render(); break; }
     case 'kit': {
       const s = st(), who = G.wearWho || 'baby', kind = b.dataset.k, id = b.dataset.id, it = (KIT[who][kind] || []).find(x => x[0] === id); if (!it) return;
+      let bought = '';
       if (!owns(s, who, kind, id)) {
         const nm = WHO.find(w => w[0] === who)[1];
         if (b.dataset.ok !== '1') { confirmBuy(`${nm}의 ${it[1]}`, it[2], kpv(who, kind, id, kind === 'hat' ? 110 : 130), `data-game="kit" data-k="${kind}" data-id="${id}"`, `${nm} 몫이에요. 엄마·아빠 폰 모두에서 보여요.`); return; }
         if (s.acorn < it[2]) { toast(`도토리가 ${it[2] - s.acorn}개 더 필요해요`); return; }
-        const key = KINDS.find(k => k[0] === kind)[2]; s.acorn -= it[2]; s[key] = (s[key] || []).concat(who + '.' + id); closeSheet(); toast(`${nm}의 ${it[1]}${jo(it[1],'을','를')} 샀어요!`); confetti();
+        const key = KINDS.find(k => k[0] === kind)[2]; s.acorn -= it[2]; bought = `구매: ${nm} ${it[1]}`; s[key] = (s[key] || []).concat(who + '.' + id); closeSheet(); toast(`${nm}의 ${it[1]}${jo(it[1],'을','를')} 샀어요!`); confetti();
       }
       if (kind === 'hat') { if (who === 'baby') s.hat = id || 'det'; else s.hatOf = Object.assign({}, s.hatOf || {}, { [who]: id }); }
       else if (kind === 'cloth') s.wear = Object.assign({}, s.wear || {}, { [who]: id });
       else s.propOf = Object.assign({}, s.propOf || {}, { [who]: id });
-      save(s); render(); break;
+      save(s, bought || undefined); render(); break;
     }
     case 'quiz': if (quizStart()) { G.game = 'quiz'; S.view = 'play'; render(); window.scrollTo(0, 0); } break;
     case 'qa': { const q = G.q, r = q.rounds[q.i]; if (q.picked != null) return; q.picked = +v; if (q.picked === r.ans) q.score++; render(); break; }
@@ -688,7 +690,18 @@ button.gchip{min-height:30px}
 @media (prefers-reduced-motion:reduce){.gc span{transition:none}}`;
 document.head.appendChild(css);
 
-window.GAME = { roomSvg, rankHtml, rank, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
+// 도토리 대조 (2026.10.13): 산 물건 값 합계 + 받은 훈장·승진 합계. 장부(game/ledger)는 이 기능을 넣은 날부터만 남아요
+function audit() {
+  const s = st(), rows = [];
+  let spent = 0, n = 0;
+  const own = (arr, kind, who) => (arr || []).forEach(k => { const [w, id] = String(k).split('.'); const it = ((KIT[w] || {})[kind] || []).find(x => x[0] === id); if (it && it[2]) { spent += it[2]; n++; rows.push([`${(WHO.find(x => x[0] === w) || [0, w])[1]} ${it[1]}`, it[2]]); } });
+  own(s.hats, 'hat'); own(s.clothes, 'cloth'); own(s.props, 'prop');
+  (s.room || []).forEach(id => { const c = window.ROOMS && ROOMS.item ? ROOMS.item(id) : null; if (c && c[3]) { spent += c[3]; n++; rows.push([c[2], c[3]]); } });
+  const pd = s.paid || {}; let medals = 0; (pd.medals || []).forEach(id => { const m = MEDALS.find(x => x[0] === id); medals += (m && m[5]) || 3; });
+  let rankSum = 0; for (const r of ['엄마', '아빠']) for (let lv = 2; lv <= ((pd.rank || {})[r] || 1); lv++) rankSum += rankReward(lv);
+  return { balance: s.acorn, spent, n, rows, medals, medalN: (pd.medals || []).length, rankSum, stickers: (s.stickers || []).length };
+}
+window.GAME = { audit, roomSvg, rankHtml, rank, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
   // 방에서 식구를 누르면: 그 식구 꾸미기 칸으로 (접힌 칸은 펼쳐서)
   kitFor: who => { G.wearWho = who; G.hub = 'deco'; KINDS.forEach(([k]) => setFold(`k-${k}`, false)); render(); const el = document.getElementById('gkit'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
 })();

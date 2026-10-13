@@ -140,7 +140,7 @@ function check() {
     let n = 0;
     for (const s of due) {
       W.tried[s.ws] = true;
-      try { await run('saveGame', {}, s.bounty, undefined, { key: 'wanted', val: s.ws }); S.game.wanted = s.ws; n++; setTimeout(() => { escapeFx(); if (window.GAME) GAME.confetti(); toast(`🎩 괴도 깍정이를 따라잡았어요! 아슬아슬하게 놓쳤지만 현상금 🌰 +${s.bounty}${s.early ? ' (금요일 전 보너스 포함)' : ''}`); }, 600 + n * 2300); }
+      try { await run('saveGame', {}, s.bounty, undefined, { key: 'wanted', val: s.ws }, '괴도 깍정이 현상금'); S.game.wanted = s.ws; n++; setTimeout(() => { escapeFx(); if (window.GAME) GAME.confetti(); toast(`🎩 괴도 깍정이를 따라잡았어요! 아슬아슬하게 놓쳤지만 현상금 🌰 +${s.bounty}${s.early ? ' (금요일 전 보너스 포함)' : ''}`); }, 600 + n * 2300); }
       catch (e) { /* 다른 폰이 먼저 받았거나 인터넷이 안 되면 이번엔 그냥 둬요 (다음에 앱을 열 때 다시) */ }
     }
     if (n && window.__app && __app.refresh) __app.refresh();

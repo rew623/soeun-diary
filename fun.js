@@ -1,7 +1,7 @@
 // 게임 요소 2 (도토리 놀이터의 놀이·계급 칸에 붙어요) — 오늘 누가? 룰렛(집안일 배정), 오늘의 소은 운세(포춘 쿠키), 숨은 도토리 찾기, 스티커 뽑기·스티커북, 소은 탐정 카드, 수사 출석부, 주간 MVP
 // 도토리·스티커·룰렛 과제는 game.js와 같은 저장소(GAME.store, 두 폰이 같이 씀). 화면은 S.view='fun' + FUN 모드
 (function () {
-const st = () => GAME.store.get(), save = s => GAME.store.set(s);
+const st = () => GAME.store.get(), save = (s, why) => GAME.store.set(s, why);
 const hash = t => { let h = 7; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
 const nick = () => { const n = (S.profile && S.profile.name) || '우리 아기'; return /^[가-힣]{3}$/.test(n) ? n.slice(1) : n; };
 const F = { mode: '', spin: null, task: '', cal: '' };
@@ -86,7 +86,7 @@ function draw() {
   const r = Math.random(), rar = r < .05 ? 3 : r < .3 ? 2 : 1, pool = STICK.filter(x => x[3] === rar), it = pool[Math.floor(Math.random() * pool.length)];
   s.acorn -= 3; s.stickers = s.stickers || []; const dup = s.stickers.includes(it[0]);
   if (dup) s.acorn += 1; else s.stickers.push(it[0]);
-  save(s); GAME.mark('gacha'); return { it, dup };
+  save(s, dup ? '스티커 뽑기 (겹쳐서 1개 돌려받음)' : '스티커 뽑기'); GAME.mark('gacha'); return { it, dup };
 }
 function stickerView() {
   const s = st(), own = s.stickers || [], last = F.last;
@@ -174,7 +174,7 @@ function check() {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-fun], #hidacorn'); if (!b) return;
   if (b.id === 'hidacorn') {
-    const s = st(); s.acorn += 1; save(s); GAME.mark('hunt'); b.classList.add('got'); GAME.confetti();
+    const s = st(); s.acorn += 1; save(s, '숨은 도토리 찾기'); GAME.mark('hunt'); b.classList.add('got'); GAME.confetti();
     toast('🎩 괴도 깍정이가 도망치다 떨어뜨린 도토리 발견! 🌰 +1'); setTimeout(() => b.remove(), 600); return;
   }
   const v = b.dataset.v;
@@ -189,7 +189,7 @@ document.addEventListener('click', e => {
     case 'crack': {
       const c = document.getElementById('cookie'); if (!c || c.classList.contains('open')) return;
       c.classList.add('shake');
-      setTimeout(() => { c.classList.remove('shake'); c.classList.add('open'); if (!GAME.played('cookie')) { const s = st(); s.acorn += 1; save(s); GAME.mark('cookie'); toast('도토리 🌰 +1'); } }, 600);
+      setTimeout(() => { c.classList.remove('shake'); c.classList.add('open'); if (!GAME.played('cookie')) { const s = st(); s.acorn += 1; save(s, '포춘 쿠키'); GAME.mark('cookie'); toast('도토리 🌰 +1'); } }, 600);
       break;
     }
     case 'draw': {

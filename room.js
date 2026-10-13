@@ -2,7 +2,7 @@
 // 자리(슬롯)마다 산 물건 중 하나를 골라 놓아요. 창밖은 지금 시간(낮·저녁·밤)과 계절(봄 벚꽃·여름 초록·가을 낙엽·겨울 눈)로 저절로 바뀌어요
 // 저장: GAME.store 의 room(산 물건 id들), slot({자리: 물건 id}) — 두 폰이 같이 씀 (Firestore game/shared)
 (function () {
-const st = () => GAME.store.get(), save = s => GAME.store.set(s);
+const st = () => GAME.store.get(), save = (s, why) => GAME.store.set(s, why);
 const VW = 320, VH = 180;
 
 // [자리, 이름, 비워 둘 수 있나, 미리보기 viewBox]
@@ -338,13 +338,14 @@ document.addEventListener('click', e => {
   const slot = b.dataset.room, id = b.dataset.id, s = state();
   if (!id) { if (slot === 'fam' || slot === 'pic') s.slot[slot] = ''; else delete s.slot[slot]; save(s); render(); return; }
   const c = item(id); if (!c) return;
+  let bought;
   if (!owns(s, id)) {
     // 바로 사지 않고 구매 확인 창 (거기서 '사기'를 누르면 data-ok=1로 다시 와요)
     if (b.dataset.ok !== '1') { { const fxk = c[4] === 'PIC' ? 'PIC' : FX[c[4]] ? c[4] : ''; GAME.confirmBuy(c[2], c[3], preview(c), `data-room="${slot}" data-id="${id}"`, fxk ? `✨ 특수 소품: ${FXDESC[fxk]}` : ''); } return; }
     if (s.acorn < c[3]) { toast(`도토리가 ${c[3] - s.acorn}개 더 필요해요`); return; }
-    s.acorn -= c[3]; s.room.push(id); closeSheet(); GAME.confetti(); toast(`${c[2]}${jo(c[2],'을','를')} 샀어요! 방에 놓았어요`);
+    s.acorn -= c[3]; bought = `구매: 방 ${c[2]}`; s.room.push(id); closeSheet(); GAME.confetti(); toast(`${c[2]}${jo(c[2],'을','를')} 샀어요! 방에 놓았어요`);
   }
-  s.slot[slot] = id; save(s); render();
+  s.slot[slot] = id; save(s, bought); render();
 });
 
 // 액자에 넣을 사진 고르기 (가족 사진 → 현장 사진첩 → 월별·최초 목격 순, 최근 것부터)
@@ -421,5 +422,5 @@ css.textContent = `
 .rpp{display:grid;place-items:center;height:42px;font-size:24px;color:var(--muted)}`;
 document.head.appendChild(css);
 
-window.ROOMS = { svg: roomSvg, editor: editorHtml, shop: shopHtml, count };
+window.ROOMS = { item, svg: roomSvg, editor: editorHtml, shop: shopHtml, count };
 })();

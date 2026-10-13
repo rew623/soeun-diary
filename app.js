@@ -309,7 +309,36 @@ const H = {
   },
 
   // 놀이 저장 (families/{fid}/game/shared): 도토리는 늘고 준 만큼만(increment) 보내 두 폰이 동시에 모아도 안 사라져요
-  async saveGame(obj, acornDelta, union, once) {
+  // 도토리 장부(game/ledger, 2026.10.13): 도토리가 늘고 준 일을 한 줄씩 남겨요 (언제·얼마·왜·누가·그때 잔액). 실패해도 본 저장은 막지 않아요
+  async ledgerAdd(e) {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    const row = { t: Date.now(), d: Math.round(+e.d || 0), why: txt(e.why || '', 60), by: myRole(), ok: e.ok === 0 ? 0 : 1 };
+    if (e.bal != null && isFinite(+e.bal)) row.bal = Math.round(+e.bal);
+    if (e.err) row.err = txt(e.err, 80);
+    try { await setDoc(dref('game', 'ledger'), { items: { [id]: row }, updatedAt: serverTimestamp() }, { merge: true }); } catch (x) { console.warn('장부', x); }
+    return { ok: true };
+  },
+  async ledgerGet() {
+    const sn = await getDoc(dref('game', 'ledger')), it = (sn.exists() ? sn.data().items : null) || {};
+    const L = Object.entries(it).map(([id, v]) => Object.assign({ id }, v)).sort((a, b) => (b.t || 0) - (a.t || 0));
+    if (L.length > 400) { try { await setDoc(dref('game', 'ledger'), { items: Object.fromEntries(L.slice(300).map(x => [x.id, deleteField()])) }, { merge: true }); } catch (x) {} }
+    return L.slice(0, 300);
+  },
+  async saveGame(obj, acornDelta, union, once, why, balLocal) {
+    let bal = null;
+    try {
+      const r = await H.saveGame0(obj, acornDelta, union, once, v => { bal = v; });
+      const d = obj && obj.acornSet != null ? null : Math.round(+acornDelta || 0);
+      if (obj && obj.acornSet != null) await H.ledgerAdd({ d: 0, why: why || '도토리 직접 맞춤', bal: obj.acornSet });
+      else if (d) await H.ledgerAdd({ d, why: why || (once ? '보상' : '도토리'), bal: bal != null ? bal : balLocal });
+      return r;
+    } catch (e) {
+      const d = Math.round(+acornDelta || 0);
+      if (d && !(e && e.code === 'already')) await H.ledgerAdd({ d, why: why || '도토리', ok: 0, err: (e && e.message) || '' });
+      throw e;
+    }
+  },
+  async saveGame0(obj, acornDelta, union, once, setBal) {
     const row = {};
     Object.keys(union || {}).forEach(k => { if (['hats', 'room', 'clothes', 'stickers', 'props'].includes(k) && Array.isArray(union[k]) && union[k].length) row[k] = arrayUnion(...union[k].map(String)); });
     GAME_KEYS.forEach(k => { if (k !== 'acorn' && obj && obj[k] !== undefined) row[k] = obj[k]; });
@@ -327,7 +356,7 @@ const H = {
       await runTransaction(db, async tx => {
         const cur = (await tx.get(ref)).data() || {};
         if (val === null ? cur[key] : (cur[key] && String(cur[key]) >= val)) throw Object.assign(new Error('이미 받은 보상이에요'), { code: 'already' });
-        data[key] = val === null ? ((obj && obj[key]) || true) : val; data.acorn = (+cur.acorn || 0) + Math.round(+acornDelta || 0);
+        data[key] = val === null ? ((obj && obj[key]) || true) : val; data.acorn = (+cur.acorn || 0) + Math.round(+acornDelta || 0); if (setBal) setBal(data.acorn);
         tx.set(ref, data, { mergeFields: Object.keys(data) });
       });
       return { ok: true };
@@ -336,7 +365,7 @@ const H = {
       await runTransaction(db, async tx => {
         const cur = +(((await tx.get(ref)).data() || {}).acorn) || 0, next = cur + Math.round(+acornDelta);
         if (next < 0) throw Object.assign(new Error(`도토리가 ${-next}개 모자라요 (다른 폰에서 먼저 썼어요)`), { code: 'acorn-short' });
-        data.acorn = next; tx.set(ref, data, { mergeFields: Object.keys(data) });
+        data.acorn = next; if (setBal) setBal(next); tx.set(ref, data, { mergeFields: Object.keys(data) });
       });
       return { ok: true };
     }
@@ -347,15 +376,16 @@ const H = {
   // 도토리 보상(훈장·계급·출석)을 서버의 진짜 상태로 계산해 한 번에 (두 폰이 동시에 같은 보상을 받거나, 옛날 화면 숫자로 덮어써서 도토리가 늘었다 줄었다 하지 않게)
   // fn(서버 문서) → { set: {칸: 값}, add: 도토리 } | null (다시 시도될 수 있어 같은 입력엔 같은 결과)
   async gameTx(fn) {
-    const ref = dref('game', 'shared'); let out = null;
+    const ref = dref('game', 'shared'); let out = null, bal = null;
     await runTransaction(db, async tx => {
       const cur = (await tx.get(ref)).data() || {}; out = fn(cur) || null;
       if (!out || (!out.add && !Object.keys(out.set || {}).length)) return;
       const data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, out.set || {});
       Object.keys(data).forEach(k => { if (k !== 'updatedAt' && k !== 'by' && !GAME_KEYS.includes(k)) delete data[k]; });
-      data.acorn = Math.max(0, (+cur.acorn || 0) + Math.round(+out.add || 0));
+      data.acorn = Math.max(0, (+cur.acorn || 0) + Math.round(+out.add || 0)); bal = data.acorn;
       tx.set(ref, data, { mergeFields: Object.keys(data) });
     });
+    if (out && out.add) await H.ledgerAdd({ d: out.add, why: out.why || '보상', bal });
     return out;
   },
 
@@ -506,7 +536,7 @@ H.disablePush = async () => {
 const API = {
   async call(fn, args) {
     if (!H[fn]) throw new Error('알 수 없는 기능: ' + fn);
-    if (isViewer() && !['getData', 'getPhotos', 'getPhoto', 'enablePush', 'disablePush', 'backupData'].includes(fn)) throw new Error('보기 전용 초대라 기록은 엄마·아빠 수사관만 남길 수 있어요');
+    if (isViewer() && !['getData', 'getPhotos', 'getPhoto', 'enablePush', 'disablePush', 'backupData', 'ledgerGet'].includes(fn)) throw new Error('보기 전용 초대라 기록은 엄마·아빠 수사관만 남길 수 있어요');
     try { return await H[fn](...args); }
     catch (e) {
       const msg = e && e.code === 'permission-denied' ? '이 가족 공간에 쓸 권한이 없어요'
