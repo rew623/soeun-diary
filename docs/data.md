@@ -1,0 +1,22 @@
+# Firestore 구조 (바꾸면 먼저 사용자에게 알리고 이전 방법 제시)
+
+- users/{uid}: { fid } 내가 속한 가족 공간
+- invites/{6자리 코드}: { fid, by, exp } 7일짜리 초대 코드 (V로 시작해 9로 끝나면 보기 전용 초대 → 앱에서 쓰기 막음, 이 폰 localStorage viewer-{fid}. 지금은 둘만 써서 초대 단추는 바로 일반 코드를 만들고, 보기 전용 고르기 창은 숨겨 둠)
+- families/{fid}: 아기 프로필 (name, birth, sex, mom, dad, 사진 URL)
+- families/{fid} 하위 컬렉션:
+  - members/{uid}: { role(엄마/아빠), name, email, viewer(보기 전용이면 true) }
+  - records, periods, vaccines, ep, log, visit, mom(앨범), food, meal, cube, menu(식단표 사진), people(가족 앨범의 가족: name, rel, photo, by), dev(발달 체크: 문서 id=항목 id, at, by), guess(몸무게 예측: role, value, at, base=그때 마지막 측정 기록 id, by), push(알림 받는 폰: token, uid, role, viewer, at)
+  - game/shared: 두 폰이 같이 쓰는 놀이 저장 { acorn, hats, hat, hatOf{mom,dad}, room, slot{자리:id}, clothes, wear{baby,mom,dad}, stickers, roulette, pic(액자 사진 id), paid(받은 보상), props, propOf{baby,mom,dad}, pos{자리|식구: [dx,dy,크기]}, regrant(보상 다시 준 날), wanted(괴도 깍정이 현상금 받은 주 월요일), look(캐릭터 컨셉 옷을 한 번 입힌 표시 'holmes'), bpos(수사 보드 카드 옮긴 자리 {카드id:[dx,dy]}, 2026.10.11 추가 — 이전 필요 없음), feed(수유 알람 설정 {on, day, night(시간), ns·ne(밤 시간대 HH:MM), pre(미리 알림 분)}, 2026.10.11 추가 — 이전 필요 없음), whome(탐문 기본 출발지 {g:'위도,경도', n:이름}, 2026.10.11 추가 — 이전 필요 없음), paper(소은일보 고친 것 {달: {no, main, strip, seed}}, 2026.10.11 추가 — 이전 필요 없음), by, updatedAt } (2026.10 추가, 저장은 mergeFields로 보낸 칸만 통째로)
+  - game/feedalarm: { due, at } 수유 알람을 보낸 예정 시각(feed.mjs만 씀, 같은 알림 두 번 안 가게)
+  - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
+  - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
+  - look/{날짜_mom|dad}: date, pick(mom·dad·both), parts(닮은 곳 id 쉼표로), by (닮은꼴 판정단, 2026.10 추가)
+  - capsule/{id}: title(봉투 글), body(편지 5000자), open(열리는 날), occ(첫 돌 등), sealed(봉인한 날), photo, by (봉인된 증거물, 2026.10 추가)
+  - walk/{id}: date, kind(walk·out·cafe·fam·hosp·shop·etc), title, place, geo("위도,경도"), start·end(HH:MM), dist(m), path("1:<출발 epoch초>:<위도·경도(1e5)·초 변화량 polyline 글자>", 60000자까지), pics(같이 올린 사진 id 쉼표로, 4000자), memo, who(엄마,아빠), wx(그날 날씨 한 줄), mood(happy·look·sleep·calm·cry), by (탐문 기록, 2026.10.11 추가, 기존 데이터 이전 필요 없음). 폰 사본(saveCache)엔 긴 path를 빼고 저장
+  - care/{YYYY-MM-DD}: { items: { 기록id: { k(formula·breast·pump·diaper·sleep·bath·memo), pz(수면 중간에 잠깐 깸 표시 0/1, 2026.10.12 추가 — 이전 필요 없음), t·e(HH:MM, e<t면 다음 날), ml, l·r(모유 분), dur(목욕 분), pee·poo(0/1), amt·st(대변 양·상태), memo, live(타이머 중 1), side(l/r), seg(지금 쪽 시작 ms), by, at } }, updatedAt } 하루 수사 — 하루에 문서 하나, 기록마다 merge로 넣고 deleteField로 뺌(app.js careSave/careDelete, 2026.10.11 추가 — 기존 데이터 이전 필요 없음). 폰 사본엔 최근 60일만
+  - recipes/{YYYY-MM}: title, file, stages[{ stage, items[{ d, meal, raw, ing[{ n, g }], how, src }] }], by, updatedAt
+- meal 문서 tm: "HH:MM" 먹인 시각(하루 수사 목록·시계용, OPT 칸, 없으면 끼니로 짐작 — 2026.10.11 추가, 이전 필요 없음)
+- mom 문서 fp: "0.52,0.31" 사진에서 보여 줄 곳(focus.js, OPT 칸이라 다른 칸을 고쳐 저장해도 안 지워짐, 없으면 저절로 — 2026.10.11 추가, 기존 데이터 이전 필요 없음)
+- mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id) / fam(가족 사진, who=나온 사람 id 쉼표로: mom·dad·people id), board: true/false = 수사 보드에 붙인 사진, geo: "위도,경도"(소수 4자리, 찍은 곳, '-'는 직접 뺀 것 — 탐문 경로 자리도 안 씀)·tm: "HH:MM:SS"(찍은 시각, 예전 것은 HH:MM) — 탐험 지도·탐문용, 보낼 때만 쓰는 칸(app.js OPT)이라 다른 칸을 고쳐 저장해도 안 지워짐. setGeo는 id 여러 개도(한 번에 450개까지 batch)
+- 보안 규칙: families/{fid} 아래는 members에 있는 사람만 읽기·쓰기 (members 제외 하위 컬렉션 전체 허용이라 새 컬렉션도 규칙 수정 불필요)
+- Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
