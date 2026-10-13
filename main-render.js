@@ -14,16 +14,20 @@ const I_FILE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke
 const I_BOTTLE='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 4.5C10.5 3 11.1 2 12 2s1.5 1 1.5 2.5"></path><path d="M8.5 4.5h7V7h-7z"></path><path d="M9 7 8 9.5V20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V9.5L15 7"></path><path d="M8 13h3M8 16.5h3"></path></svg>';
 
 function render(){
+  if(S.mode!=='ok')$app.__h='';
   if(S.mode==='loading'){$app.innerHTML=`<div class="loading"><div class="lchase" aria-hidden="true"><span class="lth">${CHARS.svg('thief','acorn',{size:78})}</span><span class="lbb">${CHARS.svg('baby','lens',{size:88})}</span><i class="lpaws"></i></div>사건 파일을 여는 중…<br><small>괴도 깍정이의 발자국을 쫓는 중</small></div>`;$tab.innerHTML='';$tab.__h='';return}
   if(S.mode==='error'){$app.innerHTML=`<div class="loading">시트를 불러오지 못했어요.<br><small>${esc(S.err)}</small><br><br><button class="secondary" data-act="retry">다시 시도</button></div>`;$tab.innerHTML='';$tab.__h='';return}
-  if(!S.profile||!S.profile.birth){renderOnboarding();$tab.innerHTML='';$tab.__h='';return}
+  if(!S.profile||!S.profile.birth){$app.__h='';renderOnboarding();$tab.innerHTML='';$tab.__h='';return}
   const HID=hiddenTabs(),POP=S.tab!==render.lastTab;render.lastTab=S.tab;   // 설정에서 숨긴 탭 (지금 보고 있는 탭은 잠깐 보여요) · 탭을 바꾼 때만 아이콘 톡
   const TH=[['grow','성장 수사',I_LENS],['day','하루 수사',I_BOTTLE],['town','동네 탐문',I_PIN],['album','사건 앨범',I_CAM],['vac','예방접종',I_FILE],['food','급식 수사',I_SPOON],['sick','긴급 출동',I_SIREN]].filter(([k])=>k===S.tab||!HID.includes(k)).map(([k,l,i])=>`<button class="${S.tab===k?'on':''}" data-act="tab" data-v="${k}" aria-current="${S.tab===k?'page':'false'}">${i}<span>${l}</span></button>`).join('');
   if($tab.__h!==TH){$tab.innerHTML=TH;$tab.__h=TH;$tab.classList.toggle('t7',TH.split('data-act="tab"').length>7)}   // 그대로면 다시 안 그려요 (톡 애니메이션이 끊기지 않게)
   if(POP){const b=$tab.querySelector('button.on');if(b){b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),700)}}   // 탭이 바뀌면 단추도 새로 그려져서 바로 붙여요
   const body=S.view==='report'?renderReport():S.view==='town'?TOWN.render():S.view==='posts'?POSTS.render():S.view==='medals'?GAME.medals():S.view==='book'?BOOK.render():S.view==='fun'?FUN.render():S.view==='play'?GAME.play():S.view==='studio'?STUDIO.render():S.view==='movie'?MOVIE.render():S.view==='wanted'?WANTED.render():S.view==='look'?LOOK.render():S.view==='capsule'?CAPSULE.render():S.view==='paper'?PAPER.render():S.view==='explore'?EXPLORE.render():S.view==='walk'?WALK.render():S.view==='hosp'?HOSP.render():S.view==='settings'?SETTINGS.render():S.view==='recipe'?RECIPES.render():S.tab==='vac'?renderVac():S.tab==='sick'?renderSick():S.tab==='album'?renderAlbum():S.tab==='town'?(S.townView==='info'?TOWN.render():EXPLORE.render('tab')):S.tab==='food'?renderFood():S.tab==='day'?DAY.render():renderGrow();
   document.body.classList.toggle('viewer',!!(S.me&&S.me.viewer));
-  $app.innerHTML=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body+(S.view?'':noteFoot());
+  const html=(DEMO?'<p class="banner">미리보기 화면이에요. 예시 데이터이고 저장되지 않아요.</p>':'')+(S.me&&S.me.viewer&&!S.view?'<p class="banner vban">👀 보기 전용으로 보고 있어요. 기록은 엄마·아빠 수사관이 남겨요.</p>':'')+body+(S.view?'':noteFoot());
+  // 다른 폰에서 온 데이터로 다시 그릴 때(render.soft) 지금 화면 글이 그대로면 DOM을 건드리지 않아요 — 지도·사진·스크롤이 다시 그려지지 않게 (2026.10.13)
+  if(render.soft&&$app.__h===html){GAME.check();WANTED.check();FUN.check();DAY.afterRender();return}
+  $app.innerHTML=html;$app.__h=html;
   if(S.view==='hosp'||HOSP.on())HOSP.mount();
   if(S.view==='studio')STUDIO.mount();
   if(S.view==='paper')PAPER.mount();
@@ -83,13 +87,13 @@ function renderGrow(){
   ${(()=>{const oc=CV.occasion();if(!oc.label)return '';const today_=!oc.soon,dd=daysBetween(today(),oc.date);
     return `<div class="anniv"><span class="anb">${today_?'🎉':'⏳'}</span><span class="ant"><b>${today_?`오늘은 ${esc(CV.nick())} ${oc.label}!`:`${oc.label}까지 ${dd}일!`}</b><small>${today_?'기념 사진·영상을 만들어 가족에게 보내요':'미리 기념 사진·영상을 준비해 둘까요?'}</small></span>
       <span class="anbt"><button data-st="open">📸 기념 사진</button><button data-mvset="open" data-v="${/일$/.test(oc.label)&&oc.label==='100일'?'d100':'story'}">🎬 기념 영상</button></span></div>`})()}
-  ${CAPSULE.banner()}${PAPER.banner()}
+  ${homeOn('capsule')?CAPSULE.banner():''}${homeOn('paper')?PAPER.banner():''}
   ${CHARS.guide('grow')}${homeOn('game')?GAME.card():''}${homeOn('thief')?WANTED.card():''}
   ${next}${CHECKUPS.nextCard()}
-  ${CHARGES.html()}
-  ${LOOK.card()}
+  ${homeOn('charges')?CHARGES.html():''}
+  ${homeOn('look')?LOOK.card():''}
   <section><h2 class="sh">증거 기록</h2><div class="stats">${stats}</div></section>
-  ${GAME.guessHtml()}
+  ${homeOn('guess')?GAME.guessHtml():''}
   <section>
     <h2 class="sh"><span>성장 그래프</span><span>WHO ${sexWord()} 기준</span></h2>
     <div class="seg">${ORDER.map(x=>`<button class="${S.chart===x?'on':''}" data-act="chart" data-v="${x}">${KINDS[x].label}</button>`).join('')}</div>

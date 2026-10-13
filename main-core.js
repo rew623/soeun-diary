@@ -95,6 +95,8 @@ const MOCK={
   careSave:(date,it,old)=>{const id=it.id||('c'+Date.now().toString(36)+(dseq++));DB.cares=DB.cares.filter(x=>x.id!==id);DB.cares.push(Object.assign({k:'memo',t:'00:00',e:'',ml:0,l:0,r:0,dur:0,pee:0,poo:0,amt:'',st:'',memo:'',live:0,side:'',seg:0,by:DB.me.role,at:Date.now()},it,{id,date}));return{id,data:MOCK.getData()}},
   careImport:(L)=>{L.forEach(x=>MOCK.careSave(x.date,x.it,''));return{n:L.length,data:MOCK.getData()}},
   careDelete:(date,id)=>{DB.cares=DB.cares.filter(x=>x.id!==id);return{data:MOCK.getData()}},
+  backupData:()=>({app:'soeun-diary',v:1,at:new Date().toISOString(),family:DB.profile,cols:{records:DB.records,mom:DB.moments||[],meal:DB.meals||[]},care:{},game:DB.game||{}}),
+  restoreData:(bk)=>{if(!bk||bk.app!=='soeun-diary')throw new Error('수사 일지 백업 파일이 아니에요');return{n:Object.values(bk.cols||{}).reduce((a,l)=>a+(l||[]).length,0),data:MOCK.getData()}},
   gameTx:(fn)=>{const g=DB.game||(DB.game={}),out=fn(JSON.parse(JSON.stringify(g)))||null;if(out){Object.assign(g,out.set||{});g.acorn=Math.max(0,(g.acorn||0)+(out.add||0))}return out},
   saveGame:(o,dl,un,once)=>{if(once){const g0=DB.game||(DB.game={}),k=typeof once==='string'?once:once.key,v=typeof once==='string'?null:once.val;if(v===null?g0[k]:(g0[k]&&String(g0[k])>=v))throw new Error('이미 받은 보상이에요');Object.keys(o||{}).forEach(x=>{if(x!=='acornSet'&&x!=='acorn')g0[x]=o[x]});g0[k]=v===null?((o||{})[k]||true):v;g0.acorn=(g0.acorn||0)+(dl||0);return{ok:true}}const g=DB.game||(DB.game={});Object.keys(un||{}).forEach(k=>{g[k]=[...new Set([...(g[k]||[]),...un[k]])]});Object.keys(o||{}).forEach(k=>{if(k!=='acornSet'&&k!=='acorn')g[k]=o[k]});if(o&&o.acornSet!=null)g.acorn=o.acornSet;else if(dl)g.acorn=(g.acorn||0)+dl;return{ok:true}},
   saveCheckup:c=>{DB.checkups=DB.checkups.filter(x=>x.id!==c.id).concat([Object.assign({},c,{by:DB.me.role})]);return{data:MOCK.getData()}},
@@ -110,7 +112,7 @@ const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 �
 function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.cares=d.cares||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
-function apply(d){setData(d);render();loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
+function apply(d){setData(d);render.soft=true;try{render()}finally{render.soft=false};loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;

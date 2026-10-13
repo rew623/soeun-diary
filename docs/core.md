@@ -15,3 +15,6 @@
 - settings.js: ⚙️ 설정(S.view='settings', 성장 수사 맨 위 filebar의 ⚙️ · 대상 정보 창 아래 단추): 앱 버전(이 폰 = 서비스 워커에 'ver' 메시지로 물음, 없으면 shell-캐시 이름 · 최신 = sw.js의 VERSION, 숫자로 비교) + 업데이트(reg.update → waiting에 'skip'), 아래 메뉴 탭 보이기/숨기기(localStorage soeun-tabs-off, index.html hiddenTabs() — 탭 바·좌우 밀기 순서에서 빠짐, 숨긴 탭으로 링크 이동하면 그동안만 보임), 첫 화면 카드(soeun-home-off: game 지령 카드·thief 깍정이 카드+방 창밖, homeOn()), 탐문 기본 출발지 보기·지우기(WALK.home/setHome, 두 폰 같이), 탭 안내 말풍선 숨기기(soeun-guide-off — 성장 수사의 방은 그대로, CHARS.guide), 📚 단추 숨기기(soeun-posts-hide)·자리 처음대로(POSTS.resetPos), 가족·알림(FAM.settingsHtml), 사진 사본 지우기(photo- 캐시)·앱 다시 불러오기, 수사 통계. 설정은 폰마다
 - push-key.js: 알림 VAPID 공개키(Firebase 콘솔 → 클라우드 메시징 → 웹 푸시 인증서, 2026.10.11 넣음). 비어 있으면 알림 끔. 바꾸면 VERSION 올릴 것
 - 새 JS 파일은 index.html의 <script>와 sw.js의 SHELL 목록에 추가할 것
+- 백업·내보내기(2026.10.13, settings.js '💾 백업·내보내기'): app.js backupData()(가족 문서·모든 컬렉션·care·병원·레시피·검진·game → JSON, Timestamp는 {__ts:ms}) → soeun-backup-YYYYMMDD.json(폰이면 공유 창, 아니면 다운로드, localStorage soeun-backup-at) · 하루 수사 CSV(엑셀용 BOM) · 되살리기 restoreData(같은 id로 merge 400개씩 — 지금 기록은 안 지움, 도토리는 지금 0일 때만). 보기 전용은 백업만. 사진은 주소만 들어감
+- 다시 그리기 가볍게(2026.10.13): apply()(데이터가 바뀌어 그릴 때)는 render.soft — 만든 화면 글이 지난번과 같으면 #app DOM을 안 건드림($app.__h). 사용자 동작으로 부르는 render()는 늘 새로 그림
+- 첫 화면 부가 카드 끄기(설정 '첫 화면 카드', homeOn): game·thief·charges·look·guess·capsule·paper + '🎯 핵심만 보기'(모두 끔)/'모두 켜기'

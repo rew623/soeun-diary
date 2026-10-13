@@ -359,6 +359,29 @@ const H = {
     return out;
   },
 
+  // 백업: 가족 공간의 기록 전체를 JSON 한 덩어리로 (사진은 주소만 — 사진 파일 자체는 Storage에 그대로) — 2026.10.13
+  async backupData() {
+    const ts = v => v && typeof v.toMillis === 'function' ? { __ts: v.toMillis() } : v;
+    const deep = o => JSON.parse(JSON.stringify(o, (k, v) => ts(v)));
+    const cols = {}; COLS.forEach(c => { cols[c] = [...M.col[c].values()].map(deep); });
+    const care = {}; M.care.forEach((items, d) => { care[d] = deep(items); });
+    return { app: 'soeun-diary', v: 1, at: new Date().toISOString(), family: deep(M.family || {}), cols, care,
+      hospitals: [...M.hosp.values()].map(deep), recipes: [...M.recipes.values()].map(deep), checkups: [...M.checkups.values()].map(deep), game: deep(M.game || {}) };
+  },
+  // 되살리기: 백업 파일의 문서를 같은 id로 다시 넣어요 (merge — 지금 있는 기록은 지우지 않고, 없어진 것만 되살아나고 같은 기록은 백업 값으로). 도토리는 지금 값이 0일 때만 백업 값
+  async restoreData(bk) {
+    if (!bk || bk.app !== 'soeun-diary' || !bk.cols) throw new Error('수사 일지 백업 파일이 아니에요');
+    const un = o => JSON.parse(JSON.stringify(o), (k, v) => v && typeof v === 'object' && Object.keys(v).length === 1 && typeof v.__ts === 'number' ? Timestamp.fromMillis(v.__ts) : v);
+    const jobs = [];
+    Object.entries(bk.cols).forEach(([c, L]) => { if (COLS.includes(c) && Array.isArray(L)) L.forEach(o => { if (o && o.id) { const d = un(o); delete d.id; jobs.push([dref(c, o.id), d]); } }); });
+    Object.entries(bk.care || {}).forEach(([d, items]) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) jobs.push([dref('care', d), { items: un(items) }]); });
+    [['hospitals', bk.hospitals], ['recipes', bk.recipes], ['checkups', bk.checkups]].forEach(([c, L]) => (L || []).forEach(o => { if (o && o.id) { const d = un(o); delete d.id; jobs.push([dref(c, o.id), d]); } }));
+    if (bk.family && Object.keys(bk.family).length) jobs.push([fref(), un(bk.family)]);
+    if (bk.game && Object.keys(bk.game).length) { const g = un(bk.game); if ((+(M.game || {}).acorn || 0) > 0) delete g.acorn; jobs.push([dref('game', 'shared'), g]); }
+    for (let i = 0; i < jobs.length; i += 400) { const b = writeBatch(db); jobs.slice(i, i + 400).forEach(([r, d]) => b.set(r, d, { merge: true })); await commit(b.commit()); }
+    return { n: jobs.length, data: data() };
+  },
+
   // 하루 수사 기록 (분유·모유수유·유축수유·기저귀·수면·목욕·메모): 날짜 문서의 items 맵에 기록 하나씩 (두 폰이 동시에 남겨도 안 겹쳐요, 오프라인에서도 저장)
   async careSave(date, it, oldDate) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('날짜 형식이 올바르지 않아요');
@@ -483,7 +506,7 @@ H.disablePush = async () => {
 const API = {
   async call(fn, args) {
     if (!H[fn]) throw new Error('알 수 없는 기능: ' + fn);
-    if (isViewer() && !['getData', 'getPhotos', 'getPhoto', 'enablePush', 'disablePush'].includes(fn)) throw new Error('보기 전용 초대라 기록은 엄마·아빠 수사관만 남길 수 있어요');
+    if (isViewer() && !['getData', 'getPhotos', 'getPhoto', 'enablePush', 'disablePush', 'backupData'].includes(fn)) throw new Error('보기 전용 초대라 기록은 엄마·아빠 수사관만 남길 수 있어요');
     try { return await H[fn](...args); }
     catch (e) {
       const msg = e && e.code === 'permission-denied' ? '이 가족 공간에 쓸 권한이 없어요'
