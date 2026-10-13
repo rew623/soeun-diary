@@ -10,7 +10,26 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function local() { let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {} return Object.assign(DEF(), s || {}); }
 function canWrite() { return typeof run === 'function' && !(S.me && S.me.viewer); }
 // 처음 한 번: 이 폰에 모아 둔 걸 가족 저장에 합쳐요 (도토리는 더하고, 산 물건은 합치고, 고른 건 가족 쪽에 없을 때만)
-let merging = false, fixing = false, regranting = false;
+let merging = false, fixing = false, regranting = false, rewarding = false;
+// 훈장·계급·출석 보상: 서버 문서(cur)를 보고 아직 안 받은 것만 더해요 (app.js gameTx가 트랜잭션으로 — 두 폰이 같은 보상을 두 번 못 받음)
+const rewardTx = (now, on, act, sk) => cur => {
+  const paid = Object.assign({ medals: null, rank: null, att: '' }, clone(cur.paid) || {}), msgs = [];
+  let add = 0, back = 0, backN = 0; const pr = Object.assign({}, paid.rank || {});
+  for (const r of ['엄마', '아빠']) {
+    const from = pr[r] || 1; let a = 0; for (let lv = from + 1; lv <= now[r]; lv++) a += rankReward(lv);
+    if (a) { add += a; if (paid.rank) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}${joRo(rank(r).name)} 승진! 도토리 🌰 +${a}`); else { back += a; backN++; } }
+    pr[r] = Math.max(from, now[r]);
+  }
+  const pm = new Set(paid.medals || []);
+  on.filter(id => !pm.has(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id), a = (m && m[5]) || 3; add += a; pm.add(id);
+    if (paid.medals) msgs.push(`${m[1]} 훈장 획득: ${m[2]} · 도토리 🌰 +${a}`); else { back += a; backN++; } });
+  if (back) msgs.push(`🎁 지금까지 받은 훈장·계급 ${backN}개 보상! 도토리 🌰 +${back}`);
+  let att = paid.att || '';
+  if (act && att !== today()) { att = today(); add += 2; if (sk > 0 && sk % 7 === 0) { add += 5; msgs.push(`📅 오늘 출석 도장 + ${sk}일 연속 보너스! 도토리 🌰 +7`); } else msgs.push('📅 오늘 출석 도장 쾅! 도토리 🌰 +2'); }
+  const np = { medals: [...pm], rank: pr, att };
+  if (!add && same(np, { medals: paid.medals || [], rank: paid.rank || {}, att: paid.att || '' })) return null;
+  return { set: { paid: np }, add, msgs };
+};
 function merge(L) {
   const g = S.game; if (merging || !canWrite()) return; merging = true;
   const union = {}, set = {};
@@ -32,14 +51,19 @@ function st() {
   if (g && (s.synced || merging)) SHARED.forEach(k => { if (g[k] !== undefined && g[k] !== null) s[k] = clone(g[k]); });
   // 예전에 두 폰이 동시에 써서 마이너스가 된 잔액은 한 번 0으로 고쳐요 (화면엔 절대 0 아래로 안 보이게)
   if ((+s.acorn || 0) < 0) { s.acorn = 0; if (g && s.synced && g.srv && canWrite() && !fixing) { fixing = true; g.acorn = 0; run('saveGame', { acornSet: 0 }).finally(() => { fixing = false; }); } }
+  if (g && s.synced) snap(s);
   return s;
 }
+// 가져온 때의 같이 쓰는 값을 몰래 기억 (localStorage엔 안 들어감) — 예전엔 save가 '지금 서버 값과 다른 칸'을 다 보내서,
+// 창을 열어 둔 사이 다른 폰이 바꾼 값(도토리·받은 보상 paid 등)을 옛날 값으로 덮어써 도토리가 늘었다 줄었다 했어요 (2026.10.13)
+function snap(s) { Object.defineProperty(s, '__o', { value: Object.fromEntries(SHARED.map(k => [k, JSON.stringify(s[k] === undefined ? null : s[k])])), writable: true, configurable: true }); }
 function save(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
   const g = S.game; if (!g || !s.synced || !canWrite()) return;
-  const o = {};
-  SHARED.forEach(k => { if (k === 'acorn' || s[k] === undefined || same(s[k], g[k])) return; o[k] = clone(s[k]); g[k] = clone(s[k]); });
-  const d = (+s.acorn || 0) - (+g.acorn || 0); if (d) g.acorn = +s.acorn || 0;
+  const o = {}, b = s.__o;
+  SHARED.forEach(k => { if (k === 'acorn' || s[k] === undefined) return; if (b ? JSON.stringify(s[k]) === b[k] : same(s[k], g[k])) return; o[k] = clone(s[k]); g[k] = clone(s[k]); });
+  const d = (+s.acorn || 0) - (b ? (+JSON.parse(b.acorn) || 0) : (+g.acorn || 0)); if (d) g.acorn = Math.max(0, (+g.acorn || 0) + d);   // 이 화면에서 늘리고 줄인 만큼만
+  if (b) snap(s);
   if (Object.keys(o).length || d) run('saveGame', o, d).catch(e => {
     // 못 샀으면(다른 폰이 먼저 써서 잔액 모자람 등) 서버의 진짜 상태로 화면을 되돌려요
     toast((e && e.message) || '놀이 저장 실패');
@@ -222,27 +246,14 @@ function check() {
     // 도토리 보상은 가족 저장(paid)에 적어 두 폰이 같은 보상을 두 번 받지 않게. 같이 쓰기 전(합치기 전)이거나 보기 전용이면 축하만
     const live = !!(S.game && s.synced && canWrite());
     if (live) {
-      const paid = Object.assign({ medals: null, rank: null, att: '' }, clone(s.paid) || {}); let back = 0, backN = 0;
-      const pr = paid.rank || {};
-      for (const r of ['엄마', '아빠']) {
-        const from = pr[r] || 1; let add = 0; for (let lv = from + 1; lv <= now[r]; lv++) add += rankReward(lv);
-        if (add) { s.acorn += add; if (paid.rank) msgs.push(`🎉 ${r} 수사관 ${rank(r).name}${joRo(rank(r).name)} 승진! 도토리 🌰 +${add}`); else { back += add; backN++; } }
-        pr[r] = Math.max(from, now[r]);
+      if (!rewarding) {
+        rewarding = true;
+        run('gameTx', rewardTx(now, on, activeDays().has(today()), streak()))
+          .then(out => { if (out && out.msgs && out.msgs.length) { confetti(); out.msgs.forEach((m, i) => setTimeout(() => toast(m), 600 + i * 2300)); } })
+          .catch(e => console.warn('보상', e)).finally(() => { rewarding = false; });
       }
-      paid.rank = pr;
-      const pm = new Set(paid.medals || []);
-      on.filter(id => !pm.has(id)).forEach(id => { const m = MEDALS.find(x => x[0] === id), add = m[5] || 3; s.acorn += add; pm.add(id);
-        if (paid.medals) msgs.push(`${m[1]} 훈장 획득: ${m[2]} · 도토리 🌰 +${add}`); else { back += add; backN++; } });
-      paid.medals = [...pm];
-      if (back) msgs.push(`🎁 지금까지 받은 훈장·계급 ${backN}개 보상! 도토리 🌰 +${back}`);
-      // 출석 도장: 오늘 기록이 생기면 +2, 연속 7일마다 +5
-      if (activeDays().has(today()) && paid.att !== today()) {
-        paid.att = today(); s.acorn += 2; const sk = streak();
-        if (sk > 0 && sk % 7 === 0) { s.acorn += 5; msgs.push(`📅 오늘 출석 도장 + ${sk}일 연속 보너스! 도토리 🌰 +7`); } else msgs.push('📅 오늘 출석 도장 쾅! 도토리 🌰 +2');
-      }
-      s.paid = paid;
       // 2026.10: 두 폰이 동시에 써서 마이너스가 됐다가 0으로 고쳐질 때 훈장·계급 보상이 사라졌어요 → 지금까지 받은 훈장·계급 보상을 한 번 다시 넣어 줘요 (game/shared의 regrant 칸으로 한 번만, 장부 paid와 따로라 덮어써지지 않게)
-      if (!S.game.regrant && S.game.srv && !regranting && (s.paid.medals || []).length) {
+      if (!S.game.regrant && S.game.srv && !regranting && ((S.game.paid || {}).medals || []).length) {
         let tot = 0; on.forEach(id => { const m = MEDALS.find(x => x[0] === id); tot += (m && m[5]) || 3; });
         for (const r of ['엄마', '아빠']) for (let lv = 2; lv <= now[r]; lv++) tot += rankReward(lv);
         if (tot) {

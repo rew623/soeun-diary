@@ -213,7 +213,7 @@ function heroHtml() {
   const n = window.TOWN && TOWN.now ? TOWN.now() : null; if (n && window.GAME) GAME.mark('town');   // 오늘의 지령 '산책 지수 보기'
   const cls = n ? (n.s >= 80 ? 'ok' : n.s >= 60 ? 'ok2' : n.s >= 40 ? 'mid' : 'no') : '';
   const lab = n ? (n.s >= 80 ? '딱 좋아요' : n.s >= 60 ? '좋아요' : n.s >= 40 ? '짧게만' : '집에서 수사') : '불러오는 중…';
-  const idx = `<button class="wkidx ${cls}" data-act="townv" data-v="info"><b>${n ? n.s : '-'}</b><span><em>지금 산책 지수</em><small>${n ? `${n.ico} ${n.tmp}° · ${esc(lab)}` : lab}</small><u>날씨 자세히 ›</u></span></button>`;
+  const idx = `<button class="wkidx ${cls}" data-act="townv" data-v="info"><b${n && String(n.s).length > 2 ? ' class="w3"' : ''}>${n ? n.s : '-'}</b><span><em>지금 산책 지수</em><small>${n ? `${n.ico} ${n.tmp}° · ${esc(lab)}` : lab}</small><u>날씨 자세히 ›</u></span></button>`;
   let go = '';
   if (canWrite()) go = L && !L.ended ? `<button class="wkgo live" data-wk="live"><i>🐾</i><span>탐문 중 <b class="wk-lt">${clock(elapsed())}</b><small class="wk-ld">${kmText(L.dist)} · 눌러서 보기</small></span></button>`
     : L && L.ended ? `<button class="wkgo live" data-wk="saveLive"><i>📝</i><span>탐문 결과 저장<small>끝낸 산책을 아직 저장 안 했어요</small></span></button>`
@@ -966,7 +966,7 @@ const css = document.createElement('style');
 css.textContent = `
 .wkhero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px}
 .wkidx{display:flex;align-items:center;gap:8px;text-align:left;border:1.5px solid var(--line);background:#FFFDF7;border-radius:18px;padding:8px 10px;min-height:76px}
-.wkidx>b{font-family:var(--display);font-weight:400;font-size:34px;line-height:1;color:#2E7D5B;min-width:44px;text-align:center}
+.wkidx>b{font-family:var(--display);font-weight:400;font-size:30px;line-height:1;color:#2E7D5B;min-width:44px;text-align:center;white-space:nowrap;flex:none;letter-spacing:-1px}.wkidx>b.w3{font-size:25px}
 .wkidx.mid>b{color:#C8551E}.wkidx.no>b{color:var(--red)}
 .wkidx span{display:flex;flex-direction:column;min-width:0}.wkidx em{font-style:normal;font-size:12px;color:var(--muted)}.wkidx small{font-size:12.5px;color:var(--ink);word-break:keep-all}.wkidx u{text-decoration:none;font-size:11px;color:var(--red);margin-top:1px}
 .wkgo{display:flex;align-items:center;gap:8px;text-align:left;border:0;border-radius:18px;padding:8px 12px;min-height:76px;background:var(--red);color:#fff;box-shadow:0 3px 0 #7E1A14}

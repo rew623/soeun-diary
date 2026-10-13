@@ -344,6 +344,21 @@ const H = {
     return { ok: true };
   },
 
+  // 도토리 보상(훈장·계급·출석)을 서버의 진짜 상태로 계산해 한 번에 (두 폰이 동시에 같은 보상을 받거나, 옛날 화면 숫자로 덮어써서 도토리가 늘었다 줄었다 하지 않게)
+  // fn(서버 문서) → { set: {칸: 값}, add: 도토리 } | null (다시 시도될 수 있어 같은 입력엔 같은 결과)
+  async gameTx(fn) {
+    const ref = dref('game', 'shared'); let out = null;
+    await runTransaction(db, async tx => {
+      const cur = (await tx.get(ref)).data() || {}; out = fn(cur) || null;
+      if (!out || (!out.add && !Object.keys(out.set || {}).length)) return;
+      const data = Object.assign({ updatedAt: serverTimestamp(), by: myRole() }, out.set || {});
+      Object.keys(data).forEach(k => { if (k !== 'updatedAt' && k !== 'by' && !GAME_KEYS.includes(k)) delete data[k]; });
+      data.acorn = Math.max(0, (+cur.acorn || 0) + Math.round(+out.add || 0));
+      tx.set(ref, data, { mergeFields: Object.keys(data) });
+    });
+    return out;
+  },
+
   // 하루 수사 기록 (분유·모유수유·유축수유·기저귀·수면·목욕·메모): 날짜 문서의 items 맵에 기록 하나씩 (두 폰이 동시에 남겨도 안 겹쳐요, 오프라인에서도 저장)
   async careSave(date, it, oldDate) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('날짜 형식이 올바르지 않아요');

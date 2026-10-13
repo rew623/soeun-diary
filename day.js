@@ -20,7 +20,25 @@ const K = {
 };
 const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath'];
 // 5칸 × 2줄 (자주 쓰는 것 첫 줄, 옆으로 밀지 않아도 다 보여요)
-const DIA = '<svg viewBox="0 0 24 24" width="1.15em" height="1.15em" style="vertical-align:-.2em" aria-hidden="true"><path d="M2.5 5.5h19v5.2c0 5.2-3.4 8.3-9.5 8.3s-9.5-3.1-9.5-8.3z" fill="#FFFDF7" stroke="#1F2A44" stroke-width="1.5" stroke-linejoin="round"/><path d="M2.5 8.6h19" stroke="#2a78d6" stroke-width="1.4"/><rect x="2.5" y="5.5" width="4" height="3.1" rx="1" fill="#7FB2F0" stroke="#1F2A44" stroke-width="1.2"/><rect x="17.5" y="5.5" width="4" height="3.1" rx="1" fill="#7FB2F0" stroke="#1F2A44" stroke-width="1.2"/><path d="M9 12.5q3 2.2 6 0" fill="none" stroke="#9db8d9" stroke-width="1.3" stroke-linecap="round"/></svg>';
+// 귀여운 그림 아이콘 (하루 수사): 이모지 대신 직접 그린 SVG — 사용자 요청 2026.10.13 '이모지 더 귀엽게'. 알림 띠(toast) 글자엔 K[k].i 이모지를 그대로 써요
+const IK = '#1F2A44', FACE = (x, y, o) => `<g fill="${IK}"><circle cx="${x - 2.6}" cy="${y}" r="1.15"/><circle cx="${x + 2.6}" cy="${y}" r="1.15"/></g><path d="M${x - 1.5} ${y + 1.9}q1.5 1.3 3 0" fill="none" stroke="${IK}" stroke-width="1.2" stroke-linecap="round"/>${o === 0 ? '' : `<g fill="#FF8FA3" opacity=".55"><circle cx="${x - 4.6}" cy="${y + 1.7}" r="1.3"/><circle cx="${x + 4.6}" cy="${y + 1.7}" r="1.3"/></g>`}`;
+const SL = `stroke="${IK}" stroke-width="1.5" stroke-linejoin="round"`;
+const ICON = {
+  formula: `<path d="M13.5 8.5q2.5-6.5 5 0" fill="#F7C08A" ${SL}/><rect x="10.5" y="8" width="11" height="4" rx="1.6" fill="#F49A4A" ${SL}/><rect x="9.5" y="11.5" width="13" height="17" rx="5" fill="#FFFDF7" ${SL}/><path d="M10.3 19.5h11.4v4.2a4.3 4.3 0 0 1-4.3 4.3h-2.8a4.3 4.3 0 0 1-4.3-4.3z" fill="#FFE2BC"/>${FACE(16, 18.5)}`,
+  breast: `<path d="M16 27.5C7 21.5 4.5 15.5 7.8 11.2c2.8-3.4 6.9-2.5 8.2.6 1.3-3.1 5.4-4 8.2-.6 3.3 4.3.8 10.3-8.2 16.3z" fill="#F9A8CB" ${SL}/>${FACE(16, 17)}<path d="M24.5 4.5q2.3 3.2 0 4.6-2.3-1.4 0-4.6z" fill="#FFFDF7" ${SL}/>`,
+  pump: `<rect x="10.5" y="7.5" width="11" height="5" rx="2" fill="#B79BEF" ${SL}/><rect x="8.5" y="12" width="15" height="16" rx="4.5" fill="#FFFDF7" ${SL}/><path d="M9.3 19h13.4v4.6a3.8 3.8 0 0 1-3.8 3.8h-5.8a3.8 3.8 0 0 1-3.8-3.8z" fill="#EADFFF"/>${FACE(16, 18)}`,
+  solid: `<path d="M21 13.5 27 5" stroke="#B8935A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="27.3" cy="4.6" rx="1.8" ry="2.3" fill="#E7CFA0" ${SL}/><path d="M4.5 14.5h23c0 7.2-5 12-11.5 12s-11.5-4.8-11.5-12z" fill="#A8DA74" ${SL}/><ellipse cx="16" cy="14.5" rx="11.5" ry="2.6" fill="#FFF2C9" ${SL}/>${FACE(16, 19.5)}`,
+  pee: `<path d="M16 3.5C14 7 7.5 14 7.5 19.5a8.5 8.5 0 0 0 17 0C24.5 14 18 7 16 3.5z" fill="#9CCBFF" ${SL}/><path d="M11.6 15.5q1-2.6 2.6-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>${FACE(16, 20)}`,
+  poo: `<path d="M16 5.5q4.2 1.6 2 5.4" fill="none" ${SL} stroke-linecap="round"/><ellipse cx="16" cy="24" rx="11" ry="4.6" fill="#C9935A" ${SL}/><ellipse cx="16" cy="18.2" rx="8" ry="4.2" fill="#D6A26A" ${SL}/><ellipse cx="16" cy="12.6" rx="5.3" ry="3.4" fill="#E0B07A" ${SL}/>${FACE(16, 18.3)}`,
+  sleep: `<path d="M19.5 4.5a11.5 11.5 0 1 0 8 18.5 9 9 0 0 1-8-18.5z" fill="#FFD86B" ${SL}/><path d="M9.6 17.3q1.4 1.2 2.8 0M15.4 17.3q1.4 1.2 2.8 0" fill="none" ${SL} stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><circle cx="9.3" cy="20.2" r="1.3"/><circle cx="18.5" cy="20.2" r="1.3"/></g><path d="M23 6.5h4l-4 4.4h4" fill="none" stroke="#5B6BD6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+  bath: `<circle cx="9" cy="8.5" r="2.3" fill="#DDF3FF" ${SL}/><circle cx="13.5" cy="5.5" r="1.6" fill="#DDF3FF" ${SL}/><ellipse cx="22" cy="12.6" rx="4.2" ry="3.2" fill="#FFD84D" ${SL}/><circle cx="24" cy="9.3" r="2.6" fill="#FFD84D" ${SL}/><path d="M26.3 9.6l2.3.4-2.1 1z" fill="#F49A4A"/><circle cx="24.6" cy="8.8" r=".7" fill="${IK}"/><path d="M3.5 15h25v2.5c0 5.5-4.2 9-9 9h-7c-4.8 0-9-3.5-9-9z" fill="#FFFDF7" ${SL}/><path d="M4.2 17.3h23.6" stroke="#7FD3CB" stroke-width="2.2"/>${FACE(16, 21.3)}`,
+  memo: `<rect x="7.5" y="5" width="16" height="22.5" rx="3" fill="#FFF3CC" ${SL}/><path d="M11 11h9M11 15h9M11 19h5" stroke="#D6B66A" stroke-width="1.6" stroke-linecap="round"/><path d="M19.5 25.5l1.3-4.6 7-7a1.8 1.8 0 0 1 2.6 2.6l-7 7z" fill="#FF9F6B" ${SL}/>`,
+  temp: `<rect x="12.5" y="3.5" width="7" height="18" rx="3.5" fill="#FFFDF7" ${SL}/><rect x="15" y="10" width="2" height="12" rx="1" fill="#FF6B6B"/><circle cx="16" cy="23.5" r="5.3" fill="#FF8A8A" ${SL}/>${FACE(16, 23, 0)}`,
+  med: `<g transform="rotate(-35 16 16)"><path d="M16 10.5h6a5.5 5.5 0 0 1 0 11h-6z" fill="#FFFDF7" ${SL}/><path d="M16 10.5h-6a5.5 5.5 0 0 0 0 11h6z" fill="#FF8A8A" ${SL}/></g>${FACE(16, 16, 0)}`,
+  diaper: `<path d="M3.5 8h25v5c0 7-5.6 11.5-12.5 11.5S3.5 20 3.5 13z" fill="#FFFDF7" ${SL}/><path d="M3.8 11.4h24.4" stroke="#9CCBFF" stroke-width="1.8"/><rect x="3.5" y="8" width="5" height="3.6" rx="1.2" fill="#9CCBFF" ${SL}/><rect x="23.5" y="8" width="5" height="3.6" rx="1.2" fill="#9CCBFF" ${SL}/>${FACE(16, 16.5)}`
+};
+const ICO = (k, px) => ICON[k] ? `<svg class="dyico" viewBox="0 0 32 32" width="${px || 24}" height="${px || 24}" aria-hidden="true">${ICON[k]}</svg>` : esc((K[k] || K.memo).i);
+const DIA = ICO('diaper', 18);
 const QUICK = [['formula', '🍼', '분유'], ['breast', '🤱', '모유수유'], ['solid', '🥣', '이유식'], ['diaper', DIA, '소변/대변'], ['sleep', '😴', '수면'], ['pump', '🍶', '유축수유'], ['bath', '🛁', '목욕'], ['memo', '📝', '메모'], ['temp', '🌡️', '체온'], ['med', '💊', '투약']];
 const PH = { memo: '기록하고 싶은 정보가 있다면 적어 주세요', formula: '예: 160 탔다가 130 먹음', pump: '예: 냉동 모유 데워서 먹임', breast: '예: 왼쪽 먹다가 잠듦', diaper: '예: 엉덩이가 살짝 빨개요', sleep: '예: 안아서 재움, 중간에 한 번 깸', bath: '예: 물 38도, 머리도 감김' };
 const AMT = { 조금: '양 조금', 보통: '양 보통', 많이: '양 많이' }, STT = { 묽음: '묽은 변', 보통: '보통 변', 단단: '단단한 변', 설사: '설사' };
@@ -132,20 +150,23 @@ function stats(date) {
 function line(e) {
   const r = e.raw, k = e.k;
   let name = (K[k] || K.memo).n, det = '';
-  const span = e.e && e.e > e.s ? `⏱ ${durTxt((e.e - e.s) / 60000)} (${r.t}~${hmOf(new Date(e.e))})` : '';   // 걸린 시간 (끝 시각·목욕 분이 있으면)
-  if (k === 'formula' || k === 'pump') det = [r.ml ? `${r.ml}ml` : '', span].filter(Boolean).join(' · ');
-  else if (k === 'breast') det = r.live ? `수유 중 · <b data-el="${e.id}"></b>` : [r.l ? `왼쪽 ${Math.round(r.l)}분` : '', r.r ? `오른쪽 ${Math.round(r.r)}분` : ''].filter(Boolean).concat(span ? [span] : []).join(' · ');
-  else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; det = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
-  else if (k === 'sleep') det = r.live ? `자는 중 · <b data-el="${e.id}"></b>` : e.e ? `${durTxt((e.e - e.s) / 60000)} · ${r.t}~${r.e}` : '';
-  else if (k === 'bath') det = span || (r.dur ? `⏱ ${r.dur}분` : '');
-  else if (k === 'solid') det = [r.menu, r.amount, r.eat].filter(Boolean).map(esc).join(' · ');
-  else if (k === 'temp') det = `${esc(r.value)}℃`;
-  else if (k === 'med') det = [r.value, r.dose].filter(Boolean).map(esc).join(' ');
-  else if (k === 'sym') det = esc(r.value || '');
+  const dur = e.e && e.e > e.s ? durTxt((e.e - e.s) / 60000) : '', rng = dur ? `${r.t}~${hmOf(new Date(e.e))}` : '';   // 걸린 시간 (끝 시각·목욕 분이 있으면)
+  let main = '', sub = [];
+  if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) sub.push(`⏱ ${dur} (${rng})`); }
+  else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) sub.push(`⏱ ${dur} (${rng})`); }
+  else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
+  else if (k === 'sleep') { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); }
+  else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
+  else if (k === 'solid') { main = esc(r.amount || ''); sub = [r.menu, r.eat].filter(Boolean).map(esc); }
+  else if (k === 'temp') main = `${esc(r.value)}℃`;
+  else if (k === 'med') { main = esc(r.value || ''); if (r.dose) sub.push(esc(r.dose)); }
+  else if (k === 'sym') main = esc(r.value || '');
   const memo = e.src === 'care' ? r.memo : e.src === 'meal' ? '' : r.memo;
   const dot = k === 'diaper' ? (r.poo ? K.poo.c : K.pee.c) : (K[k] || K.memo).c;
   const act = e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
-  return `<button class="dyrow${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act}><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dydot" style="--c:${dot}"></span><span class="dyb"><b>${k === 'diaper' ? (r.poo ? '💩 ' : '💧 ') : (K[k] || K.memo).i + ' '}${name}</b><small>${[det, memo ? esc(memo) : ''].filter(Boolean).join(' · ')}${r.by ? ` <em>${esc(r.by)}</em>` : ''}</small></span><i>›</i></button>`;
+  const ik = k === 'diaper' ? (r.poo ? 'poo' : 'pee') : k;
+  if (memo) sub.push(esc(memo)); if (r.by) sub.push(`<em>${esc(r.by)}</em>`);
+  return `<button class="dyrow${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
 }
 
 // ---------- 화면 ----------
@@ -168,7 +189,7 @@ function render_() {
 }
 function quickRow() {
   if (!canWrite()) return '';
-  return `<div class="dyq" data-noswipe>${QUICK.map(([k, i, l]) => `<button data-dy="add" data-k="${k}" style="--c:${(K[k === 'diaper' ? 'pee' : k] || K.memo).c}"><span>${i}</span><b>${l}</b></button>`).join('')}</div>`;
+  return `<div class="dyq" data-noswipe>${QUICK.map(([k, i, l]) => `<button data-dy="add" data-k="${k}" style="--c:${(K[k === 'diaper' ? 'pee' : k] || K.memo).c}"><span>${ICO(k, 40)}</span><b>${l}</b></button>`).join('')}</div>`;
 }
 function liveCards() {
   const L = (S.cares || []).filter(c => c.live);
@@ -194,10 +215,10 @@ function dayLog() {
     const now = Date.now(), A = evs().filter(e => e.s <= now), feed = A.filter(e => ['formula', 'pump', 'breast', 'solid'].includes(e.k)).pop(), dia = A.filter(e => e.k === 'diaper').pop();
     const bath = A.filter(e => e.k === 'bath').pop();
     const box = (ic, lab, e, sub) => `<div><small>${ic} ${lab}</small>${e ? `<b>${e}</b><em>${sub}</em>` : '<b class="no">-</b><em>기록 없음</em>'}</div>`;
-    last = `<p class="dylh">마지막 기록</p><div class="dylast">${box('🍼', '수유', feed && feed.t, feed && agoTxt(feed.s))}${box(DIA, '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${box('🛁', '목욕', bath && bath.t, bath && agoTxt(bath.s))}</div>`;
+    last = `<p class="dylh">마지막 기록</p><div class="dylast">${box(ICO('formula', 17), '수유', feed && feed.t, feed && agoTxt(feed.s))}${box(ICO('diaper', 17), '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${box(ICO('bath', 17), '목욕', bath && bath.t, bath && agoTxt(bath.s))}</div>`;
   }
-  const chips = [[st.formula.n, `🍼 분유 ${st.formula.ml}ml · ${st.formula.n}회`], [st.breast.n, `🤱 모유 ${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`], [st.pump.n, `🍶 유축 ${st.pump.ml}ml`], [st.solid.n, `🥣 이유식 ${st.solid.n}회`],
-    [st.pee.n, `💧 소변 ${st.pee.n}`], [st.poo.n, `💩 대변 ${st.poo.n}`], [st.sleep.min, `😴 ${durTxt(st.sleep.min)}`], [st.bath.n, `🛁 목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span>${x[1]}</span>`).join('');
+  const chips = [[st.formula.n, 'formula', `분유 ${st.formula.ml}ml · ${st.formula.n}회`], [st.breast.n, 'breast', `모유 ${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`], [st.pump.n, 'pump', `유축 ${st.pump.ml}ml`], [st.solid.n, 'solid', `이유식 ${st.solid.n}회`],
+    [st.pee.n, 'pee', `소변 ${st.pee.n}`], [st.poo.n, 'poo', `대변 ${st.poo.n}`], [st.sleep.min, 'sleep', `수면 ${durTxt(st.sleep.min)}`], [st.bath.n, 'bath', `목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span style="--c:${K[x[1]].c}">${ICO(x[1], 18)}${x[2]}</span>`).join('');
   return `${liveCards()}${isT ? feedBar() : ''}${quickRow()}
     <section class="dysum">${last}${chips ? `<div class="dychips">${chips}</div>` : `<p class="vempty" style="margin:4px 0">${isT ? '아직 오늘 기록이 없어요. 위 동그란 단추로 남겨요.' : '이날 기록이 없어요.'}</p>`}</section>
     ${L.length ? `<section class="dylist">${L.map(line).join('')}</section>` : ''}
@@ -318,7 +339,7 @@ function openForm(k, c) {
   const now = new Date(), d0 = c ? c.date : D.date, t0 = c ? c.t : (D.date === today() ? hmOf(now) : '12:00');
   const liveBr = !!(c && c.live && c.k === 'breast' && c.seg), add = liveBr ? Math.max(0, (Date.now() - c.seg) / 60000) : 0;
   F = { k, id: c ? c.id : newCid(), old: c ? c.date : '', edit: !!c, live: c ? c.live : 0, side: c ? c.side : '', seg: liveBr ? Date.now() : c ? c.seg : 0, at: c ? c.at : 0, pee: c ? !!c.pee : true, poo: c ? !!c.poo : false };
-  const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = k === 'diaper' ? DIA : kk.i;
+  const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = ICO(k, 26);
   // 시각은 폰 시계 창(헷갈려요) 대신 숫자 칸 + ▲▼ (사용자 요청)
   const hasE = ['formula', 'pump', 'breast', 'sleep', 'bath'].includes(k), e0 = (c && c.e) || (k === 'bath' && c && +c.dur && /^\d\d:\d\d$/.test(c.t) ? hmOf(new Date(msOf('2000-01-01', c.t) + c.dur * 60000)) : '');   // 예전 목욕 기록은 분 → 끝난 시각으로 보여 줘요
   const tIn = `<label class="field"><span>날짜</span><input id="dy-d" type="date" value="${d0}" min="${S.profile.birth}" max="${today()}"></label>
@@ -708,8 +729,8 @@ css.textContent = `
 .dysub button.on{color:var(--navy);border-bottom-color:var(--red)}
 .dyq{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px 2px;padding:2px 0 12px}
 .dyq button{min-width:0;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0}
-.dyq button span{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:26px;background:color-mix(in srgb,var(--c) 16%,#FFFDF7);border:2px solid color-mix(in srgb,var(--c) 45%,transparent);box-shadow:0 2px 0 rgba(31,42,68,.08)}
-.dyq button b{font-weight:400;font-size:12.5px;color:var(--ink);white-space:nowrap}
+.dyq button span{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:26px;background:color-mix(in srgb,var(--c) 15%,#FFFDF7);border:2.5px solid var(--c);box-shadow:0 3px 0 color-mix(in srgb,var(--c) 30%,transparent)}
+.dyq button b{font-family:var(--display);font-weight:400;font-size:13.5px;color:var(--navy);white-space:nowrap;letter-spacing:-.2px}
 .dyq button:active span{transform:scale(.94)}
 .dylive{display:flex;align-items:center;gap:10px;background:#FFFDF7;border:2px solid var(--c);border-radius:16px;padding:10px 12px;margin:6px 0 10px;box-shadow:0 3px 0 color-mix(in srgb,var(--c) 30%,transparent)}
 .dyli{font-size:28px}.dylive>div:nth-child(2){flex:1;min-width:0}.dylive b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}
@@ -720,18 +741,18 @@ css.textContent = `
 .dylh{margin:0 0 4px;font-size:12px;color:var(--muted)}
 .dylast{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 10px}
 .dylast>div{background:#FFFDF7;border:1px solid var(--line);border-radius:12px;padding:7px 4px 6px;text-align:center;min-width:0}
-.dylast small{display:block;font-size:12px;color:var(--muted);white-space:nowrap}
+.dylast small{display:flex;align-items:center;justify-content:center;gap:3px;font-size:12.5px;color:var(--muted);white-space:nowrap}
 .dylast>div>b{display:block;font-family:var(--display);font-weight:400;font-size:22px;color:var(--navy);line-height:1.2}.dylast>div>b.no{color:var(--muted)}
 .dylast em{display:block;font-style:normal;font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dylast em b{font-weight:400}
-.dychips{display:flex;flex-wrap:wrap;gap:6px}.dychips span{font-size:12.5px;background:#FFFDF7;border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+.dychips{display:flex;flex-wrap:wrap;gap:6px}.dychips span{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);font-size:13.5px;color:var(--navy);background:color-mix(in srgb,var(--c) 10%,#FFFDF7);border:1.5px solid color-mix(in srgb,var(--c) 55%,transparent);border-radius:99px;padding:3px 10px 3px 5px}
 .dylist{padding:4px 10px}
-.dyrow{display:flex;align-items:flex-start;gap:10px;width:100%;border:0;background:none;text-align:left;padding:10px 2px;position:relative;min-height:60px}
+.dyrow{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;text-align:left;padding:6px 2px;position:relative;min-height:46px}
 .dyrow+.dyrow{border-top:1px dashed var(--line)}
-.dyt{flex:0 0 46px;font-family:var(--display);font-size:16px;color:var(--muted);padding-top:2px}.dyt small{font-size:11px;margin-left:1px}
-.dydot{flex:0 0 18px;height:18px;border-radius:50%;margin-top:3px;background:color-mix(in srgb,var(--c) 30%,#fff);border:2px solid var(--c)}
-.dyb{flex:1;min-width:0}.dyb b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy)}
-.dyb small{display:block;font-size:13px;color:var(--ink);opacity:.85;line-height:1.5}.dyb em{font-style:normal;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:4px;white-space:nowrap}
-.dyrow i{font-style:normal;color:var(--muted);font-size:20px;padding-top:6px}
+.dyt{flex:0 0 46px;font-family:var(--display);font-size:16.5px;color:var(--navy)}.dyt small{font-size:11px;margin-left:1px}
+.dyib{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,#FFFDF7);border:2px solid var(--c)}.dyib .dyico{display:block}
+.dyb{flex:1;min-width:0}.dyb>b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);line-height:1.3}.dyb>b u{text-decoration:none;color:var(--c);margin-left:3px;font-size:16.5px}
+.dyb small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}.dyb em{font-style:normal;font-size:12px;color:var(--muted)}
+.dyrow i{font-style:normal;color:var(--line);font-size:18px}
 .dynext{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#FFFDF7;border:2px solid var(--navy);border-radius:16px;padding:10px 12px;margin:2px 0 12px;box-shadow:0 3px 0 rgba(31,42,68,.15)}
 .dynext>span{font-size:28px}.dynext>div{flex:1;min-width:0}.dynext small{display:block;font-size:12px;color:var(--muted)}
 .dynext b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--navy);margin-right:8px}.dynext b.sm{font-size:15px;display:block}.dynext em{font-style:normal;font-size:14px;color:var(--ink)}
