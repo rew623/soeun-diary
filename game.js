@@ -287,7 +287,7 @@ function card() {
   if (!S.profile || !S.profile.birth) return '';
   const ms = missions(), n = ms.filter(m => m.on).length, all = ms.length && n === ms.length, s = st(), sk = streak();
   return `<section class="gcard${all ? ' all' : ''}">
-    <div class="gtop"><button class="gchip" data-game="medals" data-v="rank">🔥 ${sk ? sk + '일 연속 수사' : '오늘 첫 수사를 시작해요'}</button><button class="gchip" data-game="medals" data-v="deco">🌰 ${s.acorn} · 꾸미기</button><button class="ghost" data-game="medals" data-v="play">🎮 놀이터 ›</button></div>
+    <div class="gtop"><button class="gchip" data-game="medals" data-v="rank">🔥 ${sk ? sk + '일 연속' : '첫 수사 시작'}</button><button class="gchip" data-game="medals" data-v="deco">🌰 ${s.acorn} · 꾸미기</button><button class="ghost" data-game="medals" data-v="play">🎮 놀이터 ›</button></div>
     <h2 class="sh"><span>오늘의 수사 지령</span><span>${n}/${ms.length} 완료</span></h2>
     <div class="gms">${ms.map(m => `<button class="gm${m.on ? ' on' : ''}" data-game="go" data-id="${m.id}"><i>${m.on ? '✓' : ''}</i><span>${esc(m.t)}</span>${m.on ? '' : '<em>›</em>'}</button>`).join('')}</div>
     ${all ? '<span class="stamp gdone">지령 완수</span>' : '<p class="foot" style="margin:6px 0 0">셋 다 하면 도토리 🌰 3개! 모은 도토리로 첫 화면 방을 꾸며요.</p>'}
@@ -608,9 +608,9 @@ css.textContent = `
 .ghub{margin-top:10px}.ghub button{font-size:13.5px}
 .ghh{font-size:13px;color:var(--navy);margin:12px 0 0}
 button.gchip{min-height:30px}
-.gtop{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.gtop{display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:nowrap}.gtop .gchip{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:3px 9px;font-size:12px}
 .gchip{font-size:12.5px;background:#FFFDF7;border:1.5px solid var(--line);border-radius:99px;padding:3px 10px;white-space:nowrap}
-.gtop .ghost{margin-left:auto;min-height:32px;padding:3px 12px;font-size:12.5px}
+.gtop .ghost{margin-left:auto;flex:0 0 auto;min-height:32px;padding:3px 10px;font-size:12px;white-space:nowrap}
 .gms{display:flex;flex-direction:column;gap:6px}
 .gm{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:9px 12px;min-height:46px;font-size:14.5px}
 .gm i{width:24px;height:24px;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center;font-style:normal;font-weight:700;flex-shrink:0;color:#fff}

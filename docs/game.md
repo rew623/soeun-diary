@@ -16,3 +16,4 @@
 - game/shared 크기: 칸마다 개수가 정해져 있어(훈장 46·월 신문 18달·보드 카드 등) 수십 KB 안팎 — 1MB 한계와 거리가 멀어요. 설정 백업 칸에 크기 표시
 - 키티·폼폼푸린 컨셉 꾸미기(2026.10.13 사용자 요청): 소은 모자 kittybow(빨간 리본, 엄마도)·purinhat(갈색 베레모) 8, 옷 kitty(키티 멜빵)·purin(푸린 우주복) 10, 소품 kittydoll·purindoll 4 (characters.js HATS·CLOTH·PROPS). 방(room.js): 반려동물 kittypet·purinpet 12, 리본 러그 kittyrug 6, 푸딩 쿠션 pudding(바닥 소품) 6 — 캐릭터 그림은 직접 그린 '컨셉' 그림(공식 그림 아님)
 - 미피·컨셉 꾸미기 추가(2026.10.13 사용자 요청): 소은 — 미피 턱받이 옷 miffybib 6·작은 미피 인형(연분홍) miffyS 4·시나모롤 컨셉 구름 강아지 귀 머리띠 cinnaears 8·구름 우주복 cinna 10·구름 강아지 인형 cinnadoll 4 / 엄마 — 중간 미피 인형(진분홍) miffyM 5·키티 멜빵 kitty·키티 인형 kittydoll(+원래 키티 리본) / 아빠 — 큰 미피 인형(하늘색) miffyL 6·푸린 베레모 purinhat·푸린 우주복 purin·푸린 인형 purindoll. 그림은 characters.js (미피 인형은 크기만 다른 miffy 그림)
+- 성장 수사 지령 카드 맨 위 줄(.gtop: 🔥 연속·🌰 꾸미기·🎮 놀이터)은 한 줄(nowrap) — 글자가 길어지면 칩이 줄어들고 놀이터 단추가 혼자 아래로 내려가지 않게 (2026.10.13)
