@@ -749,8 +749,8 @@ css.textContent = `
 .dylast em{display:block;font-style:normal;font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dylast em b{font-weight:400}
 .dychips{display:flex;flex-wrap:wrap;gap:6px}.dychips span{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);font-size:13.5px;color:var(--navy);background:color-mix(in srgb,var(--c) 10%,#FFFDF7);border:1.5px solid color-mix(in srgb,var(--c) 55%,transparent);border-radius:99px;padding:3px 10px 3px 5px}
 .dylist{padding:4px 10px}
-.dyrow{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;text-align:left;padding:6px 2px;position:relative;min-height:46px}
-.dyrow+.dyrow{border-top:1px dashed var(--line)}
+.dyrow{display:flex;align-items:center;gap:8px;width:100%;border:2px solid color-mix(in srgb,var(--c) 70%,transparent);border-radius:14px;background:color-mix(in srgb,var(--c) 7%,#FFFDF7);text-align:left;padding:6px 8px 6px 8px;position:relative;min-height:50px;margin:0 0 6px}   /* 종류마다 자기 색 테두리 (사용자 요청 2026.10.13) */
+.dyrow:last-child{margin-bottom:0}
 .dyt{flex:0 0 46px;font-family:var(--display);font-size:16.5px;color:var(--navy)}.dyt small{font-size:11px;margin-left:1px}
 .dyib{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,#FFFDF7);border:2px solid var(--c)}.dyib .dyico{display:block}
 .dyb{flex:1;min-width:0}.dyb>b{display:block;font-family:var(--display);font-weight:400;font-size:16px;color:var(--navy);line-height:1.3}.dyb>b u{text-decoration:none;color:var(--c);margin-left:3px;font-size:16.5px}
@@ -764,7 +764,7 @@ css.textContent = `
 .dyimp{display:block;width:100%;min-height:42px;margin:6px 0 0;font-size:13.5px}
 .dyimpex{background:#FFFDF7;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.6;white-space:pre-wrap;margin:0 0 10px;font-family:var(--body)}
 .dyrow.flash{animation:dyflash 2.4s ease-out}@keyframes dyflash{0%,40%{background:#FFE7A8}100%{background:transparent}}
-.dyrow.live{background:color-mix(in srgb,#FFF3E2 70%,transparent);border-radius:12px}
+.dyrow.live{background:color-mix(in srgb,var(--c) 14%,#FFF3E2);border-style:solid;box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 25%,transparent)}
 .dyfl{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}   /* 두 줄로 감아서 고른 칸이 늘 보이게 */
 .dyfl button{flex:0 0 auto;display:flex;align-items:center;gap:5px;min-height:36px;border-radius:99px;border:1.5px solid var(--line);background:#FFFDF7;color:var(--muted);font-size:13px;padding:0 11px}
 .dyfl button i{width:10px;height:10px;border-radius:50%;background:var(--c);opacity:.35}
