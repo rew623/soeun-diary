@@ -18,3 +18,4 @@
 - 백업·내보내기(2026.10.13, settings.js '💾 백업·내보내기'): app.js backupData()(가족 문서·모든 컬렉션·care·병원·레시피·검진·game → JSON, Timestamp는 {__ts:ms}) → soeun-backup-YYYYMMDD.json(폰이면 공유 창, 아니면 다운로드, localStorage soeun-backup-at) · 하루 수사 CSV(엑셀용 BOM) · 되살리기 restoreData(같은 id로 merge 400개씩 — 지금 기록은 안 지움, 도토리는 지금 0일 때만). 보기 전용은 백업만. 사진은 주소만 들어감
 - 다시 그리기 가볍게(2026.10.13): apply()(데이터가 바뀌어 그릴 때)는 render.soft — 만든 화면 글이 지난번과 같으면 #app DOM을 안 건드림($app.__h). 사용자 동작으로 부르는 render()는 늘 새로 그림
 - 첫 화면 부가 카드 끄기(설정 '첫 화면 카드', homeOn): game·thief·charges·look·guess·capsule·paper + '🎯 핵심만 보기'(모두 끔)/'모두 켜기'
+- 테마(2026.10.13 사용자 요청, 설정 '🎨 테마', 폰마다 localStorage soeun-theme): themes.css — html[data-theme=kitty|conan|purin|cinna]가 색 변수(--paper·--card·--navy·--red·--line 등)와 바탕 무늬(SVG)만 바꿈, 기본은 탐정 수첩. index.html 머리 스크립트가 처음 그리기 전에 data-theme·theme-color를 넣음(깜빡임 없게). 새 화면 CSS는 색을 변수로 써야 테마를 따라감

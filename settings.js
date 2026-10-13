@@ -6,6 +6,7 @@ const get = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'n
 const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const TABS = [['day', '하루 수사', '🍼'], ['town', '동네 탐문', '🗺️'], ['album', '사건 앨범', '📷'], ['vac', '예방접종', '💉'], ['food', '급식 수사', '🥄'], ['sick', '긴급 출동', '🚨']];
 const CARDS = [['game', '🔥 오늘의 수사 지령·놀이터 카드'], ['thief', '🎩 괴도 깍정이 추적 카드 (방 창밖의 깍정이도)'], ['charges', '🚔 장난 혐의 사실'], ['look', '👀 닮은꼴 판정단 카드'], ['guess', '⚖️ 몸무게 예측 대결'], ['capsule', '✉️ 봉인된 증거물 알림'], ['paper', '📰 이달의 소은일보 알림']];   // 첫 화면 부가 카드 (2026.10.13: 핵심만 보기)
+const THEMES = [['det', '탐정 수첩', '🕵️', '#1F2A44', '#E9DCC3'], ['kitty', '헬로키티 컨셉', '🎀', '#C2185B', '#FFE4EC'], ['conan', '명탐정 코난 컨셉', '🔍', '#1F3C88', '#E6EEF9'], ['purin', '폼폼푸린 컨셉', '🍮', '#7A4A21', '#FFF1BF'], ['cinna', '시나모롤 컨셉', '☁️', '#3567AD', '#DDF0FD']];   // themes.css (2026.10.13)
 const V = { ver: '', latest: '', checked: false, est: null, busy: false };
 const sw = () => 'serviceWorker' in navigator;
 const num = v => (String(v).match(/\d+/g) || []).map(Number);
@@ -45,6 +46,8 @@ function render_() {
     <div class="stver"><div><small>이 폰</small><b id="st-ver">${esc(V.ver || (V.checked ? '알 수 없음' : '…'))}</b></div><div><small>최신</small><b>${esc(V.latest || (V.checked ? '확인 못 함' : '…'))}</b></div></div>
     ${newer() ? `<button class="primary" data-stg="update" style="width:100%" ${V.busy ? 'disabled' : ''}>⬆️ 새 버전으로 업데이트</button>` : `<button class="ghost" data-stg="check" style="width:100%">🔄 새 버전 확인</button>`}
     <p class="foot" style="margin:8px 0 0">새 버전이 나오면 화면 아래에 '새 버전이 있어요'도 떠요.</p></section>
+  <section class="stsec"><h2 class="sh"><span>🎨 테마</span><span>이 폰만</span></h2>
+    <div class="sttheme">${THEMES.map(([k, n, ic, c1, c2]) => `<button class="${(get('soeun-theme', '') || 'det') === k ? 'on' : ''}" data-stg="theme" data-v="${k}" style="--t1:${c1};--t2:${c2}"><i>${ic}</i><b>${n}</b></button>`).join('')}</div></section>
   <section class="stsec"><h2 class="sh"><span>아래 메뉴 탭</span><span>${TABS.length - off.length + 1}/${TABS.length + 1}개 보임</span></h2>
     <p class="foot" style="margin:0 0 8px">잘 안 쓰는 탭은 숨겨 두고, 필요할 때 다시 켜요. 숨겨도 기록·알림은 그대로예요. 성장 수사는 첫 화면이라 늘 보여요.</p>
     <div class="stlist">${TABS.map(([k, l, i]) => sw2(!off.includes(k), `data-stg="tab" data-v="${k}"`, `${i} ${l}`, '')).join('')}</div></section>
@@ -121,6 +124,7 @@ document.addEventListener('click', async e => {
   if (a === 'update') return update();
   if (a === 'tab') { const off = hiddenTabs(); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-tabs-off', off); toast(i >= 0 ? `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 다시 보여요` : `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 숨겼어요`); render(); return; }
   if (a === 'card') { const off = get('soeun-home-off', []); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-home-off', off); render(); return; }
+  if (a === 'theme') { put('soeun-theme', v === 'det' ? '' : v); const t = THEMES.find(x => x[0] === v); if (v === 'det') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v; const m = document.querySelector('meta[name=theme-color]'); if (m && t) m.content = t[3]; render(); toast(`${t[2]} ${t[1]} 테마로 바꿨어요`); return; }
   if (a === 'cards') { put('soeun-home-off', v === 'core' ? CARDS.map(c => c[0]) : []); render(); toast(v === 'core' ? '🎯 첫 화면엔 핵심만 보여요 (여기서 다시 켤 수 있어요)' : '첫 화면 카드를 모두 켰어요'); return; }
   if (a === 'backup') return backup();
   if (a === 'csv') return csv();
@@ -138,7 +142,7 @@ const css = document.createElement('style');
 css.textContent = `
 .stsec .sh{margin-bottom:8px}
 .stver{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.stver div{background:#FFFDF7;border:1.5px solid var(--line);border-radius:14px;padding:8px 12px}.stver small{display:block;font-size:12px;color:var(--muted)}.stver b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy);word-break:break-all}
-.stlist{display:flex;flex-direction:column;gap:6px}.stbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.stbtns button{flex:1 1 auto;min-height:44px;font-size:14px}.sttip{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0 0 4px}
+.stlist{display:flex;flex-direction:column;gap:6px}.sttheme{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.sttheme button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;border-radius:16px;border:2px solid var(--t1);background:linear-gradient(var(--t2),var(--t2)) padding-box;color:var(--t1);min-height:84px}.sttheme i{font-style:normal;font-size:26px}.sttheme b{font-family:var(--display);font-weight:400;font-size:13.5px}.sttheme button.on{box-shadow:0 0 0 3px var(--t1) inset,0 3px 0 rgba(0,0,0,.12)}.stbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.stbtns button{flex:1 1 auto;min-height:44px;font-size:14px}.sttip{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0 0 4px}
 .stsw{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1.5px solid var(--line);background:#FFFDF7;border-radius:14px;padding:10px 12px;min-height:52px;color:var(--ink)}
 .stsw span{display:flex;flex-direction:column;min-width:0}.stsw b{font-weight:400;font-size:15px}.stsw small{font-size:12px;color:var(--muted)}
 .stsw i{flex-shrink:0;position:relative;width:46px;height:28px;border-radius:99px;background:#D8CEBF;transition:background .2s}.stsw i::after{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}

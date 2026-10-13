@@ -297,18 +297,18 @@ function card() {
 // ---------- 도토리 놀이터 화면 (S.view='medals') : 놀이 | 꾸미기 | 계급·훈장 ----------
 const CLOTHES = [['', '기본', 0], ['conan', '코난 옷', 0], ['sherlock', '셜록 망토 코트', 0], ['watson', '왓슨 트위드 재킷', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
   ['hoodie', '곰 후드티', 8], ['sailor', '세일러복', 8], ['bee', '꿀벌 옷', 9], ['tiger', '호랑이 옷', 9], ['soccer', '축구 유니폼', 9], ['dress', '꽃무늬 원피스', 10], ['trench', '탐정 코트', 10],
-  ['dino', '공룡 옷', 10], ['tutu', '발레 튜튜', 11], ['suit', '정장', 12], ['santa', '산타 옷', 12], ['hanbok', '색동 한복', 15], ['hanbokB', '파랑 한복', 15], ['rudolph', '루돌프 옷', 10], ['elf', '요정 옷', 10], ['santaDress', '산타 원피스', 12]];
+  ['dino', '공룡 옷', 10], ['tutu', '발레 튜튜', 11], ['suit', '정장', 12], ['santa', '산타 옷', 12], ['hanbok', '색동 한복', 15], ['hanbokB', '파랑 한복', 15], ['rudolph', '루돌프 옷', 10], ['elf', '요정 옷', 10], ['santaDress', '산타 원피스', 12], ['kitty', '키티 멜빵 (키티 컨셉)', 10], ['purin', '푸린 우주복 (폼폼푸린 컨셉)', 10]];
 const WHO = [['baby', '소은'], ['mom', '엄마'], ['dad', '아빠']];
 // 식구마다 따로 사는 꾸미기 (산 물건은 그 사람만, 두 폰엔 같이): [id, 이름, 도토리], 맨 앞은 기본(무료)
-const HATN = { none: '모자 없음 (코난)', deer: '셜록 사냥모자', bowler: '왓슨 보울러 모자', det: '탐정 모자', flower: '꽃 화관', bunny: '토끼 머리띠', bear: '곰돌이 귀', beanie: '털모자', party: '생일 고깔', cap: '야구 모자', straw: '밀짚모자', chef: '요리사 모자', santa: '산타 모자', crown: '왕관', beret: '베레모', tiara: '티아라', antler: '루돌프 뿔', elfhat: '요정 모자' };
+const HATN = { kittybow: '키티 빨간 리본 (키티 컨셉)', purinhat: '푸린 갈색 베레모 (폼폼푸린 컨셉)', none: '모자 없음 (코난)', deer: '셜록 사냥모자', bowler: '왓슨 보울러 모자', det: '탐정 모자', flower: '꽃 화관', bunny: '토끼 머리띠', bear: '곰돌이 귀', beanie: '털모자', party: '생일 고깔', cap: '야구 모자', straw: '밀짚모자', chef: '요리사 모자', santa: '산타 모자', crown: '왕관', beret: '베레모', tiara: '티아라', antler: '루돌프 뿔', elfhat: '요정 모자' };
 const CLN = Object.fromEntries(CLOTHES.map(c => [c[0], c]));
 const hatL = (ids, c) => ids.map((id, i) => [id, HATN[id] || '', c[i]]);
 const clL = ids => ids.map(id => [id, (CLN[id] || ['', '기본'])[1], (CLN[id] || [0, 0, 0])[2]]);
 const KIT = {
-  baby: { hat: hatL(['det', 'none', 'bunny', 'bear', 'flower', 'beanie', 'party', 'antler', 'elfhat', 'santa', 'crown'], [0, 0, 6, 6, 5, 7, 8, 8, 9, 12, 15]),
-    cloth: clL(['', 'conan', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'rudolph', 'elf', 'santa', 'hanbok']),
-    prop: [['lens', '돋보기', 0], ['skate', '스케이트보드 (코난)', 0], ['bottle', '젖병', 0], ['paci', '쪽쪽이', 0], ['rattle', '딸랑이', 0], ['teddy', '애착 곰인형', 0], ['bunnydoll', '애착 토끼인형', 2], ['teether', '치발기', 2], ['blanket', '애착 이불', 3], ['formula', '분유통', 2], ['diaper', '기저귀', 2], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
-  mom: { hat: [['', '빨간 리본', 0], ...hatL(['bowler', 'flower', 'beret', 'bunny', 'beanie', 'straw', 'antler', 'santa', 'tiara'], [0, 5, 7, 6, 7, 9, 8, 12, 14])],
+  baby: { hat: hatL(['det', 'none', 'bunny', 'bear', 'flower', 'beanie', 'party', 'antler', 'elfhat', 'santa', 'crown', 'kittybow', 'purinhat'], [0, 0, 6, 6, 5, 7, 8, 8, 9, 12, 15, 8, 8]),
+    cloth: clL(['', 'conan', 'stripe', 'pajama', 'overall', 'rain', 'hoodie', 'sailor', 'bee', 'tiger', 'dino', 'dress', 'tutu', 'rudolph', 'elf', 'santa', 'hanbok', 'kitty', 'purin']),
+    prop: [['lens', '돋보기', 0], ['skate', '스케이트보드 (코난)', 0], ['bottle', '젖병', 0], ['paci', '쪽쪽이', 0], ['rattle', '딸랑이', 0], ['teddy', '애착 곰인형', 0], ['kittydoll', '키티 인형 (키티 컨셉)', 4], ['purindoll', '푸린 인형 (폼폼푸린 컨셉)', 4], ['bunnydoll', '애착 토끼인형', 2], ['teether', '치발기', 2], ['blanket', '애착 이불', 3], ['formula', '분유통', 2], ['diaper', '기저귀', 2], ['acorn', '도토리', 2], ['heart', '하트', 2], ['spoon', '숟가락', 2], ['camera', '카메라', 4], ['balloon', '풍선', 5], ['candy', '지팡이 사탕', 4], ['bell', '방울', 4], ['gift', '선물 상자', 6]] },
+  mom: { hat: [['', '빨간 리본', 0], ...hatL(['bowler', 'flower', 'beret', 'bunny', 'beanie', 'straw', 'antler', 'santa', 'tiara', 'kittybow'], [0, 5, 7, 6, 7, 9, 8, 12, 14, 8])],
     cloth: clL(['', 'watson', 'stripe', 'pajama', 'apron', 'cardigan', 'knit', 'rain', 'dress', 'trench', 'elf', 'santaDress', 'hanbok']),
     prop: [['heart', '하트', 0], ['note', '수첩', 0], ['bag', '왕진 가방 (왓슨)', 0], ['spoon', '숟가락', 2], ['coffee', '커피', 4], ['camera', '카메라', 4], ['bouquet', '꽃다발', 6], ['candy', '지팡이 사탕', 4], ['gift', '선물 상자', 6]] },
   dad: { hat: [['', '중절모', 0], ...hatL(['deer', 'det', 'cap', 'beanie', 'straw', 'chef', 'antler', 'elfhat', 'santa', 'crown'], [0, 6, 8, 7, 9, 10, 8, 9, 12, 15])],

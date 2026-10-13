@@ -256,7 +256,7 @@ function render_() {
     <div class="stwrap"><canvas id="stcv" class="stcv" width="1080" height="${ST.sq ? 1080 : 1350}" aria-label="기념 사진 미리 보기"></canvas>
       <div class="stsel" id="st-sel">${selBar()}</div></div>
     <section><h2 class="sh"><span>📷 사진 고르기</span><span>${L.length}장</span></h2>
-      <div class="stph"><button class="stpf" data-st="file">📱<b>폰에서</b></button>${L.map(p => `<button class="${p.id === ST.key ? 'on' : ''}" data-st="photo" data-id="${p.id}"><img src="${safeImg(PHOTOS[p.id])}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div></section>
+      <div class="stph"><button class="stpf" data-st="album">🗂️<b>앨범에서</b></button><button class="stpf" data-st="file">📱<b>폰에서</b></button>${L.map(p => `<button class="${p.id === ST.key ? 'on' : ''}" data-st="photo" data-id="${p.id}"><img src="${safeImg(PHOTOS[p.id])}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div></section>
     <section><h2 class="sh"><span>🖼️ 틀</span><span class="stratio"><button class="${ST.sq ? '' : 'on'}" data-st="ratio" data-v="45">세로</button><button class="${ST.sq ? 'on' : ''}" data-st="ratio" data-v="11">정사각</button></span></h2>
       <div class="chips">${TPL.map(([k, l]) => `<button class="chip${ST.tpl === k ? ' on' : ''}" data-st="tpl" data-v="${k}">${l}</button>`).join('')}</div></section>
     <section><h2 class="sh"><span>✏️ 글씨</span></h2>
@@ -304,6 +304,10 @@ document.addEventListener('click', async e => {
     case 'open': open(b.dataset.id || ''); break;
     case 'close': goBack(); break;
     case 'file': picker.click(); break;
+    case 'album': {   // 앱 안 사진 전체에서 고르기 (2026.10.13 사용자 요청)
+      const r = await ALBUM.choose({ direct: true, title: '꾸밀 사진 고르기' }); if (!r || !r.ids || !r.ids.length) { if (r === 'gallery') picker.click(); break; }
+      const id = r.ids[0]; ST.key = id; ST.src = safeImg(PHOTOS[id]); ST.img = null; resetPan(); render(); later(); break;
+    }
     case 'photo': ST.key = b.dataset.id; ST.src = safeImg(PHOTOS[b.dataset.id]); ST.img = null; resetPan(); document.querySelectorAll('.stph .on').forEach(x => x.classList.remove('on')); b.classList.add('on'); later(); break;
     case 'tpl': ST.tpl = v; document.querySelectorAll('[data-st=tpl]').forEach(x => x.classList.toggle('on', x === b)); later(); break;
     case 'ratio': ST.sq = v === '11'; render(); break;
