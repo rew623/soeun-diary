@@ -3,7 +3,7 @@
 //        path(경로), pics(같이 올린 사진 id 쉼표로), memo, who(엄마,아빠), wx(그날 날씨 한 줄), mood, by
 // 경로(path): "1:<출발 epoch초>:<위도·경도(1e5)·초의 변화량을 polyline 방식 글자로>" (점은 줄여서 최대 800개, 한 번에 60000자까지)
 // 실시간 탐문: 위치를 따라가며 길을 그리고, 앱에서 찍은 사진은 그때 위치를 붙여요. 화면이 꺼지면 폰이 위치를 안 줘요(그동안은 직선으로 이어요)
-//   → 탐문 중엔 화면을 켜 두고(Wake Lock), 주머니에 넣을 땐 🌙 주머니 모드(까만 화면, 꾹 눌러 풀기). 진행 중 기록은 이 폰에(localStorage soeun-walk-live)
+//   → 탐문 중엔 화면을 켜 두고(Wake Lock), 주머니에 넣을 땐 🌙 주머니 모드(까만 화면, 아래 동그라미를 2초 꾹 눌러 풀기 — 화면 아무 데나 누르면 안 풀림, 2026.10.15 사용자 요청 '너무 쉽게 풀려'). 진행 중 기록은 이 폰에(localStorage soeun-walk-live)
 // 갤러리에서 고른 사진은 안드로이드가 위치를 지워서 넘겨줘도 찍은 시각(tm)은 남아요 → 그 시각에 경로 위 어디였는지 계산해 지도에 보여 줘요(저장은 안 함)
 (function () {
 const W = { tsel: new Set(), cur: '', cal: '', more: 5, form: null, files: [], pickMode: '', addFor: '', follow: true, boot: false };
@@ -636,13 +636,16 @@ function buildLive() {
     <div class="wknums"><span><b data-n="time">00:00</b><small>시간</small></span><span><b data-n="dist">0m</b><small>거리</small></span><span><b data-n="pics">0</b><small>사진</small></span></div>
     <div class="wkbtns"><button data-wl="cam"><i>📷</i><span>사진 찍기</span></button><button data-wl="pause"><i>⏸</i><span>잠깐 쉬기</span></button><button data-wl="pocket"><i>🌙</i><span>주머니 모드</span></button><button class="end" data-wl="end"><i>■</i><span>탐문 끝</span></button></div>
     <p class="wknote">화면이 꺼지면 폰이 위치를 안 알려 줘요. 주머니에 넣을 땐 <b>🌙 주머니 모드</b> (화면은 켜진 채 까맣게, 배터리 덜 써요)</p>
-    <div class="wkpocket" hidden><b data-n="ptime">00:00</b><span data-n="pdist">0m</span><small>꾹 누르면 풀려요</small><i class="wkring"></i></div>`;
+    <div class="wkpocket" hidden><b data-n="ptime">00:00</b><span data-n="pdist">0m</span><small>아래 동그라미를 2초 꾹 눌러야 풀려요</small><div class="wkunlock"><i class="wkring"></i><span>🔓<br>꾹</span></div></div>`;
   document.body.appendChild(lEl);
   lEl.addEventListener('click', onLive);
   const pk = lEl.querySelector('.wkpocket'); let ht = 0;
-  const down = e => { e.preventDefault(); pk.classList.add('hold'); ht = setTimeout(() => { pk.hidden = true; pk.classList.remove('hold'); }, 900); };
+  // 주머니에서 저절로 풀리지 않게: 화면 아무 데나가 아니라 아래 동그라미만, 2초 동안 손가락이 안에 있어야 (사용자 요청 2026.10.15)
+  const un = pk.querySelector('.wkunlock');
+  const down = e => { e.preventDefault(); e.stopPropagation(); clearTimeout(ht); pk.classList.add('hold'); ht = setTimeout(() => { pk.hidden = true; pk.classList.remove('hold'); if (navigator.vibrate) navigator.vibrate(40); }, 2000); };
   const upp = () => { clearTimeout(ht); pk.classList.remove('hold'); };
-  pk.addEventListener('pointerdown', down); pk.addEventListener('pointerup', upp); pk.addEventListener('pointercancel', upp); pk.addEventListener('pointerleave', upp);
+  un.addEventListener('pointerdown', down); un.addEventListener('pointerup', upp); un.addEventListener('pointercancel', upp); un.addEventListener('pointerleave', upp);
+  pk.addEventListener('pointerdown', e => e.preventDefault());
 }
 const liveOpen = () => !!(lEl && !lEl.hidden);
 function openLive() {
@@ -794,7 +797,7 @@ function afterRender() {
 // 뒤로가기: 탐문 화면은 작게(기록은 계속), 주머니 모드에선 무시
 function close() {
   if (!liveOpen()) return false;
-  const pk = lEl.querySelector('.wkpocket'); if (!pk.hidden) { toast('꾹 누르면 풀려요'); return true; }
+  const pk = lEl.querySelector('.wkpocket'); if (!pk.hidden) { toast('아래 동그라미를 2초 꾹 눌러요'); return true; }
   closeLive(); return true;
 }
 
@@ -1069,7 +1072,8 @@ css.textContent = `
 .wkpocket[hidden]{display:none}
 .wkpocket b{font-family:var(--display);font-weight:400;font-size:64px;color:#556;font-variant-numeric:tabular-nums}.wkpocket span{font-size:22px;color:#445}.wkpocket small{font-size:13px;color:#334;margin-top:24px}
 .wkring{position:absolute;width:120px;height:120px;border-radius:50%;border:4px solid #334;opacity:0;transform:scale(.6);transition:none;pointer-events:none}
-.wkpocket.hold .wkring{opacity:1;transform:scale(1.4);transition:transform .9s linear,opacity .2s}
+.wkpocket.hold .wkring{opacity:1;transform:scale(1.4);transition:transform 2s linear,opacity .2s}
+.wkunlock{position:absolute;left:50%;bottom:calc(9% + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:96px;height:96px;border-radius:50%;border:2px dashed #334;display:grid;place-items:center;text-align:center;color:#445;font-size:13px;line-height:1.2}.wkunlock .wkring{width:96px;height:96px;left:0;top:0;transform:scale(.8)}.wkunlock span{pointer-events:none}
 html.wk-open,html.wk-open body{overflow:hidden}
 .wkpill{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:6px;border:0;border-radius:99px;background:var(--navy);color:#fff;padding:7px 14px;font-size:13.5px;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .wkpill[hidden],#sheet.open~.wkpill{display:none}.wkpill.done{background:var(--red)}.wkpill i{font-style:normal}`;
