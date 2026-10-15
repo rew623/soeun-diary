@@ -252,7 +252,8 @@ function syncSel() {
   document.querySelectorAll('.agrid').forEach(g => g.classList.toggle('selmode', !!SEL));
   if (!SEL) { bar.hidden = true; return; }
   bar.hidden = false;
-  bar.innerHTML = `<b>${SEL.size}장 골랐어요</b><button data-sel="date" ${SEL.size ? '' : 'disabled'}>날짜 바꾸기</button><button data-sel="del" class="sdel" ${SEL.size ? '' : 'disabled'}>삭제</button><button data-sel="off">취소</button>`;
+  const ty = [...SEL].map(i => (S.moments.find(m => m.id === i) || {}).type), toFam = !ty.length || ty.some(t => t === 'free'), movable = ty.length && ty.every(t => t === 'free' || t === 'fam');   // 현장 사진첩 ↔ 가족 앨범 (사용자 요청 2026.10.15)
+  bar.innerHTML = `<b>${SEL.size}장 골랐어요</b>${movable ? `<button data-sel="move">${toFam ? '👨‍👩‍👧 가족앨범으로' : '📸 사건 앨범으로'}</button>` : ''}<button data-sel="date" ${SEL.size ? '' : 'disabled'}>날짜 바꾸기</button><button data-sel="del" class="sdel" ${SEL.size ? '' : 'disabled'}>삭제</button><button data-sel="off">취소</button>`;
 }
 function selOn(id) { SEL = new Set(id ? [id] : []); syncSel(); try { navigator.vibrate && navigator.vibrate(18); } catch (x) {} toast('더 누르거나, 날짜를 누르면 그날 전부'); }
 function selOff() { SEL = null; syncSel(); }
@@ -275,6 +276,14 @@ window.addEventListener('click', e => {
 bar.addEventListener('click', async e => {
   const b = e.target.closest('[data-sel]'); if (!b || !SEL) return;
   if (b.dataset.sel === 'off') return selOff();
+  if (b.dataset.sel === 'move') {
+    const items = [...SEL].map(i => S.moments.find(m => m.id === i)).filter(m => m && (m.type === 'free' || m.type === 'fam')), toFam = items.some(m => m.type === 'free');
+    const to = toFam ? 'fam' : 'free'; if (!(await ask(`${items.length}장을 ${toFam ? '가족 앨범' : '사건 앨범(현장 사진첩)'}으로 옮길까요?`, { ok: '옮기기' }))) return;
+    selOff(); let last = null, n = 0;
+    for (const m of items) { toast(`옮기는 중 ${n + 1}/${items.length}`); try { last = await run('saveItem', 'mom', { id: m.id, type: to, of: '', who: '', title: m.title || '', date: m.date, memo: m.memo || '', by: m.by || myRole() }); n++; } catch (x) { toast(errMsg(x)); break; } }
+    if (last) apply(last.data); if (n) toast(`${n}장을 ${toFam ? '가족 앨범' : '사건 앨범'}으로 옮겼어요`);
+    return;
+  }
   if (b.dataset.sel === 'date') {
     const first = S.moments.find(m => m.id === [...SEL][0]);
     pending = undefined;
@@ -296,7 +305,7 @@ async function setDates(d) {
   const ids = [...SEL]; let last = null, n = 0;
   for (const id of ids) {
     const m = S.moments.find(x => x.id === id); if (!m) continue;
-    try { last = await run('saveItem', 'mom', { id, type: 'free', of: '', title: m.title || '', date: d, memo: m.memo || '', by: m.by || myRole() }); n++; } catch (x) { toast(errMsg(x)); break; }
+    try { last = await run('saveItem', 'mom', { id, type: m.type === 'fam' ? 'fam' : 'free', of: '', title: m.title || '', date: d, memo: m.memo || '', by: m.by || myRole() }); n++; } catch (x) { toast(errMsg(x)); break; }
   }
   selOff(); closeSheet(); if (last) apply(last.data); if (n) toast(`${n}장을 ${fmtK(d, true)}로 옮겼어요`);
 }
@@ -537,8 +546,8 @@ css.textContent = `
 @keyframes selwig{50%{transform:scale(.96)}}
 .selbar{position:fixed;left:10px;right:10px;max-width:540px;margin:0 auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:7;display:flex;align-items:center;gap:6px;background:#FFF8EC;border:2px solid var(--navy);border-radius:22px;padding:8px 8px 8px 14px;box-shadow:0 8px 20px rgba(31,42,68,.25)}
 .selbar[hidden]{display:none}
-.selbar b{flex:1;font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy);white-space:nowrap}
-.selbar button{border:1.5px solid var(--line);background:#fff;border-radius:99px;min-height:40px;padding:0 12px;font-size:13px;white-space:nowrap}
+.selbar{flex-wrap:wrap;row-gap:6px}.selbar b{flex:1 1 100%;font-family:var(--display);font-weight:400;font-size:15px;color:var(--navy);white-space:nowrap}
+.selbar button{flex:1 1 auto;border:1.5px solid var(--line);background:#fff;border-radius:99px;min-height:40px;padding:0 12px;font-size:13px;white-space:nowrap}
 .selbar .sdel{background:var(--red);border-color:var(--red);color:#fff}
 .selbar button:disabled{opacity:.45}
 .exstrip{display:flex;gap:4px;margin-top:2px}
