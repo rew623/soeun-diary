@@ -168,13 +168,13 @@ function line(e) {
   const crossN = k === 'sleep' && !r.live && e.e && e.e > dayStart(addDays(e.date, 1)) ? e.e : 0;   // 다음날로 이어진 잠
   let name = (K[k] || K.memo).n, det = '';
   const dur = e.e && e.e > e.s ? durTxt((e.e - e.s) / 60000) : '', rng = dur ? `${r.t}~${hmOf(new Date(e.e))}` : '';   // 걸린 시간 (끝 시각·목욕 분이 있으면)
-  let main = '', sub = [];
+  let main = '', sub = [], ext = [];
   if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
   else if (k === 'sleep') { if (crossN) { const nd = dayStart(addDays(e.date, 1)); main = durTxt((nd - e.s) / 60000); sub.push(`${r.t}~다음날 ${hmOf(new Date(e.e))} (전체 ${dur})`); } else { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); } }
   else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
-  else if (k === 'walk') { const kd = window.WALK ? WALK.kindOf(r.kind) : ['walk', '🚶', '산책'], m = window.WALK ? Math.round(WALK.km(r)) : 0; name = `${kd[2]}`; main = esc(r.title || r.place || ''); if (dur) sub.push(`⏱ ${dur} ~${hmOf(new Date(e.e))}`); if (m) sub.push(m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`); }
+  else if (k === 'walk') { const kd = window.WALK ? WALK.kindOf(r.kind) : ['walk', '🚶', '산책'], m = window.WALK ? Math.round(WALK.km(r)) : 0; name = `${kd[2]}`; main = esc(r.title || r.place || ''); if (dur) sub.push(`⏱ ${dur} (${rng})`); if (m) ext.push(m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`); }
   else if (k === 'play') { main = esc((r.what || '').split(',').filter(Boolean).join('·')); if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'solid') { main = esc(r.amount || ''); sub = [r.menu, r.eat].filter(Boolean).map(esc); }
   else if (k === 'temp') main = `${esc(r.value)}℃`;
@@ -184,8 +184,8 @@ function line(e) {
   const dot = k === 'diaper' ? (r.poo ? K.poo.c : K.pee.c) : (K[k] || K.memo).c;
   const act = e.src === 'walk' ? `data-dy="editwalk" data-id="${e.id}"` : e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
   const ik = k === 'diaper' ? (r.poo ? 'poo' : 'pee') : k;
-  if (memo) sub.push(esc(memo)); if (r.by) sub.push(`<em>${esc(r.by)}</em>`);
-  return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
+  if (memo) sub.push(esc(memo)); if (r.by) (e.src === 'walk' ? ext : sub).push(`<em>${esc(r.by)}</em>`);
+  return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}${e.src === 'walk' && ext.length ? `<small>${ext.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
 }
 
 // ---------- 화면 ----------
