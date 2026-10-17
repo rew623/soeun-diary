@@ -71,20 +71,21 @@ function cloth(t) {
   if (t <= 27) return '반팔 + 챙 있는 모자, 그늘 위주로';
   return '한낮은 피하고 아침·저녁에 짧게';
 }
-// 오늘(늦었으면 내일) 낮 시간(07~19시) 점수
+// 오늘(늦었으면 내일) 07~24시 점수 (추천은 낮 우선)
 function plan(code) {
   const W = T.town && T.town.weather && T.town.weather.data && T.town.weather.data[code]; if (!W || !W.length) return null;
   const k = nowKey(), today = k.slice(0, 8);
   const hrs = W.filter(h => h[0].slice(0, 10) >= k.slice(0, 10)).map(h => ({ h, ...score(h, code) }));
-  const day = d => hrs.filter(x => x.h[0].slice(0, 8) === d && +x.h[0].slice(8, 10) >= 7 && +x.h[0].slice(8, 10) <= 19);
+  const day = d => hrs.filter(x => x.h[0].slice(0, 8) === d && +x.h[0].slice(8, 10) >= 7 && +x.h[0].slice(8, 10) <= 23);   // 막대는 밤 12시까지(사용자 요청 2026.10.17), 추천 시간은 낮(~19시) 우선
   let list = day(today), when = '오늘';
   if (list.length < 2) { const next = hrs.find(x => x.h[0].slice(0, 8) > today); if (next) { list = day(next.h[0].slice(0, 8)); when = '내일'; } }
   if (!list.length) return null;
   // 가장 좋은 연속 시간 (최고점-5 이상, 최대 3시간)
-  const top = Math.max(...list.map(x => x.s)); let bi = list.findIndex(x => x.s === top), be = bi;
-  while (be + 1 < list.length && be - bi < 2 && list[be + 1].s >= top - 5) be++;
-  while (bi > 0 && be - bi < 2 && list[bi - 1].s >= top - 5) bi--;
-  const best = list[bi], hr = x => +x.h[0].slice(8, 10);
+  const hr = x => +x.h[0].slice(8, 10), dayL = list.filter(x => hr(x) <= 19), pool = dayL.length ? dayL : list;   // 늦은 밤만 남았으면 밤 시간에서 고름
+  const top = Math.max(...pool.map(x => x.s)); let bi = list.findIndex(x => x.s === top && pool.includes(x)), be = bi;
+  while (be + 1 < list.length && be - bi < 2 && pool.includes(list[be + 1]) && list[be + 1].s >= top - 5) be++;
+  while (bi > 0 && be - bi < 2 && pool.includes(list[bi - 1]) && list[bi - 1].s >= top - 5) bi--;
+  const best = list[bi];
   return { d: dOf(best.h[0]), when, list, top, from: hr(best), to: hr(list[be]) + 1, tmp: best.h[1], ag: best.ag, why: best.why, all: hrs, ico: ico(best.h) };
 }
 const ico = h => h[3] === 3 ? '🌨️' : h[3] > 0 ? '🌧️' : h[2] >= 4 ? '☁️' : h[2] === 3 ? '⛅' : '☀️';
@@ -150,15 +151,16 @@ const PT = { 1: '비', 2: '비나 눈', 3: '눈', 4: '소나기' }, SKYN = { 1: 
 const dkey = d => d.replace(/-/g, ''), dOf = k => `${k.slice(0, 4)}-${k.slice(4, 6)}-${k.slice(6, 8)}`;
 const dLabel = d => d === today() ? '오늘' : d === addDays(today(), 1) ? '내일' : `${+d.slice(5, 7)}/${+d.slice(8)}(${WD[new Date(d + 'T00:00:00Z').getUTCDay()]})`;
 const hrsOf = (code, d) => ((T.town && T.town.weather && T.town.weather.data && T.town.weather.data[code]) || []).filter(h => h[0].slice(0, 8) === dkey(d));
-// 그날 낮(07~19시) 점수와 제일 좋은 시간 (오늘은 지금부터)
+// 그날 07~24시 점수와 제일 좋은 시간 (오늘은 지금부터)
 function dayPlan(code, d) {
   const k = nowKey().slice(0, 10), all = hrsOf(code, d).filter(h => d !== today() || h[0].slice(0, 10) >= k);
-  const list = all.filter(h => +h[0].slice(8, 10) >= 7 && +h[0].slice(8, 10) <= 19).map(h => ({ h, ...score(h, code) }));
+  const list = all.filter(h => +h[0].slice(8, 10) >= 7 && +h[0].slice(8, 10) <= 23).map(h => ({ h, ...score(h, code) }));
   if (!list.length) return null;
-  const top = Math.max(...list.map(x => x.s)); let bi = list.findIndex(x => x.s === top), be = bi;
-  while (be + 1 < list.length && be - bi < 2 && list[be + 1].s >= top - 5) be++;
-  while (bi > 0 && be - bi < 2 && list[bi - 1].s >= top - 5) bi--;
-  const best = list[bi], hr = x => +x.h[0].slice(8, 10);
+  const hr = x => +x.h[0].slice(8, 10), dayL = list.filter(x => hr(x) <= 19), pool = dayL.length ? dayL : list;   // 늦은 밤만 남았으면 밤 시간에서 고름
+  const top = Math.max(...pool.map(x => x.s)); let bi = list.findIndex(x => x.s === top && pool.includes(x)), be = bi;
+  while (be + 1 < list.length && be - bi < 2 && pool.includes(list[be + 1]) && list[be + 1].s >= top - 5) be++;
+  while (bi > 0 && be - bi < 2 && pool.includes(list[bi - 1]) && list[bi - 1].s >= top - 5) bi--;
+  const best = list[bi];
   return { d, when: dLabel(d), list, top, from: hr(best), to: hr(list[be]) + 1, tmp: best.h[1], ag: best.ag, why: best.why, ico: ico(best.h), src: 'short' };
 }
 // 시간별 예보로 쓰는 날씨 설명 (아침·낮·저녁 하늘, 비 오는 시간·양, 바람, 습도, 일교차)
