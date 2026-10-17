@@ -27,7 +27,7 @@ const TBL = {
   guess: ['role', 'value', 'at', 'base', 'by'],  // 몸무게 예측 대결 (예측한 날 at, kg value, base = 그때 마지막 측정 기록 id)
   look: ['date', 'pick', 'parts', 'by'],          // 닮은꼴 판정단 (문서 id = 날짜_mom|dad, pick: mom·dad·both, parts: 닮은 곳 쉼표로)
   capsule: ['title', 'body', 'open', 'occ', 'sealed', 'photo', 'by'],   // 봉인된 증거물 (open: 열리는 날, occ: 첫 돌 같은 이름, sealed: 봉인한 날)
-  doc: ['kind', 'date', 'title', 'link', 'amount', 'claim', 'memo', 'photo', 'by'],   // 서류함(보험 청구): 문서 하나에 사진 한 장, link='log:<id>'·'visit:<id>'·'vac:<id>'·'chk:<id>', claim: 미청구·청구함·지급완료 (2026.10.17 추가)
+  doc: ['kind', 'date', 'title', 'link', 'amount', 'hosp', 'drug', 'claim', 'memo', 'photo', 'by', 'grp'],   // 서류함(보험 청구): '건' 머리 문서(grp '', 종류 쉼표·병원비 hosp·약값 drug·amount 합계)와 사진 문서(grp=머리 id, 사진 한 장), link='log:<id>'·'visit:<id>'·'vac:<id>'·'chk:<id>', claim: 미청구·청구함·지급완료 (2026.10.17 추가)
   walk: ['date', 'kind', 'title', 'place', 'geo', 'start', 'end', 'dist', 'path', 'pics', 'memo', 'who', 'wx', 'mood', 'by']   // 탐문 기록 (산책·나들이, path: 경로 글자, pics: 같이 올린 사진 id)
 };
 const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks', doc: 'docs' };

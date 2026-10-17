@@ -20,7 +20,7 @@
 | S.meals | charges, day, fun, game, main-core, main-meal, movie, paper, wanted |
 | S.menus | main-core, main-meal, viewer |
 | S.moments | album, board, book, charges, dupes, explore, family, focus, fun, game, main-album, main-core, memories, movie, paper, posecam, room, settings, studio, viewer, walk, wanted |
-| S.periods | main-album, main-core, main-render, main-sheets |
+| S.periods | claims, main-album, main-core, main-render, main-sheets |
 | S.profile | album, board, book, capsule, characters, charges, checkups, day, dev, family, fun, game, look, main-album, main-boot, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, music, paper, posecam, posts, recipes, room, settings, studio, town, viewer, walk, wanted |
 | S.records | book, characters, charges, fun, game, main-core, main-render, main-sheets, memories, movie, paper, room, settings, studio, viewer, wanted |
 | S.vaccines | book, charges, claims, fun, game, main-album, main-core, main-render, main-sheets, movie, paper, settings, wanted |

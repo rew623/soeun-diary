@@ -73,6 +73,7 @@ function openPeriod(id){
     <label class="field"><span>병원 (선택)</span><input id="p-hos" maxlength="40" value="${esc(p?p.hospital||'':'')}" placeholder="예: 우리동네 소아청소년과"></label>
     <div class="field"><span>이 시기에 맞을 백신</span><div class="vlist" id="p-vlist"></div>
       <div class="addrow"><input id="p-add" maxlength="40" placeholder="백신 이름, 예: 수막구균 1차"><button data-act="p-add">추가</button></div></div>
+    ${window.CLAIM?CLAIM.field(p?'per:'+p.id:'','접종확인',p&&p.confirmed?p.confirmed:(rd||today())):''}
     <p class="err" id="p-err"></p>
     <div class="actions">${p?`<button class="danger" data-act="delp" data-id="${p.id}">시기 삭제</button>`:''}<button class="secondary" data-act="close">취소</button><button class="primary" data-act="savep">저장</button></div>`);
   drawPT();
@@ -242,7 +243,7 @@ document.addEventListener('click',async e=>{
     const extra=val('p-add');if(extra)PT.vaccines.push({name:extra,sub:''});
     let month=PT.month;if(month===''||month==null){month=''}
     const res=await write('savePeriod',{id:PT.id,name,month,confirmed:conf?date:'',hospital:val('p-hos'),vaccines:PT.vaccines});
-    if(res){closeSheet();toast('접종 일정을 저장했어요')}break}
+    if(res){closeSheet();toast('접종 일정을 저장했어요');if(window.CLAIM)await CLAIM.flush('per:'+(PT.id||res.id))}break}
   case 'addv':openVaccine(null,a.dataset.id);break;
   case 'editv':openVaccine(a.dataset.id);break;
   case 'v-q':document.getElementById('v-done').value=a.dataset.v;break;
