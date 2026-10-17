@@ -56,7 +56,7 @@ function renderGrow(){
   const stats=ORDER.map(k=>{
     const r=latest(k);let v='미확보',pc='기록 없음',cls='',dt='';
     if(r){const m=daysBetween(p.birth,r.date)/MONTH,pp=pct(k,m,+r[k]);v=fmt(k,r[k])+KINDS[k].unit;pc=pctText(pp);if(pp<3||pp>97)cls='warn';const[,mm,dd]=r.date.split('-').map(Number);dt=`${mm}월 ${dd}일 측정`}
-    return `<button class="stat ${S.chart===k?'on':''}" data-act="chart" data-v="${k}"><div class="l">${KINDS[k].label}</div><div class="v">${v}</div><div class="p ${cls}">${pc}</div>${dt?`<div class="dt">${dt}</div>`:''}</button>`;
+    return `<button class="stat ${S.chart===k?'on':''}" data-act="chart" data-v="${k}"><div class="l">${KINDS[k].label}</div><div class="v${k==='weight'?' vw':''}">${v}</div><div class="p ${cls}">${pc}</div>${dt?`<div class="dt">${dt}</div>`:''}</button>`;
   }).join('');
 
   const k=S.chart,lr=latest(k);let note='';
