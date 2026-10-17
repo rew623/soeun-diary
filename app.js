@@ -15,7 +15,7 @@ provider.setCustomParameters({ prompt: 'select_account' });
 // ---------- 표 구성 (기존 시트와 같은 칸) ----------
 const TBL = {
   ep: ['title', 'start', 'end', 'memo'],
-  log: ['ep', 'kind', 'at', 'value', 'dose', 'site', 'memo', 'by'],
+  log: ['ep', 'kind', 'at', 'value', 'dose', 'site', 'memo', 'by', 'until'],   // until: 증상 완료 시각 'YYYY-MM-DDTHH:MM' (2026.10.17 추가)
   visit: ['date', 'hospital', 'diag', 'rx', 'next', 'ask', 'by'],
   mom: ['type', 'title', 'date', 'memo', 'photo', 'by', 'of', 'who'],   // of: 최초 목격 추가 사진(type:'extra')이 붙은 기록 id, who: 가족 사진(type:'fam')에 나온 사람
   food: ['name', 'start', 'result', 'reaction', 'memo', 'by'],
@@ -27,9 +27,10 @@ const TBL = {
   guess: ['role', 'value', 'at', 'base', 'by'],  // 몸무게 예측 대결 (예측한 날 at, kg value, base = 그때 마지막 측정 기록 id)
   look: ['date', 'pick', 'parts', 'by'],          // 닮은꼴 판정단 (문서 id = 날짜_mom|dad, pick: mom·dad·both, parts: 닮은 곳 쉼표로)
   capsule: ['title', 'body', 'open', 'occ', 'sealed', 'photo', 'by'],   // 봉인된 증거물 (open: 열리는 날, occ: 첫 돌 같은 이름, sealed: 봉인한 날)
+  doc: ['kind', 'date', 'title', 'link', 'amount', 'claim', 'memo', 'photo', 'by'],   // 서류함(보험 청구): 문서 하나에 사진 한 장, link='log:<id>'·'visit:<id>'·'vac:<id>'·'chk:<id>', claim: 미청구·청구함·지급완료 (2026.10.17 추가)
   walk: ['date', 'kind', 'title', 'place', 'geo', 'start', 'end', 'dist', 'path', 'pics', 'memo', 'who', 'wx', 'mood', 'by']   // 탐문 기록 (산책·나들이, path: 경로 글자, pics: 같이 올린 사진 id)
 };
-const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks' };
+const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks', doc: 'docs' };
 const LIM = { body: 5000, path: 60000, pics: 4000 };       // 칸별 글자 수 (나머지는 300)
 const OPT = { mom: ['geo', 'tm', 'fp'], meal: ['tm'] };   // meal tm: 먹인 시각 HH:MM (하루 수사 타임라인)   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각·보여 줄 곳은 고쳐 저장해도 안 지워지게)
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];
@@ -173,7 +174,7 @@ function photoUrlOf(id) {
   const f = M.family || {};
   if (id === 'profile') return f.photoUrl || '';
   if (id === 'mom' || id === 'dad') return f[id + 'PhotoUrl'] || '';
-  for (const c of ['records', 'mom', 'meal', 'menu', 'people', 'capsule']) { const o = M.col[c].get(String(id)); if (o && o.photoUrl) return o.photoUrl; }
+  for (const c of ['records', 'mom', 'meal', 'menu', 'people', 'capsule', 'doc']) { const o = M.col[c].get(String(id)); if (o && o.photoUrl) return o.photoUrl; }
   return '';
 }
 

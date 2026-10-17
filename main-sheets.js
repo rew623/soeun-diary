@@ -91,6 +91,7 @@ function openVaccine(id,pid){
     <label class="field"><span>접종한 날 (아직이면 비워 두세요)</span><input id="v-done" type="date" value="${v.done||''}">
       <div class="quick"><button data-act="v-q" data-v="${today()}">오늘</button>${p&&p.confirmed?`<button data-act="v-q" data-v="${p.confirmed}">예약일</button>`:''}<button data-act="v-q" data-v="">아직 안 맞음</button></div></label>
     <label class="field"><span>메모 (선택)</span><input id="v-memo" maxlength="100" value="${esc(v.memo||'')}" placeholder="예: 접종 후 미열, 하루 만에 괜찮아짐"></label>
+    ${window.CLAIM?CLAIM.field(id?'vac:'+id:'','접종확인',v.done||today()):''}
     <p class="err" id="v-err"></p>
     <div class="actions">${id?`<button class="danger" data-act="delv" data-id="${id}">삭제</button>`:''}<button class="secondary" data-act="close">취소</button><button class="primary" data-act="savev" data-id="${id}" data-p="${v.period}">저장</button></div>`);
 }
@@ -139,15 +140,18 @@ document.addEventListener('click',async e=>{
     if(ep){const e0=S.eps.find(x=>x.id===ep),nt=val('l-ep');if(e0&&nt&&nt!==e0.title&&!await write('saveItem','ep',Object.assign({},e0,{title:nt})))return}   // 사건 이름을 바꿨으면 사건도 같이
     if(!ep){const r0=await write('saveItem','ep',{title:val('l-ep')||'건강 관리',start:d,end:'',memo:''});if(!r0)return;ep=r0.id}
     const site=$sheet.querySelector('#l-site .on');
-    const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:val('l-memo'),by:myRole()};
-    if(await write('saveItem','log',o)){closeSheet();toast(KIND[k]+' 기록을 남겼어요')}break}
+    let until='';if(k==='sym'){const ut=val('l-until');if(/^\d\d:\d\d$/.test(ut)){let ud=d;if(ut<t){const n=new Date(d+'T00:00:00');n.setDate(n.getDate()+1);ud=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')}until=ud+'T'+ut}}   // 완료 시각이 시작보다 이르면 다음 날
+    const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:val('l-memo'),by:myRole(),until};
+    const rl=await write('saveItem','log',o);
+    if(rl){closeSheet();toast(KIND[k]+' 기록을 남겼어요');if(window.CLAIM)await CLAIM.flush('log:'+(o.id||rl.id))}break}
   case 'closeep':{const e=S.eps.find(x=>x.id===a.dataset.id);if(a.dataset.confirm!=='1'){a.dataset.confirm='1';a.textContent='한 번 더 누르면 사건 종결';return}
     if(await write('saveItem','ep',Object.assign({},e,{end:today()})))toast('사건 종결! 잘 이겨냈어요');break}
   case 'viewep':viewEp(a.dataset.id);break;
   case 'reopenep':{const e=S.eps.find(x=>x.id===a.dataset.id);if(await write('saveItem','ep',Object.assign({},e,{end:''}))){closeSheet();toast('사건을 다시 열었어요')}break}
   case 'editvisit':openVisit(a.dataset.id);break;
   case 'savevisit':{const d=val('c-date');if(!d)return err('c-err','진료일을 입력해 주세요');
-    if(await write('saveItem','visit',{id:a.dataset.id,date:d,next:val('c-next'),hospital:val('c-hos'),diag:val('c-diag'),rx:val('c-rx'),ask:val('c-ask'),by:myRole()})){closeSheet();toast('진료 기록을 저장했어요')}break}
+    const rv=await write('saveItem','visit',{id:a.dataset.id,date:d,next:val('c-next'),hospital:val('c-hos'),diag:val('c-diag'),rx:val('c-rx'),ask:val('c-ask'),by:myRole()});
+    if(rv){closeSheet();toast('진료 기록을 저장했어요');if(window.CLAIM)await CLAIM.flush('visit:'+(a.dataset.id||rv.id))}break}
   case 'addmom':openMoment(null,{type:'first',title:a.dataset.v||''});break;
   case 'addmonth':openMoment(null,{type:'month',title:a.dataset.v+'개월',date:(()=>{const d=addMonths(S.profile.birth,+a.dataset.v);return d>today()?today():d})()});break;
   case 'editmom':openMoment(a.dataset.id);break;
@@ -244,7 +248,7 @@ document.addEventListener('click',async e=>{
   case 'v-q':document.getElementById('v-done').value=a.dataset.v;break;
   case 'savev':{const name=val('v-name');if(!name)return err('v-err','백신 이름을 입력해 주세요');
     const res=await write('saveVaccine',{id:a.dataset.id,period:a.dataset.p,name,sub:val('v-sub'),done:val('v-done'),memo:val('v-memo'),by:myRole()});
-    if(res){closeSheet();toast('접종 기록을 저장했어요')}break}
+    if(res){closeSheet();toast('접종 기록을 저장했어요');if(window.CLAIM)await CLAIM.flush('vac:'+(a.dataset.id||res.id))}break}
   case 'solve':openSolve(a.dataset.id);break;
   case 'savesolve':{const date=val('sv-date'),ids=[...$sheet.querySelectorAll('.solvelist input:checked')].map(x=>x.value);
     if(!date)return err('sv-err','접종한 날을 입력해 주세요');if(!ids.length)return err('sv-err','맞은 백신을 하나 이상 체크해 주세요');

@@ -10,7 +10,8 @@ const logsOf=id=>S.logs.filter(l=>l.ep===id).sort((a,b)=>a.at<b.at?1:-1);
 const KIND={temp:'체온',med:'투약',sym:'증상'};
 const KCOL={temp:'var(--red)',med:'var(--navy)',sym:'var(--muted)'};
 const SITES=['귀','겨드랑이','이마','항문'],SYMS=['콧물','기침','구토','설사','발진','보챔','수유량 감소','처짐'];
-function logMain(l){return l.kind==='temp'?`${l.value}℃`:l.kind==='med'?`${esc(l.value)}${l.dose?' '+esc(l.dose):''}`:esc(l.value)}
+function untilTxt(l){if(l.kind!=='sym'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(l.until||''))return '';const[d,t]=l.until.split('T'),m=Math.round((new Date(l.until)-new Date(l.at))/60000),dur=m>0?(m>=60?Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':''):m+'분'):'';return ` <small>→ 완료 ${d===l.at.slice(0,10)?'':fmtMD(d)+' '}${t.slice(0,5)}${dur?' ('+dur+')':''}</small>`}   // 증상 완료 시각 (2026.10.17)
+function logMain(l){return l.kind==='temp'?`${l.value}℃`:l.kind==='med'?`${esc(l.value)}${l.dose?' '+esc(l.dose):''}`:esc(l.value)+untilTxt(l)}
 function tempChart(logs){
   const ts=logs.filter(l=>l.kind==='temp'&&!isNaN(+l.value)).map(l=>({t:tsOf(l.at),v:+l.value})).sort((a,b)=>a.t-b.t);
   if(ts.length<2)return '<p class="vempty">체온을 두 번 이상 기록하면 그래프가 나와요.</p>';
@@ -59,6 +60,7 @@ function renderSick(){
     return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><span class="stamp" style="font-size:16px;top:14px">해결</span><b>${esc(e.title)}</b><small>${fmtK(e.start,true)} ~ ${fmtK(e.end,true)}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1>${sickSeg()}<p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
+  ${window.CLAIM?CLAIM.entryHtml():''}
   <section><h2 class="sh" style="align-items:center"><span>진료 기록</span><button class="ghost" data-act="editvisit" data-id="">+ 진료 추가</button></h2>${visits}</section>
   ${closedHtml}`;
 }
@@ -82,7 +84,9 @@ function openLog(kind,id){
     ${!ep?`<label class="field"><span>사건 이름 (새 사건 파일이 열려요)</span><input id="l-ep" maxlength="20" value="${esc(kind==='temp'?'발열':(kind==='med'&&lastMed&&(S.eps.find(e=>e.id===lastMed.ep)||{}).title)||'건강 관리')}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`:`<label class="field"><span>사건 이름 <small>(바꾸면 이 사건 전체 이름이 바뀌어요)</small></span><input id="l-ep" maxlength="20" value="${esc(ep.title)}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`}
     ${body}
     <div class="row3" style="grid-template-columns:1fr 1fr"><label class="field"><span>날짜</span><input id="l-date" type="date" value="${d0}"></label><div class="field"><span>시각</span>${window.DAY&&DAY.tpick?DAY.tpick('l-time',t0||''):`<input id="l-time" type="time" value="${t0||''}">`}</div></div>
+    ${kind==='sym'?`<div class="field"><span>완료 시각 <small>(증상이 나은 때, 선택)</small></span>${window.DAY&&DAY.tpick?DAY.tpick('l-until',l&&l.until?l.until.slice(11,16):'',true):''}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-t="l-until">지금 나았어요</button><button type="button" class="ghost" data-dy="tpx" data-t="l-until">비우기</button></div></div>`:''}
     <label class="field"><span>메모 (선택)</span><input id="l-memo" maxlength="100" value="${esc(l?l.memo:'')}" placeholder="예: 보채고 수유량 줄어듦"></label>
+    ${window.CLAIM?CLAIM.field(l?'log:'+l.id:'',kind==='med'?'약봉지':kind==='sym'?'증상사진':'기타',d0):''}
     <p class="err" id="l-err"></p>
     <div class="actions">${l?`<button class="danger" data-act="dellog" data-id="${l.id}">삭제</button>`:''}<button class="secondary" data-act="close">취소</button><button class="primary" data-act="savelog" data-k="${kind}" data-id="${l?l.id:''}" data-ep="${ep?ep.id:''}">저장</button></div>`);
 }
@@ -94,6 +98,7 @@ function openVisit(id){
     <label class="field"><span>진단</span><input id="c-diag" maxlength="60" value="${esc(v.diag)}" placeholder="예: 감기"></label>
     <label class="field"><span>처방</span><input id="c-rx" maxlength="100" value="${esc(v.rx)}" placeholder="예: 해열제 시럽, 콧물약 3일분"></label>
     <label class="field"><span>다음에 물어볼 것</span><textarea id="c-ask" maxlength="200" placeholder="예: 콧물 흡입기 써도 되는지">${esc(v.ask)}</textarea></label>
+    ${window.CLAIM?CLAIM.field(id?'visit:'+id:'','처방전',v.date):''}
     <p class="err" id="c-err"></p>
     <div class="actions">${id?`<button class="danger" data-act="delvisit" data-id="${id}">삭제</button>`:''}<button class="secondary" data-act="close">취소</button><button class="primary" data-act="savevisit" data-id="${id||''}">저장</button></div>`);
 }

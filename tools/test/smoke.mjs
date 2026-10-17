@@ -15,7 +15,7 @@ await go('album-family', `S.tab='album';S.albumView='family';render()`);
 await go('album-board', `S.tab='album';S.albumView='board';render()`);
 await go('vac-checkup', `S.tab='vac';S.vacView='check';render()`);
 await go('vac-dev', `S.tab='vac';S.vacView='dev';render()`);
-for (const v of ['settings', 'medals', 'fun', 'wanted', 'look', 'capsule', 'paper', 'explore', 'studio', 'movie', 'book', 'posts'])
+for (const v of ['settings', 'medals', 'fun', 'wanted', 'look', 'capsule', 'paper', 'explore', 'studio', 'movie', 'book', 'posts', 'claims'])
   await go('view-' + v, `S.tab='grow';S.view='${v}';render();scrollTo(0,0)`);
 await go('back-home', `S.view='';S.tab='grow';render()`);
 console.log(errs.length ? 'ERRORS ' + errs.length : 'OK');

@@ -13,6 +13,7 @@
   - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
   - look/{날짜_mom|dad}: date, pick(mom·dad·both), parts(닮은 곳 id 쉼표로), by (닮은꼴 판정단, 2026.10 추가)
   - capsule/{id}: title(봉투 글), body(편지 5000자), open(열리는 날), occ(첫 돌 등), sealed(봉인한 날), photo, by (봉인된 증거물, 2026.10 추가)
+  - doc/{id}: kind(약봉지·처방전·영수증·진료확인서·세부내역서·검진결과·접종확인·증상사진·기타), date, title, link('log:<id>'·'visit:<id>'·'vac:<id>'·'chk:<id>', 어디에 붙었는지, 없으면 ''), amount(원, 글자), claim(미청구·청구함·지급완료), memo, photo(문서 하나에 사진 한 장, photoUrl/photoPath), by (서류함·보험 청구용, 2026.10.17 추가 — 새 컬렉션이라 이전 필요 없음, 보안 규칙도 그대로)
   - walk/{id}: date, kind(walk·out·cafe·fam·hosp·shop·etc), title, place, geo("위도,경도"), start·end(HH:MM), dist(m), path("1:<출발 epoch초>:<위도·경도(1e5)·초 변화량 polyline 글자>", 60000자까지), pics(같이 올린 사진 id 쉼표로, 4000자), memo, who(엄마,아빠), wx(그날 날씨 한 줄), mood(happy·look·sleep·calm·cry), by (탐문 기록, 2026.10.11 추가, 기존 데이터 이전 필요 없음). 폰 사본(saveCache)엔 긴 path를 빼고 저장
   - care/{YYYY-MM-DD}: { items: { 기록id: { k(formula·breast·pump·diaper·sleep·bath·memo·play), what(놀아주기 종류, 쉼표로 여러 개 — 2026.10.17 추가·옛 기록엔 없어도 됨, 이전 필요 없음), pz(수면 중간에 잠깐 깸 표시 0/1, 2026.10.12 추가 — 이전 필요 없음), t·e(HH:MM, e<t면 다음 날), ml, l·r(모유 분), dur(목욕 분), pee·poo(0/1), amt·st(대변 양·상태), memo, live(타이머 중 1), side(l/r), seg(지금 쪽 시작 ms), by, at } }, updatedAt } 하루 수사 — 하루에 문서 하나, 기록마다 merge로 넣고 deleteField로 뺌(app.js careSave/careDelete, 2026.10.11 추가 — 기존 데이터 이전 필요 없음). 폰 사본엔 최근 60일만
   - recipes/{YYYY-MM}: title, file, stages[{ stage, items[{ d, meal, raw, ing[{ n, g }], how, src }] }], by, updatedAt
@@ -21,3 +22,4 @@
 - mom 문서의 type: first(최초 목격) / month(월별 사진) / free(현장 사진첩) / report(100일 보고서 사진, 1장) / extra(최초 목격 추가 사진, of=붙은 최초 목격 문서 id) / fam(가족 사진, who=나온 사람 id 쉼표로: mom·dad·people id), board: true/false = 수사 보드에 붙인 사진, geo: "위도,경도"(소수 4자리, 찍은 곳, '-'는 직접 뺀 것 — 탐문 경로 자리도 안 씀)·tm: "HH:MM:SS"(찍은 시각, 예전 것은 HH:MM) — 탐험 지도·탐문용, 보낼 때만 쓰는 칸(app.js OPT)이라 다른 칸을 고쳐 저장해도 안 지워짐. setGeo는 id 여러 개도(한 번에 450개까지 batch)
 - 보안 규칙: families/{fid} 아래는 members에 있는 사람만 읽기·쓰기 (members 제외 하위 컬렉션 전체 허용이라 새 컬렉션도 규칙 수정 불필요)
 - Storage: families/{fid}/photos/ 에 이미지만 올림 (앱에서 400KB 이하로 줄임)
+- log 문서에 until 칸 추가(2026.10.17): 증상 완료 시각 'YYYY-MM-DDTHH:MM' (at과 같은 모양, 완료가 시작 시각보다 이르면 다음 날). 옛 기록엔 없어도 됨 — 이전 필요 없음

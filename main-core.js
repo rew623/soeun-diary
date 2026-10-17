@@ -51,7 +51,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 
 // ---------- storage (Google Sheets via Apps Script) ----------
-const S={me:{role:''},sickView:'',cares:[],looks:[],capsules:[],walks:[],townView:'',eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
+const S={me:{role:''},sickView:'',cares:[],docs:[],looks:[],capsules:[],walks:[],townView:'',eps:[],logs:[],visits:[],moments:[],foods:[],meals:[],cubes:[],menus:[],menuMonth:'',mealAll:false,view:'',mode:'loading',err:'',profile:null,records:[],periods:[],vaccines:[],hosp:[],recipes:[],checkups:[],vacView:'vac',albumView:'album',tab:'grow',chart:'weight'};
 const PHOTOS={};let busy=false;
 // ---------- 화면 이동 기록 ----------
 // 안쪽 화면(S.view)을 열면 그 전 화면(탭·안쪽 화면·스크롤 위치)을 기억하고, 돌아가기·뒤로가기(goBack)는 그 화면 그 위치로 돌아가요
@@ -72,9 +72,9 @@ const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',pho
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
   periods:[{id:'p1',name:'출생',month:0,confirmed:'',hospital:''},{id:'p2',name:'2개월',month:2,confirmed:'',hospital:''},{id:'p3',name:'4개월',month:4,confirmed:'2026-11-10',hospital:'우리동네 소아청소년과'},{id:'p4',name:'6개월',month:6,confirmed:'',hospital:''}],
   foods:[{id:'f1',name:'쌀',start:'2026-09-20',result:'통과',reaction:'',memo:'',by:'엄마'},{id:'f2',name:'소고기',start:'2026-09-23',result:'',reaction:'',memo:'',by:'아빠'}],meals:[{id:'ml1',date:'2026-09-23',slot:'아침',menu:'소고기 쌀미음',amount:'40g',eat:'잘먹음',memo:'',photo:false,by:'아빠'}],cubes:[{id:'c1',name:'소고기',count:'5',made:'2026-09-20',memo:''}],menus:[],
-  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],walks:[],cares:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
+  hospitals:[],recipes:[],checkups:[],people:[],devs:[],guesses:[],looks:[],capsules:[],walks:[],docs:[],cares:[],eps:[],logs:[],visits:[],moments:[{id:'m1',type:'first',title:'첫 사회적 미소',date:'2026-09-02',memo:'',photo:false,by:'아빠'}],
   vaccines:[{id:'v1',period:'p1',name:'B형간염 1차',sub:'',done:'2026-07-06',memo:''},{id:'v2',period:'p2',name:'DTaP-IPV/Hib 1차',sub:'5가 혼합 백신',done:'2026-09-08',memo:''},{id:'v3',period:'p2',name:'폐렴구균 1차',sub:'',done:'2026-09-08',memo:''},{id:'v4',period:'p3',name:'DTaP-IPV/Hib 2차',sub:'',done:'',memo:''},{id:'v5',period:'p3',name:'폐렴구균 2차',sub:'',done:'',memo:''},{id:'v6',period:'p4',name:'DTaP-IPV/Hib 3차',sub:'',done:'',memo:''}]};
-const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses',look:'looks',capsule:'capsules',walk:'walks'};
+const ITBL={ep:'eps',log:'logs',visit:'visits',mom:'moments',food:'foods',meal:'meals',cube:'cubes',menu:'menus',people:'people',dev:'devs',guess:'guesses',look:'looks',capsule:'capsules',walk:'walks',doc:'docs'};
 let dseq=100;const nid=p=>p+(dseq++);
 const MOCK={
   getData:()=>{const d=JSON.parse(JSON.stringify(DB));d.game=Object.assign({},d.game||{},{srv:true});return d},getPhoto:()=>'',getPhotos:()=>({}),
@@ -88,7 +88,7 @@ const MOCK={
   deletePeriod:id=>{DB.periods=DB.periods.filter(x=>x.id!==id);DB.vaccines=DB.vaccines.filter(v=>v.period!==id);return{data:MOCK.getData()}},
   saveVaccine:v=>{const id=v.id||nid('v');const o={id,period:v.period,name:v.name,sub:v.sub||'',done:v.done||'',memo:v.memo||'',by:v.done?(v.by||''):''};const i=DB.vaccines.findIndex(x=>x.id===id);if(i>=0)DB.vaccines[i]=o;else DB.vaccines.push(o);return{id,data:MOCK.getData()}},
   deleteVaccine:id=>{DB.vaccines=DB.vaccines.filter(x=>x.id!==id);return{data:MOCK.getData()}},
-  saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people'||k==='capsule')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
+  saveItem:(k,o)=>{const T=ITBL[k];const id=o.id||nid(k);const x=Object.assign({},DB[T].find(y=>y.id===id)||{},o,{id});if(k==='mom'||k==='meal'||k==='menu'||k==='people'||k==='capsule'||k==='doc')x.photo='photo' in o?!!o.photo:!!(DB[T].find(m=>m.id===id)||{}).photo;const i=DB[T].findIndex(y=>y.id===id);if(i>=0)DB[T][i]=x;else DB[T].push(x);return{id,data:MOCK.getData()}},
   deleteItem:(k,id)=>{const T=ITBL[k];DB[T]=DB[T].filter(y=>y.id!==id);if(k==='ep')DB.logs=DB.logs.filter(l=>l.ep!==id);return{data:MOCK.getData()}},
   setGeo:(id,geo)=>{[].concat(id).forEach(i=>{const m=DB.moments.find(x=>x.id===i);if(m)m.geo=geo});return{data:MOCK.getData()}},
   setFocus:(id,fp)=>{const m=DB.moments.find(x=>x.id===id);if(m)m.fp=fp;return{data:MOCK.getData()}},
@@ -111,7 +111,7 @@ const MOCK={
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
-function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.cares=d.cares||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
+function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.docs=d.docs||[];S.cares=d.cares||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});
 let pumped=false;
 function apply(d){setData(d);render.soft=true;try{render()}finally{render.soft=false};loadPhotos();askRole();saveCache(d);if(!pumped&&S.mode==='ok'){pumped=true;setTimeout(()=>{ALBUM.pump();ALBUM.shared()},1500)}}
@@ -138,6 +138,7 @@ async function loadPhotos(){
   (S.people||[]).forEach(x=>{if(x.photo)add(x.id)});
   (S.capsules||[]).forEach(c=>{if(c.photo&&c.open&&c.open<=today())add(c.id)});   // 봉인된 증거물 사진은 열린 뒤에만
   S.meals.slice().sort(desc).slice(0,20).forEach(m=>{if(m.photo)add(m.id)});
+  (S.docs||[]).forEach(d=>{if(d.photo)add(d.id)});
   S.menus.filter(m=>m.month===curMenuMonth()).forEach(m=>{if(m.photo)add(m.id)});
   if(!want.length)return;want.forEach(id=>LOADING.add(id));
   // 사진 주소는 Firebase 기록에 이미 있어서 한 번에 받아요. 예전엔 4장마다 화면을 다시 그려서, 사진이 많으면 열 때 몇 초씩 버벅였어요 → 다 받은 뒤 한 번만 그려요

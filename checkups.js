@@ -82,6 +82,7 @@ function openEdit(id) {
     <label class="field"><span>검진 받은 날</span><input id="ck-date" type="date" value="${r.done || today()}" min="${S.profile.birth}" max="${today()}"></label>
     <label class="field"><span>병원 (선택)</span><input id="ck-hos" maxlength="40" value="${esc(r.hospital || '')}" placeholder="${c.kind === '구강' ? '예: 우리동네 치과' : '예: 우리동네 소아청소년과'}"></label>
     <label class="field"><span>메모 (선택)</span><textarea id="ck-memo" maxlength="200" placeholder="예: 발달 모두 양호, 다음엔 시력 확인">${esc(r.memo || '')}</textarea></label>
+    ${window.CLAIM ? CLAIM.field('chk:' + id, '검진결과', r.done || today()) : ''}
     ${!r.done && c.kind === '일반' ? '<label class="check"><input type="checkbox" id="ck-rec" checked> 검진에서 잰 키·몸무게를 증거 기록으로 남기기</label>' : ''}
     <p class="err" id="ck-err"></p>
     <div class="actions">${r.done ? `<button class="danger" data-ck="del" data-id="${id}">해결 취소</button>` : ''}<button class="secondary" data-act="close">취소</button><button class="primary" data-ck="save" data-id="${id}">저장</button></div>`);
@@ -100,7 +101,7 @@ document.addEventListener('click', async e => {
       const rec = document.getElementById('ck-rec'), wantRec = rec && rec.checked;
       const o = { id, done: d, hospital: document.getElementById('ck-hos').value.trim(), memo: document.getElementById('ck-memo').value.trim() };
       if (await write('saveCheckup', o)) {
-        closeSheet(); toast('검진 해결! 기록했어요');
+        closeSheet(); toast('검진 해결! 기록했어요'); if (window.CLAIM) await CLAIM.flush('chk:' + id);
         if (wantRec) { openRecord(null); setTimeout(() => { const f = document.getElementById('f-date'); if (f) f.value = d; }, 0); }
       }
       break;
