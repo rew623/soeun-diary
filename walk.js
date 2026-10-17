@@ -274,7 +274,7 @@ function render_() {
     const where = p ? (p.src === 'track' ? '경로에서 찾은 자리' : p.src === 'place' ? '장소 위치' : '찍은 곳') : x.geo === '-' ? '핀 뺌' : '위치 없음';
     return `<div class="wktl${on ? ' on' : ''}">${cw ? `<button class="wktck${on ? ' on' : ''}" data-wk="tsel" data-v="${esc(x.id)}" aria-pressed="${on}" aria-label="${i + 1}번 사진 고르기"><i>✓</i></button>` : ''}<span class="wktn${p ? '' : ' off'}">${i + 1}</span><button class="wktph" data-view="${esc(x.id)}">${u ? `<img src="${u}" alt="" loading="lazy" decoding="async">` : '<span>사진</span>'}</button><span class="wktx"${p ? ` data-wk="pan" data-v="${esc(x.id)}"` : ''}><b>${x.tm ? x.tm.slice(0, 5) : fmtMD(x.date)}${p ? ' <u>지도 ›</u>' : ''}</b><small>${rel != null && rel >= 0 ? `출발 ${durText(rel)} 뒤 · ` : ''}${where}</small></span>${cw ? `<button class="wktpan" data-wk="pinmv" data-v="${esc(x.id)}" aria-label="${i + 1}번 사진 핀 자리 정하기">📍</button>` : ''}</div>`;
   }).join('');
-  const selBar = cw && P.length ? `<div class="wksel"${W.tsel.size ? '' : ' hidden'}><b>${W.tsel.size}장 골랐어요</b><button data-wk="tpin">📍 옮기기</button><button data-wk="tout" class="out">이 기록에서 빼기</button><button data-wk="tnone" aria-label="고르기 풀기">✕</button></div>` : '';
+  const selBar = cw && P.length ? `<div class="wksel"${W.tsel.size ? '' : ' hidden'}><b>${W.tsel.size}장 골랐어요</b><button data-wk="tpin">📍 옮기기</button><button data-wk="talb" data-v="free">📸 사건앨범에</button><button data-wk="talb" data-v="fam">👨‍👩‍👧 가족앨범에</button><button data-wk="tout" class="out">이 기록에서 빼기</button><button data-wk="tnone" aria-label="고르기 풀기">✕</button></div>` : '';
   return `<header class="vhead"><span class="no">탐문 보고서 No.${no}</span><h1>${k[1]} ${esc(w.title || (w.place ? `${w.place} ${k[2]}` : k[2]))}</h1><p>${fmtK(w.date)}${timeText(w) ? ' · ' + timeText(w) : ''}${w.place ? ` · 📍 ${esc(w.place)}` : ''}</p></header>
   ${hasMap ? `<div class="wkmapwrap" data-noswipe><div id="wkmap-slot"></div><div class="mtools"><button data-wk="mloc" aria-label="내 위치">◎</button><button data-wk="mfull" aria-label="크게 보기">⛶</button></div></div>` : ''}
   <div class="wkdst"><span><i>🚶</i><b>${m ? kmText(m) : '-'}</b><small>거리</small></span><span><i>⏱️</i><b>${mins ? durText(mins) : '-'}</b><small>시간</small></span><span><i>📷</i><b>${P.length}장</b><small>사진</small></span><span><i>${mo ? mo[1] : '🙂'}</i><b>${mo ? mo[2] : '-'}</b><small>${esc(CV.nick())} 반응</small></span></div>
@@ -892,6 +892,14 @@ document.addEventListener('click', async e => {
   if (a === 'day') { const X = all().filter(w => w.date === v); if (X.length === 1) return open(X[0].id); openSheet(`<h3>${fmtK(v)} 탐문</h3><div class="wklist">${X.map(rowHtml).join('')}</div><div class="actions"><button class="secondary" data-act="close">닫기</button></div>`); return; }
   if (a === 'pan') return pan(v);
   if (a === 'tsel') { if (W.tsel.has(v)) W.tsel.delete(v); else W.tsel.add(v); selSync(); return; }
+  if (a === 'talb') {   // 고른 사진을 사건 앨범(현장 사진첩) / 가족 앨범에 넣기 — 이 탐문 기록에는 그대로 (사용자 요청 2026.10.17)
+    const to = v, items = [...W.tsel].map(id => (S.moments || []).find(m => m.id === id)).filter(m => m && (m.type === 'free' || m.type === 'fam')); if (!items.length) { toast('이 사진은 옮길 수 없어요'); return; }
+    const todo = items.filter(m => m.type !== to), nm = to === 'fam' ? '가족 앨범' : '사건 앨범';
+    if (!todo.length) { toast(`이미 ${nm}에 있어요`); return; }
+    if (!(await ask(`${todo.length}장을 ${nm}에 넣을까요?\n이 탐문 기록에도 그대로 남아요.`, { ok: '넣기' }))) return;
+    let n = 0; for (const m of todo) { toast(`옮기는 중 ${n + 1}/${todo.length}`); if (await write('saveItem', 'mom', { id: m.id, type: to, of: '', who: '', title: m.title || '', date: m.date, memo: m.memo || '', by: m.by || myRole() })) n++; else break; }
+    if (n) { W.tsel.clear(); selSync(); toast(`${n}장을 ${nm}에 넣었어요`); } return;
+  }
   if (a === 'tout') {   // 고른 사진을 이 탐문 기록에서 빼요 (사진은 사건 앨범에 그대로)
     const w = byId(W.cur), ids = [...W.tsel]; if (!w || !ids.length) return;
     if (!(await ask(`고른 사진 ${ids.length}장을 이 탐문 기록에서 뺄까요?\n사진은 사건 앨범에 그대로 남아요.`, { ok: '빼기' }))) return;
@@ -1034,10 +1042,10 @@ css.textContent = `
 .wktck i{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:#FFFDF7;color:transparent;font-style:normal;font-size:14px;line-height:22px;text-align:center}
 .wktck.on i{background:var(--red);border-color:var(--red);color:#fff}.wktl.on{background:#FBE9E4;border-radius:14px}
 .wkall{margin-left:6px;border:1.5px solid var(--line);background:#FFFDF7;border-radius:99px;font-size:12px;padding:2px 10px;min-height:30px;color:var(--navy)}
-.wksel{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;align-items:center;gap:8px;margin-top:10px;background:var(--navy);color:#fff;border-radius:16px;padding:8px 8px 8px 14px;box-shadow:0 6px 16px rgba(31,42,68,.3)}
+.wksel{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;flex-wrap:wrap;row-gap:6px;align-items:center;gap:8px;margin-top:10px;background:var(--navy);color:#fff;border-radius:16px;padding:8px 8px 8px 14px;box-shadow:0 6px 16px rgba(31,42,68,.3)}
 .wksel[hidden]{display:none}.wksel button.out{background:#fff;color:var(--red)}
 .wkrn{margin:10px 0 0;font-size:13px;line-height:1.55;background:#FFFDF7;border:1.5px dashed rgba(31,42,68,.3);border-radius:12px;padding:8px 12px;color:var(--ink)}
-.wkrn button{margin-top:6px;display:block;min-height:38px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);padding:0 14px;font-size:13px}.wksel b{flex:1;font-family:var(--display);font-weight:400;font-size:15px}
+.wkrn button{margin-top:6px;display:block;min-height:38px;border-radius:99px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);padding:0 14px;font-size:13px}.wksel b{flex:1 1 100%;font-family:var(--display);font-weight:400;font-size:15px}
 .wksel button{min-height:40px;border-radius:99px;border:0;background:var(--red);color:#fff;font-size:13.5px;padding:0 14px;white-space:nowrap}.wksel button[data-wk=tnone]{background:none;border:1.5px solid rgba(255,255,255,.45);padding:0 12px}
 .wktpan{flex-shrink:0;width:44px;height:44px;border:1.5px solid var(--line);border-radius:12px;background:#FFFDF7;font-size:18px}
 .wkacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.wkacts .ghost{min-height:46px}.wkacts .wkdel{color:var(--red)}
