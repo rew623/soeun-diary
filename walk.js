@@ -635,6 +635,7 @@ function buildLive() {
     <div class="wkmapbox"><div class="wklmap"></div><p class="wkwait">지금 위치를 찾는 중이에요…</p><button class="wkme-b" data-wl="follow" aria-label="내 위치로">◎</button></div>
     <div class="wknums"><span><b data-n="time">00:00</b><small>시간</small></span><span><b data-n="dist">0m</b><small>거리</small></span><span><b data-n="pics">0</b><small>사진</small></span></div>
     <div class="wkbtns"><button data-wl="cam"><i>📷</i><span>사진 찍기</span></button><button data-wl="pause"><i>⏸</i><span>잠깐 쉬기</span></button><button data-wl="pocket"><i>🌙</i><span>주머니 모드</span></button><button class="end" data-wl="end"><i>■</i><span>탐문 끝</span></button></div>
+    <button class="wksave" data-wl="savecam" hidden>📥 방금 찍은 사진, 폰 앨범에도 저장</button>
     <p class="wknote">화면이 꺼지면 폰이 위치를 안 알려 줘요. 주머니에 넣을 땐 <b>🌙 주머니 모드</b> (화면은 켜진 채 까맣게, 배터리 덜 써요)</p>
     <div class="wkpocket" hidden><b data-n="ptime">00:00</b><span data-n="pdist">0m</span><small>아래 동그라미를 2초 꾹 눌러야 풀려요</small><div class="wkunlock"><i class="wkring"></i><span>🔓<br>꾹</span></div></div>`;
   document.body.appendChild(lEl);
@@ -756,13 +757,27 @@ cam.addEventListener('change', async () => {
   const id = ids && ids[0]; if (!id) return;
   L.pics.push(id); if (p) (L.pp = L.pp || {})[id] = [p.lat, p.lng];
   lsave(); drawLive(); updNums(); toast('📷 사진을 지금 자리에 꽂았어요');
+  offerSave(f);
 });
+// 웹앱은 갤러리에 몰래 저장할 수 없어서, 찍은 직후 단추를 눌러 공유 창에서 '이미지 저장'을 고르게 (사용자 요청 2026.10.17)
+let camT = 0, lastCam = null;
+function offerSave(f) {
+  lastCam = f; const b = lEl && lEl.querySelector('.wksave'); if (!b) return;
+  b.hidden = false; clearTimeout(camT); camT = setTimeout(() => { b.hidden = true; lastCam = null; }, 20000);
+}
+async function saveCam() {
+  const f = lastCam, b = lEl.querySelector('.wksave'); if (!f) { if (b) b.hidden = true; return; }
+  const r = await CV.share(f, `soeun-${hms(Date.now()).replace(/:/g, '')}.jpg`, '소은이 사진');
+  if (r === 'shared') { toast('공유 창에서 \'이미지 저장\'을 눌렀다면 앨범에 들어갔어요'); } else if (r === 'saved') toast('다운로드로 저장했어요 (파일 앱)');
+  if (r !== 'cancel') { clearTimeout(camT); lastCam = null; if (b) b.hidden = true; }
+}
 function onLive(e) {
   const b = e.target.closest('[data-wl]'); if (!b || !L) return;
   const a = b.dataset.wl;
   if (a === 'min') closeLive();
   else if (a === 'follow') { W.follow = true; drawLive(true); }
   else if (a === 'cam') cam.click();
+  else if (a === 'savecam') saveCam();
   else if (a === 'pause') { if (L.paused) { L.pausedMs += Date.now() - L.paused; L.paused = 0; toast('다시 출발!'); } else { L.paused = Date.now(); toast('잠깐 쉬어요. 쉬는 동안은 길을 안 그려요'); } lsave(); updNums(); }
   else if (a === 'pocket') { const pk = lEl.querySelector('.wkpocket'); pk.hidden = false; updNums(); lockOn(); }
   else if (a === 'end') end();
@@ -1064,6 +1079,7 @@ css.textContent = `
 .wknums{display:grid;grid-template-columns:1.3fr 1fr .7fr;gap:8px;padding:12px 16px 4px;text-align:center}
 .wknums span{display:flex;flex-direction:column}.wknums b{font-family:var(--display);font-weight:400;font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums}.wknums small{font-size:12px;opacity:.7}
 .wko.paused .wknums b{opacity:.55}
+.wksave{display:block;margin:6px 12px 0;width:calc(100% - 24px);min-height:44px;border-radius:14px;border:1.5px solid #E8C770;background:#FFF3D0;color:#5A4210;font-size:14px;font-weight:700}.wksave[hidden]{display:none}
 .wkbtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px 12px}
 .wkbtns button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;border-radius:16px;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);color:#fff;font-size:13px;word-break:keep-all}
 .wkbtns i{font-style:normal;font-size:22px;line-height:1}.wkbtns .end{background:var(--red);border-color:var(--red)}
