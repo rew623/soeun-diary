@@ -12,7 +12,7 @@ const isBoy=()=>!!(S&&S.profile&&S.profile.sex==='M');
 const sexWord=()=>isBoy()?'남아':'여아';
 
 const KINDS={
-  weight:{label:'몸무게',unit:'kg',get t(){return isBoy()?WFA_B:WFA},dec:2},
+  weight:{label:'몸무게',unit:'kg',get t(){return isBoy()?WFA_B:WFA},dec:3},
   height:{label:'키',unit:'cm',get t(){return isBoy()?LFA_B:LFA},dec:1},
   head:{label:'머리둘레',unit:'cm',get t(){return isBoy()?HCA_B:HCA},dec:1}
 };
@@ -37,7 +37,7 @@ function monthsDays(birth,date){
 }
 function fmtDate(s){const[y,m,d]=s.split('-').map(Number);return `${y}.${m}.${d}`}
 const num=v=>v===''||v==null?null:(isFinite(+v)&&+v>0?+v:NaN);
-const fmt=(k,v)=>String(+(+v).toFixed(KINDS[k].dec));
+const fmt=(k,v)=>k==='weight'?(+v).toFixed(3):String(+(+v).toFixed(KINDS[k].dec));   // 몸무게는 늘 소수점 셋째 자리까지 (6.450kg, 사용자 요청 2026.10.17)
 const safeImg=s=>typeof s==='string'&&(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s)||/^https:\/\/firebasestorage\.googleapis\.com\/[^"'<>\s]+$/.test(s))?s:'';
 let pending;
 function readPhoto(file,big){const LIM=big?380000:180000;return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{const max=big?1600:900,sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);let q=.82,d=c.toDataURL('image/jpeg',q);while(d.length>LIM&&q>.35){q-=.08;d=c.toDataURL('image/jpeg',q)}if(d.length>LIM){const c2=document.createElement('canvas');c2.width=c.width/2;c2.height=c.height/2;c2.getContext('2d').drawImage(c,0,0,c2.width,c2.height);d=c2.toDataURL('image/jpeg',.7)}res(d)};img.src=fr.result};fr.readAsDataURL(file)})}
