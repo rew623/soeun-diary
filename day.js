@@ -17,6 +17,7 @@ const K = {
   bath: { n: '목욕', i: '🛁', c: '#11958a' },
   memo: { n: '메모', i: '📝', c: '#8a7a55' },
   play: { n: '놀아주기', i: '🧸', c: '#c28a00' },
+  walk: { n: '탐문', i: '🐾', c: '#3d8a4f' },
   temp: { n: '체온', i: '🌡️', c: '#B3261E' }, med: { n: '투약', i: '💊', c: '#B3261E' }, sym: { n: '증상', i: '🤒', c: '#B3261E' }
 };
 const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath'];
@@ -33,6 +34,7 @@ const ICON = {
   poo: `<path d="M16 5.5q4.2 1.6 2 5.4" fill="none" ${SL} stroke-linecap="round"/><ellipse cx="16" cy="24" rx="11" ry="4.6" fill="#C9935A" ${SL}/><ellipse cx="16" cy="18.2" rx="8" ry="4.2" fill="#D6A26A" ${SL}/><ellipse cx="16" cy="12.6" rx="5.3" ry="3.4" fill="#E0B07A" ${SL}/>${FACE(16, 18.3)}`,
   sleep: `<path d="M19.5 4.5a11.5 11.5 0 1 0 8 18.5 9 9 0 0 1-8-18.5z" fill="#FFD86B" ${SL}/><path d="M9.6 17.3q1.4 1.2 2.8 0M15.4 17.3q1.4 1.2 2.8 0" fill="none" ${SL} stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><circle cx="9.3" cy="20.2" r="1.3"/><circle cx="18.5" cy="20.2" r="1.3"/></g><path d="M23 6.5h4l-4 4.4h4" fill="none" stroke="#5B6BD6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`,
   bath: `<circle cx="9" cy="8.5" r="2.3" fill="#DDF3FF" ${SL}/><circle cx="13.5" cy="5.5" r="1.6" fill="#DDF3FF" ${SL}/><ellipse cx="22" cy="12.6" rx="4.2" ry="3.2" fill="#FFD84D" ${SL}/><circle cx="24" cy="9.3" r="2.6" fill="#FFD84D" ${SL}/><path d="M26.3 9.6l2.3.4-2.1 1z" fill="#F49A4A"/><circle cx="24.6" cy="8.8" r=".7" fill="${IK}"/><path d="M3.5 15h25v2.5c0 5.5-4.2 9-9 9h-7c-4.8 0-9-3.5-9-9z" fill="#FFFDF7" ${SL}/><path d="M4.2 17.3h23.6" stroke="#7FD3CB" stroke-width="2.2"/>${FACE(16, 21.3)}`,
+  walk: `<ellipse cx="16" cy="21" rx="7.2" ry="5.8" fill="#8FD19E" ${SL}/><ellipse cx="7.5" cy="14" rx="2.6" ry="3.3" fill="#8FD19E" ${SL} transform="rotate(-20 7.5 14)"/><ellipse cx="12.5" cy="8.5" rx="2.7" ry="3.5" fill="#8FD19E" ${SL}/><ellipse cx="19.5" cy="8.5" rx="2.7" ry="3.5" fill="#8FD19E" ${SL}/><ellipse cx="24.5" cy="14" rx="2.6" ry="3.3" fill="#8FD19E" ${SL} transform="rotate(20 24.5 14)"/>`,
   play: `<circle cx="9" cy="9" r="3.4" fill="#E8B56A" ${SL}/><circle cx="23" cy="9" r="3.4" fill="#E8B56A" ${SL}/><circle cx="16" cy="17" r="9.5" fill="#F2C27D" ${SL}/><ellipse cx="16" cy="20.2" rx="4" ry="3" fill="#FFF3DD" ${SL}/><circle cx="12.6" cy="15" r="1.2" fill="#1F2A44"/><circle cx="19.4" cy="15" r="1.2" fill="#1F2A44"/><ellipse cx="16" cy="19" rx="1.4" ry="1" fill="#6B3E1E"/><path d="M14.6 21.4q1.4 1.2 2.8 0" fill="none" stroke="#6B3E1E" stroke-width="1" stroke-linecap="round"/>`,
   memo: `<rect x="7.5" y="5" width="16" height="22.5" rx="3" fill="#FFF3CC" ${SL}/><path d="M11 11h9M11 15h9M11 19h5" stroke="#D6B66A" stroke-width="1.6" stroke-linecap="round"/><path d="M19.5 25.5l1.3-4.6 7-7a1.8 1.8 0 0 1 2.6 2.6l-7 7z" fill="#FF9F6B" ${SL}/>`,
   temp: `<rect x="12.5" y="3.5" width="7" height="18" rx="3.5" fill="#FFFDF7" ${SL}/><rect x="15" y="10" width="2" height="12" rx="1" fill="#FF6B6B"/><circle cx="16" cy="23.5" r="5.3" fill="#FF8A8A" ${SL}/>${FACE(16, 23, 0)}`,
@@ -64,7 +66,7 @@ const num = v => { const n = parseFloat(String(v || '').replace(/[^0-9.]/g, ''))
 // ---------- 모든 기록을 한 줄로: 하루 수사(care) + 이유식(meal) + 긴급 출동(log) ----------
 let EC = null;
 function evs() {
-  if (EC && EC.c === S.cares && EC.m === S.meals && EC.l === S.logs && !(S.cares || []).some(c => c.live)) return EC.v;
+  if (EC && EC.c === S.cares && EC.m === S.meals && EC.l === S.logs && EC.w === S.walks && !(S.cares || []).some(c => c.live)) return EC.v;
   const out = [];
   (S.cares || []).forEach(c => {
     if (!c.date || !c.t) return;
@@ -78,8 +80,14 @@ function evs() {
   });
   (S.meals || []).forEach(m => { if (!m.date) return; const t = /^\d\d:\d\d/.test(m.tm || '') ? m.tm.slice(0, 5) : (SLOT_T[m.slot] || '12:00'); out.push({ src: 'meal', id: m.id, date: m.date, k: 'solid', kinds: ['solid'], t, s: msOf(m.date, t), e: null, raw: m, guess: !m.tm }); });
   (S.logs || []).forEach(l => { if (!/^\d{4}-\d{2}-\d{2}T\d\d:\d\d/.test(l.at || '')) return; const date = l.at.slice(0, 10), t = l.at.slice(11, 16), k = l.kind === 'temp' ? 'temp' : l.kind === 'med' ? 'med' : 'sym'; out.push({ src: 'log', id: l.id, date, k, kinds: [k], t, s: msOf(date, t), e: null, raw: l }); });
+  // 탐문 기록(walk)도 같이: 다녀오면 하루 수사에 저절로 (눌러서 고치기 → WALK.edit, 사용자 요청 2026.10.17)
+  (S.walks || []).forEach(w => {
+    if (!w.date) return; const ok = /^\d\d:\d\d/.test(w.start || ''), t = ok ? w.start.slice(0, 5) : '12:00', s = msOf(w.date, t); let e = null;
+    if (ok && /^\d\d:\d\d/.test(w.end || '')) { e = msOf(w.date, w.end.slice(0, 5)); if (e < s) e += 864e5; }
+    out.push({ src: 'walk', id: w.id, date: w.date, k: 'walk', kinds: ['walk'], t, s, e, raw: Object.assign({}, w, { t }), guess: !ok });
+  });
   out.sort((a, b) => a.s - b.s);
-  EC = { c: S.cares, m: S.meals, l: S.logs, v: out }; return out;
+  EC = { c: S.cares, m: S.meals, l: S.logs, w: S.walks, v: out }; return out;
 }
 const ofDay = date => evs().filter(e => e.date === date);
 // 전날 시작해서 이 날 깬 잠 → 이 날에 '깬 줄'로 (원래 기록은 전날 그대로, 눌러서 고치면 원본)
@@ -166,14 +174,15 @@ function line(e) {
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
   else if (k === 'sleep') { if (crossN) { const nd = dayStart(addDays(e.date, 1)); main = durTxt((nd - e.s) / 60000); sub.push(`${r.t}~다음날 ${hmOf(new Date(e.e))} (전체 ${dur})`); } else { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); } }
   else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
+  else if (k === 'walk') { const kd = window.WALK ? WALK.kindOf(r.kind) : ['walk', '🚶', '산책'], m = window.WALK ? Math.round(WALK.km(r)) : 0; name = `${kd[2]}`; main = esc(r.title || r.place || ''); if (dur) sub.push(`⏱ ${dur} ~${hmOf(new Date(e.e))}`); if (m) sub.push(m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`); }
   else if (k === 'play') { main = esc((r.what || '').split(',').filter(Boolean).join('·')); if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'solid') { main = esc(r.amount || ''); sub = [r.menu, r.eat].filter(Boolean).map(esc); }
   else if (k === 'temp') main = `${esc(r.value)}℃`;
   else if (k === 'med') { main = esc(r.value || ''); if (r.dose) sub.push(esc(r.dose)); }
   else if (k === 'sym') main = esc(r.value || '');
-  const memo = e.src === 'care' ? r.memo : e.src === 'meal' ? '' : r.memo;
+  const memo = e.src === 'care' ? r.memo : e.src === 'meal' || e.src === 'walk' ? '' : r.memo;
   const dot = k === 'diaper' ? (r.poo ? K.poo.c : K.pee.c) : (K[k] || K.memo).c;
-  const act = e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
+  const act = e.src === 'walk' ? `data-dy="editwalk" data-id="${e.id}"` : e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
   const ik = k === 'diaper' ? (r.poo ? 'poo' : 'pee') : k;
   if (memo) sub.push(esc(memo)); if (r.by) sub.push(`<em>${esc(r.by)}</em>`);
   return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
@@ -695,6 +704,7 @@ document.addEventListener('click', async e => {
   if (a === 'tp') { tpStep(b.dataset.t, b.dataset.u, +v); return; }
   if (a === 'min') { const el = $(b.dataset.t); if (el) { el.value = Math.max(0, num(el.value) + +v); if (window.__app) __app.sheetDirty(); } return; }
   if (a === 'minset') { ['dy-l', 'dy-r'].forEach(id => { const el = $(id); if (el) el.value = v; }); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'editwalk') { if (window.WALK && WALK.edit) WALK.edit(b.dataset.id); return; }
   if (a === 'pl') { b.classList.toggle('on'); if (window.__app) __app.sheetDirty(); return; }
   if (a === 'pladd') { const el = $('dy-plnew'), n = el ? el.value.trim().replace(/[,]/g, ' ') : ''; if (!n) return; const sel = plSel(), L = playTypes(); if (!L.includes(n)) { L.push(n); playSave(L); } if (!sel.includes(n)) sel.push(n); $('dy-pl').innerHTML = plChips(sel); el.value = ''; if (window.__app) __app.sheetDirty(); return; }
   if (a === 'pldel') { const sel = plSel().filter(x => x !== v); playSave(playTypes().filter(x => x !== v)); $('dy-pl').innerHTML = plChips(sel); return; }
