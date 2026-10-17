@@ -16,6 +16,7 @@ const K = {
   sleep: { n: '수면', i: '😴', c: '#3f4cc0' },
   bath: { n: '목욕', i: '🛁', c: '#11958a' },
   memo: { n: '메모', i: '📝', c: '#8a7a55' },
+  play: { n: '놀아주기', i: '🧸', c: '#c28a00' },
   temp: { n: '체온', i: '🌡️', c: '#B3261E' }, med: { n: '투약', i: '💊', c: '#B3261E' }, sym: { n: '증상', i: '🤒', c: '#B3261E' }
 };
 const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath'];
@@ -32,6 +33,7 @@ const ICON = {
   poo: `<path d="M16 5.5q4.2 1.6 2 5.4" fill="none" ${SL} stroke-linecap="round"/><ellipse cx="16" cy="24" rx="11" ry="4.6" fill="#C9935A" ${SL}/><ellipse cx="16" cy="18.2" rx="8" ry="4.2" fill="#D6A26A" ${SL}/><ellipse cx="16" cy="12.6" rx="5.3" ry="3.4" fill="#E0B07A" ${SL}/>${FACE(16, 18.3)}`,
   sleep: `<path d="M19.5 4.5a11.5 11.5 0 1 0 8 18.5 9 9 0 0 1-8-18.5z" fill="#FFD86B" ${SL}/><path d="M9.6 17.3q1.4 1.2 2.8 0M15.4 17.3q1.4 1.2 2.8 0" fill="none" ${SL} stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><circle cx="9.3" cy="20.2" r="1.3"/><circle cx="18.5" cy="20.2" r="1.3"/></g><path d="M23 6.5h4l-4 4.4h4" fill="none" stroke="#5B6BD6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`,
   bath: `<circle cx="9" cy="8.5" r="2.3" fill="#DDF3FF" ${SL}/><circle cx="13.5" cy="5.5" r="1.6" fill="#DDF3FF" ${SL}/><ellipse cx="22" cy="12.6" rx="4.2" ry="3.2" fill="#FFD84D" ${SL}/><circle cx="24" cy="9.3" r="2.6" fill="#FFD84D" ${SL}/><path d="M26.3 9.6l2.3.4-2.1 1z" fill="#F49A4A"/><circle cx="24.6" cy="8.8" r=".7" fill="${IK}"/><path d="M3.5 15h25v2.5c0 5.5-4.2 9-9 9h-7c-4.8 0-9-3.5-9-9z" fill="#FFFDF7" ${SL}/><path d="M4.2 17.3h23.6" stroke="#7FD3CB" stroke-width="2.2"/>${FACE(16, 21.3)}`,
+  play: `<circle cx="9" cy="9" r="3.4" fill="#E8B56A" ${SL}/><circle cx="23" cy="9" r="3.4" fill="#E8B56A" ${SL}/><circle cx="16" cy="17" r="9.5" fill="#F2C27D" ${SL}/><ellipse cx="16" cy="20.2" rx="4" ry="3" fill="#FFF3DD" ${SL}/><circle cx="12.6" cy="15" r="1.2" fill="#1F2A44"/><circle cx="19.4" cy="15" r="1.2" fill="#1F2A44"/><ellipse cx="16" cy="19" rx="1.4" ry="1" fill="#6B3E1E"/><path d="M14.6 21.4q1.4 1.2 2.8 0" fill="none" stroke="#6B3E1E" stroke-width="1" stroke-linecap="round"/>`,
   memo: `<rect x="7.5" y="5" width="16" height="22.5" rx="3" fill="#FFF3CC" ${SL}/><path d="M11 11h9M11 15h9M11 19h5" stroke="#D6B66A" stroke-width="1.6" stroke-linecap="round"/><path d="M19.5 25.5l1.3-4.6 7-7a1.8 1.8 0 0 1 2.6 2.6l-7 7z" fill="#FF9F6B" ${SL}/>`,
   temp: `<rect x="12.5" y="3.5" width="7" height="18" rx="3.5" fill="#FFFDF7" ${SL}/><rect x="15" y="10" width="2" height="12" rx="1" fill="#FF6B6B"/><circle cx="16" cy="23.5" r="5.3" fill="#FF8A8A" ${SL}/>${FACE(16, 23, 0)}`,
   med: `<g transform="rotate(-35 16 16)"><path d="M16 10.5h6a5.5 5.5 0 0 1 0 11h-6z" fill="#FFFDF7" ${SL}/><path d="M16 10.5h-6a5.5 5.5 0 0 0 0 11h6z" fill="#FF8A8A" ${SL}/></g>${FACE(16, 16, 0)}`,
@@ -39,8 +41,8 @@ const ICON = {
 };
 const ICO = (k, px) => ICON[k] ? `<svg class="dyico" viewBox="0 0 32 32" width="${px || 24}" height="${px || 24}" aria-hidden="true">${ICON[k]}</svg>` : esc((K[k] || K.memo).i);
 const DIA = ICO('diaper', 18);
-const QUICK = [['formula', '🍼', '분유'], ['breast', '🤱', '모유수유'], ['solid', '🥣', '이유식'], ['diaper', DIA, '소변/대변'], ['sleep', '😴', '수면'], ['pump', '🍶', '유축수유'], ['bath', '🛁', '목욕'], ['memo', '📝', '메모'], ['temp', '🌡️', '체온'], ['med', '💊', '투약']];
-const PH = { memo: '기록하고 싶은 정보가 있다면 적어 주세요', formula: '예: 160 탔다가 130 먹음', pump: '예: 냉동 모유 데워서 먹임', breast: '예: 왼쪽 먹다가 잠듦', diaper: '예: 엉덩이가 살짝 빨개요', sleep: '예: 안아서 재움, 중간에 한 번 깸', bath: '예: 물 38도, 머리도 감김' };
+const QUICK = [['formula', '🍼', '분유'], ['breast', '🤱', '모유수유'], ['solid', '🥣', '이유식'], ['diaper', DIA, '소변/대변'], ['sleep', '😴', '수면'], ['pump', '🍶', '유축수유'], ['bath', '🛁', '목욕'], ['play', '🧸', '놀아주기'], ['temp', '🌡️', '체온'], ['med', '💊', '투약']];
+const PH = { play: '예: 배밀이 하면서 까르르 웃음', memo: '기록하고 싶은 정보가 있다면 적어 주세요', formula: '예: 160 탔다가 130 먹음', pump: '예: 냉동 모유 데워서 먹임', breast: '예: 왼쪽 먹다가 잠듦', diaper: '예: 엉덩이가 살짝 빨개요', sleep: '예: 안아서 재움, 중간에 한 번 깸', bath: '예: 물 38도, 머리도 감김' };
 const AMT = { 조금: '양 조금', 보통: '양 보통', 많이: '양 많이' }, STT = { 묽음: '묽은 변', 보통: '보통 변', 단단: '단단한 변', 설사: '설사' };
 const SLOT_T = { 아침: '08:00', 점심: '12:00', 저녁: '18:00', 간식: '15:00' };
 const p2 = n => String(n).padStart(2, '0');
@@ -132,7 +134,7 @@ function feedSave() {
 // ---------- 하루 숫자 ----------
 function stats(date) {
   const L = ofDay(date), care = k => L.filter(e => e.src === 'care' && e.k === k);
-  const F = care('formula'), P = care('pump'), B = care('breast'), dia = care('diaper'), sl = care('sleep'), ba = care('bath'), so = L.filter(e => e.k === 'solid');
+  const PL = care('play'), F = care('formula'), P = care('pump'), B = care('breast'), dia = care('diaper'), sl = care('sleep'), ba = care('bath'), so = L.filter(e => e.k === 'solid');
   const iv = A => { if (A.length < 2) return null; const t = A.map(e => e.s).sort((a, b) => a - b); let g = 0; for (let i = 1; i < t.length; i++) g += t[i] - t[i - 1]; return g / (t.length - 1) / 36e5; };
   const sleeps = evs().filter(e => e.src === 'care' && e.k === 'sleep' && (e.date === date || e.date === addDays(date, -1)));
   const sleepMin = sleptMin(sleeps, date);
@@ -144,7 +146,7 @@ function stats(date) {
     solid: { n: so.length, amt: so.reduce((a, e) => a + num(e.raw.amount), 0), unit },
     pee: { n: dia.filter(e => e.raw.pee).length }, poo: { n: dia.filter(e => e.raw.poo).length },
     sleep: { min: sleepMin, n: sl.length, long: sleeps.reduce((a, e) => Math.max(a, e.e ? (e.e - e.s) / 60000 : 0), 0) },
-    bath: { n: ba.length }, any: L.some(e => e.src === 'care' || e.k === 'solid')
+    play: { n: PL.length, min: PL.reduce((a, e) => a + (e.e ? (e.e - e.s) / 60000 : 0), 0) }, bath: { n: ba.length }, any: L.some(e => e.src === 'care' || e.k === 'solid')
   };
 }
 
@@ -164,6 +166,7 @@ function line(e) {
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
   else if (k === 'sleep') { if (crossN) { const nd = dayStart(addDays(e.date, 1)); main = durTxt((nd - e.s) / 60000); sub.push(`${r.t}~다음날 ${hmOf(new Date(e.e))} (전체 ${dur})`); } else { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); } }
   else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
+  else if (k === 'play') { main = esc((r.what || '').split(',').filter(Boolean).join('·')); if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'solid') { main = esc(r.amount || ''); sub = [r.menu, r.eat].filter(Boolean).map(esc); }
   else if (k === 'temp') main = `${esc(r.value)}℃`;
   else if (k === 'med') { main = esc(r.value || ''); if (r.dose) sub.push(esc(r.dose)); }
@@ -225,7 +228,7 @@ function dayLog() {
     last = `<p class="dylh">마지막 기록</p><div class="dylast">${box(ICO('formula', 17), '수유', feed && feed.t, feed && agoTxt(feed.s))}${box(ICO('diaper', 17), '기저귀', dia && dia.t, dia && agoTxt(dia.s))}${box(ICO('bath', 17), '목욕', bath && bath.t, bath && agoTxt(bath.s))}</div>`;
   }
   const chips = [[st.formula.n, 'formula', `분유 ${st.formula.ml}ml · ${st.formula.n}회`], [st.breast.n, 'breast', `모유 ${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`], [st.pump.n, 'pump', `유축 ${st.pump.ml}ml`], [st.solid.n, 'solid', `이유식 ${st.solid.n}회`],
-    [st.pee.n, 'pee', `소변 ${st.pee.n}`], [st.poo.n, 'poo', `대변 ${st.poo.n}`], [st.sleep.min, 'sleep', `수면 ${durTxt(st.sleep.min)}`], [st.bath.n, 'bath', `목욕 ${st.bath.n}`]].filter(x => x[0]).map(x => `<span style="--c:${K[x[1]].c}">${ICO(x[1], 18)}${x[2]}</span>`).join('');
+    [st.pee.n, 'pee', `소변 ${st.pee.n}`], [st.poo.n, 'poo', `대변 ${st.poo.n}`], [st.sleep.min, 'sleep', `수면 ${durTxt(st.sleep.min)}`], [st.bath.n, 'bath', `목욕 ${st.bath.n}`], [st.play.n, 'play', `놀이 ${st.play.n}번${st.play.min ? ` · ${durTxt(st.play.min)}` : ''}`]].filter(x => x[0]).map(x => `<span style="--c:${K[x[1]].c}">${ICO(x[1], 18)}${x[2]}</span>`).join('');
   return `${liveCards()}${isT ? feedBar() : ''}${quickRow()}
     <section class="dysum">${last}${chips ? `<div class="dychips">${chips}</div>` : `<p class="vempty" style="margin:4px 0">${isT ? '아직 오늘 기록이 없어요. 위 동그란 단추로 남겨요.' : '이날 기록이 없어요.'}</p>`}</section>
     ${L.length ? `<section class="dylist">${L.map(line).join('')}</section>` : ''}
@@ -348,9 +351,9 @@ function openForm(k, c) {
   F = { k, id: c ? c.id : newCid(), old: c ? c.date : '', edit: !!c, live: c ? c.live : 0, side: c ? c.side : '', seg: liveBr ? Date.now() : c ? c.seg : 0, at: c ? c.at : 0, pee: c ? !!c.pee : true, poo: c ? !!c.poo : false };
   const kk = K[k === 'diaper' ? 'pee' : k] || K.memo, title = k === 'diaper' ? '소변/대변' : kk.n, icon = ICO(k, 26);
   // 시각은 폰 시계 창(헷갈려요) 대신 숫자 칸 + ▲▼ (사용자 요청)
-  const hasE = ['formula', 'pump', 'breast', 'sleep', 'bath'].includes(k), e0 = (c && c.e) || (k === 'bath' && c && +c.dur && /^\d\d:\d\d$/.test(c.t) ? hmOf(new Date(msOf('2000-01-01', c.t) + c.dur * 60000)) : '');   // 예전 목욕 기록은 분 → 끝난 시각으로 보여 줘요
+  const hasE = ['formula', 'pump', 'breast', 'sleep', 'bath', 'play'].includes(k), e0 = (c && c.e) || (k === 'bath' && c && +c.dur && /^\d\d:\d\d$/.test(c.t) ? hmOf(new Date(msOf('2000-01-01', c.t) + c.dur * 60000)) : '');   // 예전 목욕 기록은 분 → 끝난 시각으로 보여 줘요
   const tIn = `<label class="field"><span>날짜</span><input id="dy-d" type="date" value="${d0}" min="${S.profile.birth}" max="${today()}"></label>
-    <div class="dytpr${hasE ? '' : ' one'}"><div class="field"><span>${k === 'sleep' ? '잠든 시각' : k === 'breast' || k === 'bath' ? '시작 시각' : '시각'}</span>${tpick('dy-t', t0)}</div>
+    <div class="dytpr${hasE ? '' : ' one'}"><div class="field"><span>${k === 'sleep' ? '잠든 시각' : k === 'breast' || k === 'bath' || k === 'play' ? '시작 시각' : '시각'}</span>${tpick('dy-t', t0)}</div>
     ${hasE ? `<div class="field"><span>${k === 'sleep' ? '깬 시각' : '끝난 시각'} <small>(선택)</small></span>${tpick('dy-e', e0, true)}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-t="dy-e">${k === 'sleep' ? '지금 깼어요' : '지금 끝'}</button><button type="button" class="ghost" data-dy="tpx" data-t="dy-e" aria-label="끝난 시각 지우기">비우기</button></div></div>` : ''}</div>`;
   let body = '';
   if (k === 'formula' || k === 'pump') {
@@ -367,6 +370,9 @@ function openForm(k, c) {
       <div class="field dypoo"><span>상태</span><div class="quick" id="dy-st">${['묽음', '보통', '단단', '설사'].map(x => `<button type="button" data-act="pick1" data-v="${x}" class="${c && c.st === x ? 'on' : ''}">${x}</button>`).join('')}</div></div>`;
   } else if (k === 'sleep') {
     body = c ? '' : '<button type="button" class="ghost dytimer" data-dy="timer" data-k="sleep">⏱ 지금 잠들었어요 (깨면 위 카드에서 \'깼어요\')</button>';
+  } else if (k === 'play') {
+    body = `<div class="field"><span>무엇을 했나요? <small>(여러 개 골라도 돼요)</small></span><div id="dy-plw"><div class="quick dymulti dypl" id="dy-pl">${plChips(c ? (c.what || '').split(',').filter(Boolean) : [])}</div>
+      <div class="dyplad"><input id="dy-plnew" maxlength="12" placeholder="새 놀이 이름 (예: 모빌 보기)"><button type="button" class="ghost" data-dy="pladd">＋ 추가</button><button type="button" class="ghost" data-dy="pledit">✎ 지우기</button></div></div></div>`;
   } else if (k === 'bath') {
     body = `<div class="field"><span>걸린 시간 <small>(누르면 끝난 시각이 맞춰져요)</small></span></div>
       <div class="quick dyqk">${[5, 10, 15, 20, 30].map(x => `<button type="button" data-dy="bdur" data-v="${x}">${x}분</button>`).join('')}</div>`;
@@ -408,6 +414,15 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('focusout', e => { const el = e.target; if (el.classList && el.classList.contains('dytpi') && el.value !== '') el.value = p2(Math.min(el.dataset.u === 'h' ? 23 : 59, +el.value)); });
 function pooSync() { document.querySelectorAll('#sheet .dypoo').forEach(x => x.classList.toggle('off', !F.poo)); }
+// 놀아주기 종류: 이 폰에 목록 저장(localStorage soeun-play-types), 기록에는 고른 이름이 그대로 들어가요 (사용자 요청 2026.10.17)
+const PLAY0 = ['터미타임', '아기체육관', '타이니모빌', '책 읽기', '노래·율동', '까꿍 놀이'];
+const playTypes = () => { try { const v = JSON.parse(localStorage.getItem('soeun-play-types') || 'null'); if (Array.isArray(v)) return v.filter(x => typeof x === 'string' && x).slice(0, 40); } catch (e) {} return PLAY0.slice(); };
+const playSave = L => { try { localStorage.setItem('soeun-play-types', JSON.stringify(L)); } catch (e) {} };
+function plChips(sel) {
+  const L = playTypes(); sel.forEach(x => { if (!L.includes(x)) L.push(x); });   // 지워진 종류도 이 기록에 쓰였으면 보여 줘요
+  return L.map(x => `<span class="dyplc"><button type="button" data-dy="pl" data-v="${esc(x)}" class="${sel.includes(x) ? 'on' : ''}">${esc(x)}</button><i data-dy="pldel" data-v="${esc(x)}" role="button" aria-label="${esc(x)} 목록에서 지우기">✕</i></span>`).join('');
+}
+const plSel = () => [...document.querySelectorAll('#dy-pl button.on')].map(x => x.dataset.v);
 function grab() {
   const v = id => { const el = $(id); return el ? el.value.trim() : ''; }, m = [0, v('dy-d'), v('dy-t').slice(0, 5)];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(m[1])) return { err: '날짜를 확인해 주세요' };
@@ -418,6 +433,7 @@ function grab() {
   if (F.k === 'breast') { it.l = num(v('dy-l')); it.r = num(v('dy-r')); }
   if (F.k === 'diaper') { if (!F.pee && !F.poo) return { err: '소변·대변 중 하나는 골라 주세요' }; it.pee = F.pee; it.poo = F.poo; const a = document.querySelector('#dy-amt .on'), s = document.querySelector('#dy-st .on'); it.amt = F.poo && a ? a.dataset.v : ''; it.st = F.poo && s ? s.dataset.v : ''; }
   if (F.k === 'bath') it.dur = it.e ? (msOf('2000-01-01', it.e) - msOf('2000-01-01', it.t) + 864e5) % 864e5 / 60000 : 0;   // 끝난 시각이 있으면 걸린 시간(분)은 거기서
+  if (F.k === 'play') it.what = plSel().join(',');
   if (F.k === 'memo' && !it.memo) return { err: '메모를 적어 주세요' };
   if (it.e && F.live) it.live = 0;   // 끝난 시각을 적으면 타이머는 끝
   return { date: m[1], it };
@@ -444,7 +460,7 @@ async function quickAdd(k, btn) {
   }
   if (k === 'sleep') { startTimer('sleep'); return; }
   const last = (S.cares || []).filter(c => c.k === k && !c.live).sort((a, b) => (b.date + b.t).localeCompare(a.date + a.t))[0];
-  if (k === 'memo' || !last) { openForm(k, null); return; }
+  if (k === 'memo' || k === 'play' || !last) { openForm(k, null); return; }
   const now = new Date(), it = { id: newCid(), k, t: hmOf(now), e: '', memo: '', live: 0, at: Date.now() };
   ['ml', 'l', 'r', 'dur', 'pee', 'poo', 'amt', 'st'].forEach(x => { if (last[x] != null && last[x] !== '') it[x] = last[x]; });
   if (/^\d\d:\d\d$/.test(last.e || '') && k !== 'breast') { const d = (msOf('2000-01-01', last.e) - msOf('2000-01-01', last.t) + 864e5) % 864e5; if (d && d < 4 * 36e5) it.e = hmOf(new Date(now.getTime() + d)); }   // 걸린 시간도 최근과 같게 (끝 시각 = 지금 + 그만큼)
@@ -679,6 +695,10 @@ document.addEventListener('click', async e => {
   if (a === 'tp') { tpStep(b.dataset.t, b.dataset.u, +v); return; }
   if (a === 'min') { const el = $(b.dataset.t); if (el) { el.value = Math.max(0, num(el.value) + +v); if (window.__app) __app.sheetDirty(); } return; }
   if (a === 'minset') { ['dy-l', 'dy-r'].forEach(id => { const el = $(id); if (el) el.value = v; }); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'pl') { b.classList.toggle('on'); if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'pladd') { const el = $('dy-plnew'), n = el ? el.value.trim().replace(/[,]/g, ' ') : ''; if (!n) return; const sel = plSel(), L = playTypes(); if (!L.includes(n)) { L.push(n); playSave(L); } if (!sel.includes(n)) sel.push(n); $('dy-pl').innerHTML = plChips(sel); el.value = ''; if (window.__app) __app.sheetDirty(); return; }
+  if (a === 'pldel') { const sel = plSel().filter(x => x !== v); playSave(playTypes().filter(x => x !== v)); $('dy-pl').innerHTML = plChips(sel); return; }
+  if (a === 'pledit') { const w = $('dy-plw'); if (w) w.classList.toggle('edit'); return; }
   if (a === 'pp') { if (!F) return; F[v] = !F[v]; b.classList.toggle('on', F[v]); pooSync(); if (window.__app) __app.sheetDirty(); return; }
   if (a === 'flt') { if (D.off.has(v)) D.off.delete(v); else D.off.add(v); render(); return; }
   if (a === 'stat') { D.stat = v; D.sel = {}; render(); return; }
@@ -818,6 +838,8 @@ css.textContent = `
 .dytpq{display:flex;gap:6px;margin-top:4px}.dytpq button{flex:1;min-height:38px;font-size:13px;padding:0 6px}
 .dyguide{margin-top:16px}
 .dymulti button{min-height:46px;font-size:15px;padding:0 18px}
+.dypl{flex-wrap:wrap;gap:6px}.dypl .dyplc{position:relative;display:inline-flex}.dypl .dyplc button{min-height:40px;font-size:14px;padding:0 14px}.dypl .dyplc i{display:none;position:absolute;top:-7px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font-style:normal;font-size:12px;line-height:22px;text-align:center}#dy-plw.edit .dyplc i{display:block}
+.dyplad{display:flex;gap:6px;margin-top:10px}.dyplad input{flex:1;min-width:0;min-height:40px;border:1.5px solid var(--line);border-radius:12px;padding:0 10px;font-size:14px}.dyplad button{min-height:40px;padding:0 12px;font-size:13px;white-space:nowrap}
 .dypoo.off{opacity:.4;pointer-events:none}
 .dyamt.sm input{width:90px;font-size:42px}.dyamt.sm small{font-size:18px}`;
 document.head.appendChild(css);
