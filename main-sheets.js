@@ -103,6 +103,7 @@ function openSolve(pid){
     <p class="hint" style="margin:-8px 0 12px">같은 날 맞은 백신만 체크해 두세요.</p>
     <div class="solvelist field">${vs.map(v=>`<label><input type="checkbox" value="${v.id}" checked> ${esc(v.name)}</label>`).join('')}</div>
     <label class="field"><span>접종한 날</span><input id="sv-date" type="date" value="${def}"></label>
+    ${window.CLAIM?CLAIM.field('per:'+pid,'접종확인',def):''}
     <p class="err" id="sv-err"></p>
     <div class="actions"><button class="secondary" data-act="close">취소</button><button class="primary" data-act="savesolve" data-id="${pid}">해결로 저장</button></div>`);
 }
@@ -259,7 +260,7 @@ document.addEventListener('click',async e=>{
   case 'solve':openSolve(a.dataset.id);break;
   case 'savesolve':{const date=val('sv-date'),ids=[...$sheet.querySelectorAll('.solvelist input:checked')].map(x=>x.value);
     if(!date)return err('sv-err','접종한 날을 입력해 주세요');if(!ids.length)return err('sv-err','맞은 백신을 하나 이상 체크해 주세요');
-    const res=await write('completePeriod',a.dataset.id,date,ids,myRole());if(res){closeSheet();toast('사건 해결! 접종 기록을 저장했어요')}break}
+    const res=await write('completePeriod',a.dataset.id,date,ids,myRole());if(res){closeSheet();toast('사건 해결! 접종 기록을 저장했어요');if(window.CLAIM)await CLAIM.flush('per:'+a.dataset.id)}break}
   }
 });
 
