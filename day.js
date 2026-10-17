@@ -80,6 +80,8 @@ function evs() {
   EC = { c: S.cares, m: S.meals, l: S.logs, v: out }; return out;
 }
 const ofDay = date => evs().filter(e => e.date === date);
+// 전날 시작해서 이 날 깬 잠 → 이 날에 '깬 줄'로 (원래 기록은 전날 그대로, 눌러서 고치면 원본)
+const carryEnds = date => evs().filter(e => e.src === 'care' && e.k === 'sleep' && !e.raw.live && e.date === addDays(date, -1) && e.e && e.e > dayStart(date) && e.e <= dayStart(addDays(date, 1))).map(e => ({ src: 'care', id: e.id + ':c', date, k: 'sleep', kinds: ['sleep'], t: hmOf(new Date(e.e)), s: e.e, e: e.e, raw: e.raw, carry: e }));
 // 그날(0시~24시)에 잔 시간: 밤잠처럼 전날 시작한 것도 그날 몫만, 겹친 잠(두 사람이 같은 잠을 남긴 때 등)은 한 번만
 function sleptMin(L, date) {
   const a = dayStart(date), b = a + 864e5, I = L.map(e => [Math.max(e.s, a), Math.min(e.e || e.s, b)]).filter(x => x[1] > x[0]).sort((x, y) => x[0] - y[0]);
@@ -149,13 +151,18 @@ function stats(date) {
 // ---------- 목록 한 줄 ----------
 function line(e) {
   const r = e.raw, k = e.k;
+  if (e.carry) {   // 자정을 넘겨 잔 잠: 깬 날에는 '깬 줄'을 따로 (그날 몫만 센다, 사용자 요청 2026.10.17)
+    const c = e.carry, d0 = dayStart(e.date), un = durTxt((e.s - d0) / 60000), pv = durTxt((d0 - c.s) / 60000);
+    return `<button class="dyrow" data-dy="edit" data-id="${c.id}" style="--c:${K.sleep.c}"><span class="dyt">${e.t}</span><span class="dyib">${ICO('sleep', 26)}</span><span class="dyb"><b>수면 끝 <u>오늘 ${un}</u></b><small>어제 ${c.t}부터 · 어제 ${pv}${r.by ? ` · <em>${esc(r.by)}</em>` : ''}</small></span><i>›</i></button>`;
+  }
+  const crossN = k === 'sleep' && !r.live && e.e && e.e > dayStart(addDays(e.date, 1)) ? e.e : 0;   // 다음날로 이어진 잠
   let name = (K[k] || K.memo).n, det = '';
   const dur = e.e && e.e > e.s ? durTxt((e.e - e.s) / 60000) : '', rng = dur ? `${r.t}~${hmOf(new Date(e.e))}` : '';   // 걸린 시간 (끝 시각·목욕 분이 있으면)
   let main = '', sub = [];
   if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
-  else if (k === 'sleep') { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); }
+  else if (k === 'sleep') { if (crossN) { const nd = dayStart(addDays(e.date, 1)); main = durTxt((nd - e.s) / 60000); sub.push(`${r.t}~다음날 ${hmOf(new Date(e.e))} (전체 ${dur})`); } else { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); } }
   else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
   else if (k === 'solid') { main = esc(r.amount || ''); sub = [r.menu, r.eat].filter(Boolean).map(esc); }
   else if (k === 'temp') main = `${esc(r.value)}℃`;
@@ -209,7 +216,7 @@ function pauseCard() {
     <div class="dylb"><button class="go" data-dy="resume">▶ 다시 잠들었어요</button><button data-dy="unpause" data-id="${sl.id}">✕ 그냥 깼어요</button></div></div>`;
 }
 function dayLog() {
-  const st = stats(D.date), isT = D.date === today(), L = ofDay(D.date).slice().reverse();
+  const st = stats(D.date), isT = D.date === today(), L = ofDay(D.date).concat(carryEnds(D.date)).sort((x, y) => x.s - y.s).reverse();
   let last = '';
   if (isT) {   // 오늘: 마지막 수유·기저귀·잠 (언제였는지가 제일 궁금하니까 크게)
     const now = Date.now(), A = evs().filter(e => e.s <= now), feed = A.filter(e => ['formula', 'pump', 'breast', 'solid'].includes(e.k)).pop(), dia = A.filter(e => e.k === 'diaper').pop();
