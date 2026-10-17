@@ -8,12 +8,12 @@ function fmtAt(at){const[d,t]=at.split('T');return (d===today()?'':fmtMD(d)+' ')
 const canW=()=>!(S.me&&S.me.viewer);
 let LSEL={on:false,set:new Set()};   // 수사 일지 '골라 지우기' 상태
 function logRow(l){const sel=LSEL.on,on=LSEL.set.has(l.id);
-  return `<button class="logrow${on?' sel':''}" data-act="${sel?'logsel':'editlog'}" data-id="${l.id}">${sel?`<span class="lck${on?' on':''}"><i>✓</i></span>`:''}<span class="lt">${(l.at.split('T')[1]||'').slice(0,5)}</span><span class="tag" style="background:${KCOL[l.kind]}">${KIND[l.kind]}</span><span class="lm"><b>${logMain(l)}</b>${l.site||l.memo?`<small>${esc([l.site,l.memo].filter(Boolean).join(', '))}</small>`:''}</span><span class="lb">${l.by||''}</span></button>`}
-// 날짜별로 묶어 접기 (오늘·어제만 펼침) — 계속 기록하면서 지난 날은 접어 두기
+  return `<button class="logrow${on?' sel':''}" data-act="${sel?'logsel':'editlog'}" data-id="${l.id}">${sel?`<span class="lck${on?' on':''}"><i>✓</i></span>`:''}<span class="lt">${fmtAt(l.at)}</span><span class="tag" style="background:${KCOL[l.kind]}">${KIND[l.kind]}</span><span class="lm"><b>${logMain(l)}</b>${l.site||l.memo?`<small>${esc([l.site,l.memo].filter(Boolean).join(', '))}</small>`:''}</span><span class="lb">${l.by||''}</span></button>`}
+// 월별로 묶어 접기 (이번 달만 펼침) — 계속 기록하면서 지난 달은 접어 두기 (사용자 요청 2026.10.17, 일별 → 월별)
 function logList(L){if(!L.length)return '<div class="recs"><p class="vempty">위 버튼으로 첫 기록을 남겨요.</p></div>';
-  const days=[...new Set(L.map(l=>l.at.slice(0,10)))],yd=addDays(today(),-1);
-  return days.map(d=>{const g=L.filter(l=>l.at.slice(0,10)===d),tm=g.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x));
-    return `<div class="amon${isFold('sd-'+d,d<yd)?' folded':''}"><h3 class="agh" data-fold="sd-${d}"><span>${fmtK(d)}</span><small class="rcur">${g.length}건${tm.length?` · 최고 ${Math.max(...tm)}℃`:''}</small></h3><div class="recs">${g.map(logRow).join('')}</div></div>`}).join('')}
+  const ms=[...new Set(L.map(l=>l.at.slice(0,7)))],cur=today().slice(0,7);
+  return ms.map(m=>{const g=L.filter(l=>l.at.slice(0,7)===m),tm=g.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x));
+    return `<div class="amon${isFold('sm-'+m,m!==cur)?' folded':''}"><h3 class="agh" data-fold="sm-${m}"><span>${+m.slice(0,4)}년 ${+m.slice(5)}월</span><small class="rcur">${g.length}건${tm.length?` · 최고 ${Math.max(...tm)}℃`:''}</small></h3><div class="recs">${g.map(logRow).join('')}</div></div>`}).join('')}
 const activeEp=()=>S.eps.slice().sort((a,b)=>a.start<b.start?1:-1)[0]||null;   // 사건 종결 없음 — 가장 최근 사건에 계속 이어서 기록 (2026.10.17 사용자 요청)
 const logsOf=id=>S.logs.filter(l=>l.ep===id).sort((a,b)=>a.at<b.at?1:-1);
 const KIND={temp:'체온',med:'투약',sym:'증상'};
