@@ -5,7 +5,16 @@ function nowLocal(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMon
 const tsOf=s=>new Date(s.length===10?s+'T00:00':s).getTime();
 function ago(at){const m=Math.max(0,Math.round((Date.now()-tsOf(at))/60000));if(m<1)return '방금';if(m<60)return m+'분 전';const h=Math.floor(m/60),mm=m%60;if(h<24)return h+'시간'+(mm?' '+mm+'분':'')+' 전';return Math.floor(h/24)+'일 전'}
 function fmtAt(at){const[d,t]=at.split('T');return (d===today()?'':fmtMD(d)+' ')+(t||'')}
-const activeEp=()=>S.eps.filter(e=>!e.end).sort((a,b)=>a.start<b.start?1:-1)[0]||null;
+const canW=()=>!(S.me&&S.me.viewer);
+let LSEL={on:false,set:new Set()};   // 수사 일지 '골라 지우기' 상태
+function logRow(l){const sel=LSEL.on,on=LSEL.set.has(l.id);
+  return `<button class="logrow${on?' sel':''}" data-act="${sel?'logsel':'editlog'}" data-id="${l.id}">${sel?`<span class="lck${on?' on':''}"><i>✓</i></span>`:''}<span class="lt">${(l.at.split('T')[1]||'').slice(0,5)}</span><span class="tag" style="background:${KCOL[l.kind]}">${KIND[l.kind]}</span><span class="lm"><b>${logMain(l)}</b>${l.site||l.memo?`<small>${esc([l.site,l.memo].filter(Boolean).join(', '))}</small>`:''}</span><span class="lb">${l.by||''}</span></button>`}
+// 날짜별로 묶어 접기 (오늘·어제만 펼침) — 계속 기록하면서 지난 날은 접어 두기
+function logList(L){if(!L.length)return '<div class="recs"><p class="vempty">위 버튼으로 첫 기록을 남겨요.</p></div>';
+  const days=[...new Set(L.map(l=>l.at.slice(0,10)))],yd=addDays(today(),-1);
+  return days.map(d=>{const g=L.filter(l=>l.at.slice(0,10)===d),tm=g.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x));
+    return `<div class="amon${isFold('sd-'+d,d<yd)?' folded':''}"><h3 class="agh" data-fold="sd-${d}"><span>${fmtK(d)}</span><small class="rcur">${g.length}건${tm.length?` · 최고 ${Math.max(...tm)}℃`:''}</small></h3><div class="recs">${g.map(logRow).join('')}</div></div>`}).join('')}
+const activeEp=()=>S.eps.slice().sort((a,b)=>a.start<b.start?1:-1)[0]||null;   // 사건 종결 없음 — 가장 최근 사건에 계속 이어서 기록 (2026.10.17 사용자 요청)
 const logsOf=id=>S.logs.filter(l=>l.ep===id).sort((a,b)=>a.at<b.at?1:-1);
 const KIND={temp:'체온',med:'투약',sym:'증상'};
 const KCOL={temp:'var(--red)',med:'var(--navy)',sym:'var(--muted)'};
@@ -45,8 +54,8 @@ function renderSick(){
     </article>
     <p class="notice">${warn}</p>
     <section><h2 class="sh"><span>체온 추적</span><span>점선 38℃</span></h2>${tempChart(L)}</section>
-    <section><h2 class="sh"><span>수사 일지</span><span>${L.length}건</span></h2><div class="recs">${L.length?L.map(l=>`<button class="logrow" data-act="editlog" data-id="${l.id}"><span class="lt">${fmtAt(l.at)}</span><span class="tag" style="background:${KCOL[l.kind]}">${KIND[l.kind]}</span><span class="lm"><b>${logMain(l)}</b>${l.site||l.memo?`<small>${esc([l.site,l.memo].filter(Boolean).join(', '))}</small>`:''}</span><span class="lb">${l.by||''}</span></button>`).join(''):'<p class="vempty">위 버튼으로 첫 기록을 남겨 주세요.</p>'}</div></section>
-    <button class="addperiod" data-act="closeep" data-id="${ep.id}" style="border:2px solid var(--ink)">다 나았어요, 사건 종결</button>`;
+    <section><h2 class="sh" style="align-items:center"><span>수사 일지</span><span>${L.length}건${L.length&&canW()?` <button class="ghost" data-act="logmode" style="margin-left:6px;min-height:32px;padding:0 12px">${LSEL.on?'고르기 끝':'✓ 골라 지우기'}</button>`:''}</span></h2>${logList(L)}</section>
+    ${LSEL.on?`<div class="wksel logbar"><b>${LSEL.set.size}건 골랐어요</b><button data-act="logall">모두 고르기</button><button data-act="logdelsel" class="out"${LSEL.set.size?'':' disabled'}>지우기</button></div>`:''}`;
   }else{
     top=`<article class="case"><span class="no">현재 수사 중인 사건 없음</span><h3 style="margin:4px 0 6px">건강 이상 없음</h3>
       <p style="margin:0 0 10px;font-size:13px">열이 나거나 아프기 시작하면 기록을 남겨 주세요. 새 사건 파일이 자동으로 열려요.</p>
@@ -55,9 +64,9 @@ function renderSick(){
   }
   const vs=S.visits.slice().sort((a,b)=>a.date<b.date?1:-1);
   const visits=vs.length?vs.map(v=>`<button class="visit" data-act="editvisit" data-id="${v.id}"><b>${fmtK(v.date)}${v.hospital?' '+esc(v.hospital):''}</b>${v.diag?`<span><i>진단</i> ${esc(v.diag)}</span>`:''}${v.rx?`<span><i>처방</i> ${esc(v.rx)}</span>`:''}${v.next?`<span><i>다음 진료</i> ${fmtK(v.next)}</span>`:''}${v.ask?`<span class="ask"><i style="color:var(--red)">다음에 물어볼 것</i> ${esc(v.ask)}</span>`:''}</button>`).join(''):'<p class="vempty">아직 진료 기록이 없어요.</p>';
-  const closed=S.eps.filter(e=>e.end).sort((a,b)=>a.start<b.start?1:-1);
-  const closedHtml=closed.length?'<h2 class="subh">종결된 사건</h2>'+closed.map(e=>{const L=logsOf(e.id),tm=L.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x)),mc=L.filter(l=>l.kind==='med').length;
-    return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><span class="stamp" style="font-size:16px;top:14px">해결</span><b>${esc(e.title)}</b><small>${fmtK(e.start,true)} ~ ${fmtK(e.end,true)}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
+  const closed=S.eps.filter(e=>!ep||e.id!==ep.id).sort((a,b)=>a.start<b.start?1:-1);
+  const closedHtml=closed.length?'<h2 class="subh">지난 사건</h2>'+closed.map(e=>{const L=logsOf(e.id),tm=L.filter(l=>l.kind==='temp').map(l=>+l.value).filter(x=>!isNaN(x)),mc=L.filter(l=>l.kind==='med').length;
+    return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><b>${esc(e.title)}</b><small>${fmtK(e.start,true)}${e.end?' ~ '+fmtK(e.end,true):''}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1>${sickSeg()}<p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
   ${window.CLAIM?CLAIM.entryHtml():''}

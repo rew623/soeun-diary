@@ -145,6 +145,12 @@ document.addEventListener('click',async e=>{
     const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:val('l-memo'),by:myRole(),until};
     const rl=await write('saveItem','log',o);
     if(rl){closeSheet();toast(KIND[k]+' 기록을 남겼어요');if(window.CLAIM)await CLAIM.flush('log:'+(o.id||rl.id))}break}
+  case 'logmode':{LSEL.on=!LSEL.on;LSEL.set.clear();render();break}
+  case 'logsel':{const id=a.dataset.id;LSEL.set.has(id)?LSEL.set.delete(id):LSEL.set.add(id);render();break}
+  case 'logall':{const ep=activeEp(),L=ep?logsOf(ep.id):[];if(L.every(l=>LSEL.set.has(l.id)))LSEL.set.clear();else L.forEach(l=>LSEL.set.add(l.id));render();break}
+  case 'logdelsel':{const ids=[...LSEL.set];if(!ids.length)break;if(!await ask(`고른 기록 ${ids.length}건을 지울까요?`,{ok:'지우기',danger:true}))break;
+    let n=0;for(const id of ids){toast(`지우는 중 ${n+1}/${ids.length}`);if(await write('deleteItem','log',id))n++;else break}
+    LSEL.set.clear();LSEL.on=false;render();if(n)toast(`${n}건을 지웠어요`);break}
   case 'closeep':{const e=S.eps.find(x=>x.id===a.dataset.id);if(a.dataset.confirm!=='1'){a.dataset.confirm='1';a.textContent='한 번 더 누르면 사건 종결';return}
     if(await write('saveItem','ep',Object.assign({},e,{end:today()})))toast('사건 종결! 잘 이겨냈어요');break}
   case 'viewep':viewEp(a.dataset.id);break;
