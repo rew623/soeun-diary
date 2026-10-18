@@ -42,7 +42,7 @@ function field(link, defKind, date) {
   const have = ex ? photosOf(ex) : [], cw = canWrite();
   return `<div class="field clbox"><span>📎 서류·사진 <small>(보험 청구용 · 종류는 여러 개 골라도 돼요)</small></span>
     ${have.length ? `<div class="clths">${have.map(thumb).join('')}</div>` : ''}<div class="clths" id="cl-stage">${stageHtml()}</div>
-    ${cw ? `${kindChips()}<button type="button" class="ghost cladd" data-cl="pick">＋ 사진 추가 <small>(여러 장 가능)</small></button>${amtHtml()}` : ''}</div>`;
+    ${cw ? `${kindChips()}<div class="cladds"><button type="button" class="ghost cladd" data-cl="pick">＋ 사진 선택 창 <small>(여러 장)</small></button><button type="button" class="ghost cladd" data-cl="pickf">📁 갤러리 앱·파일</button></div>${amtHtml()}` : ''}</div>`;
 }
 // 저장이 끝난 뒤: 사진·금액을 서류함의 '건'에 넣어요 (extra: 날짜·메모 같은 공통 값, 이미 있는 건이면 거기에 더해요)
 async function flush(link, extra) {
@@ -64,12 +64,15 @@ async function flush(link, extra) {
 const picker = document.createElement('input');
 picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true;   // 서류 사진은 위치가 필요 없어서 'image/*'만 → 안드로이드 사진 선택 창(여러 장을 눌러서 한 번에 고르기). octet-stream을 붙이면 파일 창이 열려 한 장씩만 골라져요(2026.10.18)
  picker.hidden = true; document.body.appendChild(picker);
-picker.addEventListener('change', async () => {
-  const fs = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = ''; if (!fs.length) return;
+const pickerF = document.createElement('input');   // 갤러리 앱·파일에서 (옛 방식: 앨범 폴더를 볼 수 있어요, 여러 장은 길게 눌러 고름)
+pickerF.type = 'file'; pickerF.accept = 'image/*,application/octet-stream'; pickerF.multiple = true; pickerF.hidden = true; document.body.appendChild(pickerF);
+const onPick = async inp => {
+  const fs = [...inp.files].filter(f => /^image\//.test(f.type)); inp.value = ''; if (!fs.length) return;
   for (const f of fs) { try { CL.stage.push({ photo: await readPhoto(f, true) }); } catch (e) { toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요'); } }
   const st = document.getElementById('cl-stage'); if (st) st.innerHTML = stageHtml();
   if (window.__app && __app.sheetDirty) __app.sheetDirty();
-});
+};
+picker.addEventListener('change', () => onPick(picker)); pickerF.addEventListener('change', () => onPick(pickerF));
 document.addEventListener('input', e => {
   const id = e.target && e.target.id; if (id !== 'cl-hosp' && id !== 'cl-drug') return;
   CL[id === 'cl-hosp' ? 'hosp' : 'drug'] = e.target.value; const s = document.getElementById('cl-sum'); if (s) s.textContent = sumTxt();
@@ -93,7 +96,7 @@ function openEdit(id) {
   openSheet(`<h3>${icons(d)} 서류 ${cw ? '고치기' : '보기'}</h3>
     ${linkLabel(d.link) ? `<p class="hint" style="margin:0 0 8px">📌 ${esc(linkLabel(d.link))}에 붙은 서류</p>` : ''}
     <div class="clths">${ph.map(p => `<span class="clthw">${thumb(p)}${cw ? `<button type="button" class="clx" data-cl="rmp" data-id="${esc(p.id)}" aria-label="사진 빼기">✕</button>` : ''}</span>`).join('') || '<small style="color:var(--muted)">사진이 아직 없어요</small>'}<span class="clths" id="cl-stage" style="margin:0">${stageHtml()}</span></div>
-    ${cw ? `<button type="button" class="ghost cladd" data-cl="pick" style="margin-bottom:8px">＋ 사진 더하기</button>` : ''}
+    ${cw ? `<div class="cladds" style="margin-bottom:8px"><button type="button" class="ghost cladd" data-cl="pick">＋ 사진 선택 창 <small>(여러 장)</small></button><button type="button" class="ghost cladd" data-cl="pickf">📁 갤러리 앱·파일</button></div>` : ''}
     <div class="field"><span>종류 <small>(여러 개 골라도 돼요)</small></span>${kindChips()}</div>
     <label class="field"><span>날짜</span><input id="cl-date" type="date" value="${d.date}"></label>
     <div class="field"><span>금액</span>${amtHtml()}</div>
@@ -160,6 +163,7 @@ const entryHtml = () => { const L = heads(), m = L.filter(d => !d.claim || d.cla
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-cl]'); if (!b) return; const a = b.dataset.cl, v = b.dataset.v, id = b.dataset.id;
   if (a === 'pick') { picker.click(); return; }
+  if (a === 'pickf') { pickerF.click(); return; }
   if (a === 'kind') { CL.kinds.has(v) ? CL.kinds.delete(v) : CL.kinds.add(v); b.classList.toggle('on', CL.kinds.has(v)); if (window.__app && __app.sheetDirty) __app.sheetDirty(); return; }
   if (a === 'rm') { CL.stage.splice(+b.dataset.i, 1); const s1 = document.getElementById('cl-stage'); if (s1) s1.innerHTML = stageHtml(); return; }
   if (a === 'rmp') { if (await ask('이 사진을 건에서 뺄까요?', { ok: '빼기', danger: true }) && await write('deleteItem', 'doc', id)) { delete PHOTOS[id]; openEdit(CL.head); } return; }
@@ -203,7 +207,7 @@ css.textContent = `
 .clth{position:relative;width:68px;height:68px;border-radius:12px;border:1.5px solid var(--line);background:var(--card2);padding:0;overflow:hidden;display:grid;place-items:center}.clth img{width:100%;height:100%;object-fit:cover;display:block}
 .clth>button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:11px;padding:0}
 .clthw{position:relative;display:inline-block}.clthw .clx{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:12px;padding:0;z-index:1}
-.cladd{width:100%;min-height:44px;margin-top:4px}.cladd small{color:var(--muted)}
+.cladds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}.cladd{width:100%;min-height:44px;margin-top:0;font-size:13.5px;padding:0 8px}.cladd small{color:var(--muted)}
 .clamt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.clamt label{display:block}.clamt span{display:block;font-size:12.5px;color:var(--navy);margin-bottom:2px}
 #cl-lb{position:fixed;inset:0;z-index:85;background:rgba(15,20,35,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}#cl-lb[hidden]{display:none}
 #cl-lb img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:10px}#cl-lb p{color:#fff;font-size:14px;margin:0}#cl-lb button{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:14px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.2);color:#fff;font-size:18px}
