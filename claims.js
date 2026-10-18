@@ -62,7 +62,8 @@ async function flush(link, extra) {
   return n || 1;
 }
 const picker = document.createElement('input');
-picker.type = 'file'; picker.accept = 'image/*,application/octet-stream'; picker.multiple = true; picker.hidden = true; document.body.appendChild(picker);
+picker.type = 'file'; picker.accept = 'image/*'; picker.multiple = true;   // 서류 사진은 위치가 필요 없어서 'image/*'만 → 안드로이드 사진 선택 창(여러 장을 눌러서 한 번에 고르기). octet-stream을 붙이면 파일 창이 열려 한 장씩만 골라져요(2026.10.18)
+ picker.hidden = true; document.body.appendChild(picker);
 picker.addEventListener('change', async () => {
   const fs = [...picker.files].filter(f => /^image\//.test(f.type)); picker.value = ''; if (!fs.length) return;
   for (const f of fs) { try { CL.stage.push({ photo: await readPhoto(f, true) }); } catch (e) { toast('사진을 읽지 못했어요. 다른 사진으로 해 주세요'); } }
