@@ -142,10 +142,11 @@ document.addEventListener('click',async e=>{
     if(ep){const e0=S.eps.find(x=>x.id===ep),nt=val('l-ep');if(e0&&nt&&nt!==e0.title&&!await write('saveItem','ep',Object.assign({},e0,{title:nt})))return}   // 사건 이름을 바꿨으면 사건도 같이
     if(!ep){const r0=await write('saveItem','ep',{title:val('l-ep')||'건강 관리',start:d,end:'',memo:''});if(!r0)return;ep=r0.id}
     const site=$sheet.querySelector('#l-site .on');
-    let until='';if(k==='sym'){const ut=val('l-until');if(/^\d\d:\d\d$/.test(ut)){let ud=d;if(ut<t){const n=new Date(d+'T00:00:00');n.setDate(n.getDate()+1);ud=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')}until=ud+'T'+ut}}   // 완료 시각이 시작보다 이르면 다음 날
+    let until='';if(k==='sym'){const ut=val('l-until'),ud=val('l-until-d')||d;if(/^\d\d:\d\d$/.test(ut)){until=ud+'T'+ut;if(until<d+'T'+t)return err('l-err','완료가 시작보다 빨라요. 완료 날짜·시각을 확인해 주세요')}}   // 완료 날짜를 따로 고를 수 있어요 (2026.10.18)
     const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:val('l-memo'),by:myRole(),until};
     const rl=await write('saveItem','log',o);
     if(rl){closeSheet();toast(KIND[k]+' 기록을 남겼어요');if(window.CLAIM)await CLAIM.flush('log:'+(o.id||rl.id))}break}
+  case 'untilnow':{const el=document.getElementById('l-until-d');if(el)el.value=today();break}
   case 'logmode':{LSEL.on=!LSEL.on;LSEL.set.clear();render();break}
   case 'logsel':{const id=a.dataset.id;LSEL.set.has(id)?LSEL.set.delete(id):LSEL.set.add(id);render();break}
   case 'logall':{const ep=activeEp(),L=ep?logsOf(ep.id):[];if(L.every(l=>LSEL.set.has(l.id)))LSEL.set.clear();else L.forEach(l=>LSEL.set.add(l.id));render();break}

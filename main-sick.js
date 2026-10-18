@@ -8,7 +8,7 @@ function fmtAt(at){const[d,t]=at.split('T');return (d===today()?'':fmtMD(d)+' ')
 const canW=()=>!(S.me&&S.me.viewer);
 let LSEL={on:false,set:new Set()};   // 수사 일지 '골라 지우기' 상태
 function logRow(l){const sel=LSEL.on,on=LSEL.set.has(l.id);
-  return `<button class="logrow${on?' sel':''}" data-act="${sel?'logsel':'editlog'}" data-id="${l.id}">${sel?`<span class="lck${on?' on':''}"><i>✓</i></span>`:''}<span class="lt">${fmtAt(l.at)}</span><span class="tag" style="background:${KCOL[l.kind]}">${KIND[l.kind]}</span><span class="lm"><b>${logMain(l)}</b>${l.site||l.memo?`<small>${esc([l.site,l.memo].filter(Boolean).join(', '))}</small>`:''}</span><span class="lb">${l.by||''}</span></button>`}
+  return `<button class="logrow${on?' sel':''}" data-act="${sel?'logsel':'editlog'}" data-id="${l.id}">${sel?`<span class="lck${on?' on':''}"><i>✓</i></span>`:''}<span class="lt">${fmtAt(l.at)}${untilLt(l)}</span><span class="tag" style="background:${KCOL[l.kind]}">${KIND[l.kind]}</span><span class="lm"><b>${logMain(l)}</b>${l.site||l.memo?`<small>${esc([l.site,l.memo].filter(Boolean).join(', '))}</small>`:''}</span><span class="lb">${l.by||''}</span></button>`}
 // 월별로 묶어 접기 (이번 달만 펼침) — 계속 기록하면서 지난 달은 접어 두기 (사용자 요청 2026.10.17, 일별 → 월별)
 function logList(L){if(!L.length)return '<div class="recs"><p class="vempty">위 버튼으로 첫 기록을 남겨요.</p></div>';
   const ms=[...new Set(L.map(l=>l.at.slice(0,7)))],cur=today().slice(0,7);
@@ -19,7 +19,9 @@ const logsOf=id=>S.logs.filter(l=>l.ep===id).sort((a,b)=>a.at<b.at?1:-1);
 const KIND={temp:'체온',med:'투약',sym:'증상'};
 const KCOL={temp:'var(--red)',med:'var(--navy)',sym:'var(--muted)'};
 const SITES=['귀','겨드랑이','이마','항문'],SYMS=['콧물','기침','구토','설사','발진','보챔','수유량 감소','처짐'];
-function untilTxt(l){if(l.kind!=='sym'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(l.until||''))return '';const[d,t]=l.until.split('T'),m=Math.round((new Date(l.until)-new Date(l.at))/60000),dur=m>0?(m>=60?Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':''):m+'분'):'';return ` <small>→ 완료 ${d===l.at.slice(0,10)?'':fmtMD(d)+' '}${t.slice(0,5)}${dur?' ('+dur+')':''}</small>`}   // 증상 완료 시각 (2026.10.17)
+const hasUntil=l=>l.kind==='sym'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(l.until||'');
+function untilTxt(l){if(!hasUntil(l))return '';const m=Math.round((new Date(l.until)-new Date(l.at))/60000);if(!(m>0))return '';return ` <small>(${m>=60?Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':''):m+'분'})</small>`}   // 증상 걸린 시간 (2026.10.17)
+function untilLt(l){if(!hasUntil(l))return '';const[d,t]=l.until.split('T');return `<br><small class="lu">→ ${d===l.at.slice(0,10)?'':fmtMD(d)+' '}${t.slice(0,5)}</small>`}   // 왼쪽 날짜 칸 아래에 끝난 때
 function logMain(l){return l.kind==='temp'?`${l.value}℃`:l.kind==='med'?`${esc(l.value)}${l.dose?' '+esc(l.dose):''}`:esc(l.value)+untilTxt(l)}
 function tempChart(logs){
   const ts=logs.filter(l=>l.kind==='temp'&&!isNaN(+l.value)).map(l=>({t:tsOf(l.at),v:+l.value})).sort((a,b)=>a.t-b.t);
@@ -94,7 +96,7 @@ function openLog(kind,id){
     ${body}
     <label class="field"><span>날짜</span><input id="l-date" type="date" value="${d0}"></label>
     <div class="dytpr${kind==='sym'?'':' one'}"><div class="field"><span>${kind==='sym'?'시작 시각':'시각'}</span>${window.DAY&&DAY.tpick?DAY.tpick('l-time',t0||''):`<input id="l-time" type="time" value="${t0||''}">`}</div>
-    ${kind==='sym'?`<div class="field"><span>완료 시각 <small>(선택)</small></span>${window.DAY&&DAY.tpick?DAY.tpick('l-until',l&&l.until?l.until.slice(11,16):'',true):''}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-t="l-until">지금 나았어요</button><button type="button" class="ghost" data-dy="tpx" data-t="l-until">비우기</button></div></div>`:''}</div>
+    ${kind==='sym'?`<div class="field"><span>완료 날짜·시각 <small>(선택)</small></span><input id="l-until-d" type="date" value="${l&&l.until?l.until.slice(0,10):d0}" style="margin-bottom:6px">${window.DAY&&DAY.tpick?DAY.tpick('l-until',l&&l.until?l.until.slice(11,16):'',true):''}<div class="dytpq"><button type="button" class="ghost" data-dy="now" data-act="untilnow" data-t="l-until">지금 나았어요</button><button type="button" class="ghost" data-dy="tpx" data-t="l-until">비우기</button></div></div>`:''}</div>
     <label class="field"><span>메모 (선택)</span><input id="l-memo" maxlength="100" value="${esc(l?l.memo:'')}" placeholder="예: 보채고 수유량 줄어듦"></label>
     ${window.CLAIM?CLAIM.field(l?'log:'+l.id:'',kind==='med'?'약봉지':kind==='sym'?'증상사진':'기타',d0):''}
     <p class="err" id="l-err"></p>
