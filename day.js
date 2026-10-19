@@ -171,7 +171,8 @@ function line(e) {
   let main = '', sub = [], ext = [];
   if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) sub.push(`⏱ ${dur} (${rng})`); }
-  else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; main = r.poo ? [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ') : ''; }
+  else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; const pAmt = r.pee && r.pa ? (AMT[r.pa] || r.pa) : '', cAmt = [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ');
+    main = r.pee && r.poo ? [pAmt ? '소변 ' + pAmt : '', cAmt ? '대변 ' + cAmt : ''].filter(Boolean).join(' · ') : r.poo ? cAmt : pAmt; }   // 소변도 양 (2026.10.19)
   else if (k === 'sleep') { if (crossN) { const nd = dayStart(addDays(e.date, 1)); main = durTxt((nd - e.s) / 60000); sub.push(`${r.t}~다음날 ${hmOf(new Date(e.e))} (전체 ${dur})`); } else { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); } }
   else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
   else if (k === 'walk') { const kd = window.WALK ? WALK.kindOf(r.kind) : ['walk', '🚶', '산책'], m = window.WALK ? Math.round(WALK.km(r)) : 0; name = `${kd[2]}`; main = esc(r.title || r.place || ''); if (dur) sub.push(`⏱ ${dur} (${rng})`); if (m) ext.push(m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`); }
@@ -375,6 +376,7 @@ function openForm(k, c) {
       ${c ? '' : '<button type="button" class="ghost dytimer" data-dy="timer" data-k="breast">⏱ 타이머로 재기 (지금 왼쪽부터)</button>'}`;
   } else if (k === 'diaper') {
     body = `<div class="field"><span>무엇인가요?</span><div class="quick dymulti" id="dy-pp"><button type="button" data-dy="pp" data-v="pee" class="${F.pee ? 'on' : ''}">💧 소변</button><button type="button" data-dy="pp" data-v="poo" class="${F.poo ? 'on' : ''}">💩 대변</button></div></div>
+      <div class="field dypee"><span>소변이면 양</span><div class="quick" id="dy-pa">${['조금', '보통', '많이'].map(x => `<button type="button" data-act="pick1" data-v="${x}" class="${c && c.pa === x ? 'on' : ''}">${x}</button>`).join('')}</div></div>
       <div class="field dypoo"><span>대변이면 양</span><div class="quick" id="dy-amt">${['조금', '보통', '많이'].map(x => `<button type="button" data-act="pick1" data-v="${x}" class="${c && c.amt === x ? 'on' : ''}">${x}</button>`).join('')}</div></div>
       <div class="field dypoo"><span>상태</span><div class="quick" id="dy-st">${['묽음', '보통', '단단', '설사'].map(x => `<button type="button" data-act="pick1" data-v="${x}" class="${c && c.st === x ? 'on' : ''}">${x}</button>`).join('')}</div></div>`;
   } else if (k === 'sleep') {
@@ -422,7 +424,7 @@ document.addEventListener('input', e => {
   if (el.dataset.u === 'h' && el.value.length === 2) mi.focus();
 });
 document.addEventListener('focusout', e => { const el = e.target; if (el.classList && el.classList.contains('dytpi') && el.value !== '') el.value = p2(Math.min(el.dataset.u === 'h' ? 23 : 59, +el.value)); });
-function pooSync() { document.querySelectorAll('#sheet .dypoo').forEach(x => x.classList.toggle('off', !F.poo)); }
+function pooSync() { document.querySelectorAll('#sheet .dypoo').forEach(x => x.classList.toggle('off', !F.poo)); document.querySelectorAll('#sheet .dypee').forEach(x => x.classList.toggle('off', !F.pee)); }
 // 놀아주기 종류: 이 폰에 목록 저장(localStorage soeun-play-types), 기록에는 고른 이름이 그대로 들어가요 (사용자 요청 2026.10.17)
 const PLAY0 = ['터미타임', '아기체육관', '타이니모빌', '책 읽기', '노래·율동', '까꿍 놀이'];
 const playTypes = () => { try { const v = JSON.parse(localStorage.getItem('soeun-play-types') || 'null'); if (Array.isArray(v)) return v.filter(x => typeof x === 'string' && x).slice(0, 40); } catch (e) {} return PLAY0.slice(); };
@@ -440,7 +442,7 @@ function grab() {
   const it = { id: F.id, k: F.k, t: m[2], e: /^\d\d:\d\d/.test(v('dy-e')) ? v('dy-e').slice(0, 5) : '', memo: v('dy-memo'), live: F.live, side: F.side, seg: F.seg, at: F.at || Date.now() };
   if (F.k === 'formula' || F.k === 'pump') { it.ml = num(v('dy-ml')); if (!it.ml) return { err: '양(ml)을 적어 주세요' }; }
   if (F.k === 'breast') { it.l = num(v('dy-l')); it.r = num(v('dy-r')); }
-  if (F.k === 'diaper') { if (!F.pee && !F.poo) return { err: '소변·대변 중 하나는 골라 주세요' }; it.pee = F.pee; it.poo = F.poo; const a = document.querySelector('#dy-amt .on'), s = document.querySelector('#dy-st .on'); it.amt = F.poo && a ? a.dataset.v : ''; it.st = F.poo && s ? s.dataset.v : ''; }
+  if (F.k === 'diaper') { if (!F.pee && !F.poo) return { err: '소변·대변 중 하나는 골라 주세요' }; it.pee = F.pee; it.poo = F.poo; const a = document.querySelector('#dy-amt .on'), s = document.querySelector('#dy-st .on'); it.amt = F.poo && a ? a.dataset.v : ''; it.st = F.poo && s ? s.dataset.v : ''; const pa = document.querySelector('#dy-pa .on'); it.pa = F.pee && pa ? pa.dataset.v : ''; }
   if (F.k === 'bath') it.dur = it.e ? (msOf('2000-01-01', it.e) - msOf('2000-01-01', it.t) + 864e5) % 864e5 / 60000 : 0;   // 끝난 시각이 있으면 걸린 시간(분)은 거기서
   if (F.k === 'play') it.what = plSel().join(',');
   if (F.k === 'memo' && !it.memo) return { err: '메모를 적어 주세요' };
@@ -471,7 +473,7 @@ async function quickAdd(k, btn) {
   const last = (S.cares || []).filter(c => c.k === k && !c.live).sort((a, b) => (b.date + b.t).localeCompare(a.date + a.t))[0];
   if (k === 'memo' || k === 'play' || !last) { openForm(k, null); return; }
   const now = new Date(), it = { id: newCid(), k, t: hmOf(now), e: '', memo: '', live: 0, at: Date.now() };
-  ['ml', 'l', 'r', 'dur', 'pee', 'poo', 'amt', 'st'].forEach(x => { if (last[x] != null && last[x] !== '') it[x] = last[x]; });
+  ['ml', 'l', 'r', 'dur', 'pee', 'poo', 'amt', 'st', 'pa'].forEach(x => { if (last[x] != null && last[x] !== '') it[x] = last[x]; });
   if (/^\d\d:\d\d$/.test(last.e || '') && k !== 'breast') { const d = (msOf('2000-01-01', last.e) - msOf('2000-01-01', last.t) + 864e5) % 864e5; if (d && d < 4 * 36e5) it.e = hmOf(new Date(now.getTime() + d)); }   // 걸린 시간도 최근과 같게 (끝 시각 = 지금 + 그만큼)
   if (k === 'bath' && !it.e && +it.dur) it.e = hmOf(new Date(now.getTime() + it.dur * 60000));
   if (btn) btn.disabled = true;
@@ -850,7 +852,7 @@ css.textContent = `
 .dymulti button{min-height:46px;font-size:15px;padding:0 18px}
 .dypl{flex-wrap:wrap;gap:6px}.dypl .dyplc{position:relative;display:inline-flex}.dypl .dyplc button{min-height:40px;font-size:14px;padding:0 14px}.dypl .dyplc i{display:none;position:absolute;top:-7px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font-style:normal;font-size:12px;line-height:22px;text-align:center}#dy-plw.edit .dyplc i{display:block}
 .dyplad{display:flex;gap:6px;margin-top:10px}.dyplad input{flex:1;min-width:0;min-height:40px;border:1.5px solid var(--line);border-radius:12px;padding:0 10px;font-size:14px}.dyplad button{min-height:40px;padding:0 12px;font-size:13px;white-space:nowrap}
-.dypoo.off{opacity:.4;pointer-events:none}
+.dypoo.off,.dypee.off{opacity:.4;pointer-events:none}
 .dyamt.sm input{width:90px;font-size:42px}.dyamt.sm small{font-size:18px}`;
 document.head.appendChild(css);
 window.DAY = { render: render_, afterRender, summary, stats, tpick, open: (k) => { S.tab = 'day'; S.view = ''; render(); if (k) openForm(k, null); } };
