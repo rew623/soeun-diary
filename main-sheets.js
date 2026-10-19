@@ -131,7 +131,8 @@ document.addEventListener('click',async e=>{
   case 'log':openLog(a.dataset.v,null);break;
   case 'editlog':openLog(null,a.dataset.id);break;
   case 'tstep':{const el=document.getElementById('l-val');const v=Math.round(((parseFloat(el.value)||37)+ +a.dataset.v)*10)/10;el.value=v.toFixed(1);break}
-  case 'pick1':a.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===a));break;
+  case 'pick1':{const was=a.classList.contains('on'),opt=['dy-pa','dy-amt','dy-st'].includes(a.parentElement.id);   // 양·상태 칩은 한 번 더 누르면 풀림 (2026.10.20)
+    a.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===a&&!(opt&&was)));if(opt)a.blur();break}
   case 'fill':document.getElementById(a.dataset.t).value=a.dataset.v;break;
   case 'addsym':{const el=document.getElementById('l-val');el.value=el.value?el.value+', '+a.dataset.v:a.dataset.v;break}
   case 'savelog':{const k=a.dataset.k,v=val('l-val'),d=val('l-date'),t=val('l-time');
