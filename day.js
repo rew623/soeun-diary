@@ -172,7 +172,8 @@ function line(e) {
   if (k === 'formula' || k === 'pump') { main = r.ml ? `${r.ml}ml` : ''; if (dur) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'breast') { main = r.live ? `<b data-el="${e.id}"></b>` : [r.l ? `왼 ${Math.round(r.l)}분` : '', r.r ? `오 ${Math.round(r.r)}분` : ''].filter(Boolean).join(' · '); if (dur && !r.live) sub.push(`⏱ ${dur} (${rng})`); }
   else if (k === 'diaper') { name = [r.pee ? '소변' : '', r.poo ? '대변' : ''].filter(Boolean).join('·') || '기저귀'; const pAmt = r.pee && r.pa ? (AMT[r.pa] || r.pa) : '', cAmt = [AMT[r.amt] || r.amt, STT[r.st] || r.st].filter(Boolean).join(' · ');
-    main = r.pee && r.poo ? [pAmt ? '소변 ' + pAmt : '', cAmt ? '대변 ' + cAmt : ''].filter(Boolean).join(' · ') : r.poo ? cAmt : pAmt; }   // 소변도 양 (2026.10.19)
+    if (r.pee && r.poo) { const both = [pAmt ? '소변 ' + pAmt : '', cAmt ? '대변 ' + cAmt : ''].filter(Boolean).join(' · '); if (both) sub.push(both); }   // 소변·대변을 같이 남기면 긴 설명은 아랫줄로 (제목 줄 밖으로 튀어나가지 않게, 2026.10.21)
+    else main = r.poo ? cAmt : pAmt; }
   else if (k === 'sleep') { if (crossN) { const nd = dayStart(addDays(e.date, 1)); main = durTxt((nd - e.s) / 60000); sub.push(`${r.t}~다음날 ${hmOf(new Date(e.e))} (전체 ${dur})`); } else { main = r.live ? `자는 중 <b data-el="${e.id}"></b>` : dur; if (dur && !r.live) sub.push(rng); } }
   else if (k === 'bath') { main = dur || (r.dur ? `${r.dur}분` : ''); if (dur) sub.push(rng); }
   else if (k === 'walk') { const kd = window.WALK ? WALK.kindOf(r.kind) : ['walk', '🚶', '산책'], m = window.WALK ? Math.round(WALK.km(r)) : 0; name = `${kd[2]}`; main = esc(r.title || r.place || ''); if (dur) sub.push(`⏱ ${dur} (${rng})`); if (m) ext.push(m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`); }
@@ -186,7 +187,7 @@ function line(e) {
   const act = e.src === 'walk' ? `data-dy="editwalk" data-id="${e.id}"` : e.src === 'care' ? `data-dy="edit" data-id="${e.id}"` : e.src === 'meal' ? `data-act="editmeal" data-id="${e.id}"` : `data-dy="editlog" data-id="${e.id}"`;
   const ik = k === 'diaper' ? (r.poo ? 'poo' : 'pee') : k;
   if (memo) sub.push(esc(memo)); if (r.by) (e.src === 'walk' ? ext : sub).push(`<em>${esc(r.by)}</em>`);
-  return `<button class="dyrow${k === 'diaper' && r.poo ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}${e.src === 'walk' && ext.length ? `<small>${ext.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
+  return `<button class="dyrow${k === 'diaper' && r.poo && !r.pee ? ' dpoo' : ''}${r.live ? ' live' : ''}${D.flash === e.id ? ' flash' : ''}" ${act} style="--c:${dot}"><span class="dyt">${e.t}${e.guess ? '<small>쯤</small>' : ''}</span><span class="dyib">${ICO(ik, 26)}</span><span class="dyb"><b>${name}${main ? ` <u>${main}</u>` : ''}</b>${sub.length ? `<small>${sub.join(' · ')}</small>` : ''}${e.src === 'walk' && ext.length ? `<small>${ext.join(' · ')}</small>` : ''}</span><i>›</i></button>`;
 }
 
 // ---------- 화면 ----------
