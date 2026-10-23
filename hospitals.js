@@ -4,7 +4,9 @@
 (function () {
 const DEF_REGIONS = [{ code: 'wonju', name: '원주시', lat: 37.3422, lng: 127.9202 }];   // regions.json을 못 받았을 때
 const REGK = 'soeun-hosp-region';                                                       // 마지막으로 본 시·군 (이 폰에만)
-const DEPTS = ['소아청소년과', '이비인후과', '내과', '가정의학과', '피부과', '안과'];
+const DEPTS = ['소아청소년과', '이비인후과', '내과', '가정의학과', '피부과', '안과', '정형외과'];
+// 정형외과는 서버 자료(data/h-*.json)에 진료과목이 새로 받아지기 전까진 병원 이름으로도 알아봐요 (2026.10.23)
+const deptsOf = h => { const d = h.depts || []; return d.includes('정형외과') || !/정형외과/.test(h.name || '') ? d : d.concat('정형외과'); };
 const DAYN = ['', '월', '화', '수', '목', '금', '토', '일', '공휴일'];
 // 공휴일 (대체공휴일·선거일 포함). 정부 발표로 바뀌면 여기만 고치면 돼요
 const HOLI = new Set([
@@ -57,7 +59,7 @@ function visible(n, fav) {
   return (H.list || []).filter(h => {
     if (!!h.ph !== ph) return false;
     if (!ph && H.preset === 'ernight' && !(h.er || night(h))) return false;
-    if (!ph && H.dept && !(h.depts || []).includes(H.dept)) return false;
+    if (!ph && H.dept && !deptsOf(h).includes(H.dept)) return false;
     if (f.now && !(h.er || status(h, n).k === 'open')) return false;
     if (f.sat && !h.t[6]) return false;
     if (f.sun && !h.t[7]) return false;
@@ -218,7 +220,7 @@ function card(h, n, fav, vm, isSel) {
   const dd = kmText(dist(h)), tel = String(h.tel || '').replace(/[^0-9+]/g, '');
   const rows = [1, 2, 3, 4, 5, 6, 7, 8].map(i => `<tr class="${i === n.idx ? 'today' : ''}"><td>${DAYN[i]}</td><td>${spanText(spanOf(h, i))}</td></tr>`).join('');
   const notes = [['점심', f.lunch], ['예약', h.ph ? '' : f.reserve], ['메모', f.memo]].filter(x => x[1]);
-  const depts = (h.depts || []).filter(d => DEPTS.includes(d));
+  const depts = deptsOf(h).filter(d => DEPTS.includes(d));
   return `<article class="hcard${f.star ? ' fav' : ''}${isSel ? ' sel' : ''}" ${isSel ? 'id="hsel"' : ''}>
     <div class="htop"><div style="min-width:0"><b class="hname">${esc(h.name)}</b><small>${esc(h.kind)}${dd ? ' · ' + dd : ''}${depts.length ? ' · ' + esc(depts.join(', ')) : ''}</small></div>
       <button class="hstar${f.star ? ' on' : ''}" data-h="star" data-id="${esc(h.hpid)}" aria-pressed="${f.star ? 'true' : 'false'}" aria-label="관심 ${h.ph ? '약국' : '병원'}">${f.star ? '★' : '☆'}</button></div>

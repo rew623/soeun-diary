@@ -4,7 +4,7 @@ import { all, allRegion, times, coords, save, REGIONS, regionOf, dataFile } from
 
 const BASE = 'https://apis.data.go.kr/B552657/HsptlAsembySearchService/getHsptlMdcncListInfoInqire';
 // 남길 진료과목 (목록 응답에 진료과목이 없으면 QD 코드로 따로 물어봐요)
-const DEPTS = { '소아청소년과': 'D002', '이비인후과': 'D013', '내과': 'D001', '가정의학과': 'D022', '피부과': 'D005', '안과': 'D012' };
+const DEPTS = { '소아청소년과': 'D002', '이비인후과': 'D013', '내과': 'D001', '가정의학과': 'D022', '피부과': 'D005', '안과': 'D012', '정형외과': 'D008' };
 
 const { Q0, rows } = await allRegion(BASE, '');
 if (!rows.length) { console.error('강원 병원이 한 곳도 오지 않았어요. 기존 파일은 그대로 둬요'); process.exit(1); }
