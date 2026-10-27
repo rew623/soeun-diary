@@ -12,7 +12,7 @@ const K = {
   pump: { n: '유축수유', i: '🍶', c: '#7b52d6' },
   solid: { n: '이유식', i: '🥣', c: '#4a9614' },
   pee: { n: '소변', i: '💧', c: '#2a78d6' },
-  poo: { n: '대변', i: '💩', c: '#b36a00' },
+  poo: { n: '대변', i: '💩', c: '#6b3f1d' },   // 찐한 갈색 — 놀아주기(금색)·분유(주황)와 안 헷갈리게 (2026.10.27)
   sleep: { n: '수면', i: '😴', c: '#3f4cc0' },
   bath: { n: '목욕', i: '🛁', c: '#11958a' },
   memo: { n: '메모', i: '📝', c: '#8a7a55' },
@@ -31,7 +31,7 @@ const ICON = {
   pump: `<rect x="10.5" y="7.5" width="11" height="5" rx="2" fill="#B79BEF" ${SL}/><rect x="8.5" y="12" width="15" height="16" rx="4.5" fill="#FFFDF7" ${SL}/><path d="M9.3 19h13.4v4.6a3.8 3.8 0 0 1-3.8 3.8h-5.8a3.8 3.8 0 0 1-3.8-3.8z" fill="#EADFFF"/>${FACE(16, 18)}`,
   solid: `<path d="M21 13.5 27 5" stroke="#B8935A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="27.3" cy="4.6" rx="1.8" ry="2.3" fill="#E7CFA0" ${SL}/><path d="M4.5 14.5h23c0 7.2-5 12-11.5 12s-11.5-4.8-11.5-12z" fill="#A8DA74" ${SL}/><ellipse cx="16" cy="14.5" rx="11.5" ry="2.6" fill="#FFF2C9" ${SL}/>${FACE(16, 19.5)}`,
   pee: `<path d="M16 3.5C14 7 7.5 14 7.5 19.5a8.5 8.5 0 0 0 17 0C24.5 14 18 7 16 3.5z" fill="#9CCBFF" ${SL}/><path d="M11.6 15.5q1-2.6 2.6-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>${FACE(16, 20)}`,
-  poo: `<path d="M16 5.5q4.2 1.6 2 5.4" fill="none" ${SL} stroke-linecap="round"/><ellipse cx="16" cy="24" rx="11" ry="4.6" fill="#C9935A" ${SL}/><ellipse cx="16" cy="18.2" rx="8" ry="4.2" fill="#D6A26A" ${SL}/><ellipse cx="16" cy="12.6" rx="5.3" ry="3.4" fill="#E0B07A" ${SL}/>${FACE(16, 18.3)}`,
+  poo: `<path d="M16 5.5q4.2 1.6 2 5.4" fill="none" ${SL} stroke-linecap="round"/><ellipse cx="16" cy="24" rx="11" ry="4.6" fill="#9A6234" ${SL}/><ellipse cx="16" cy="18.2" rx="8" ry="4.2" fill="#AD7440" ${SL}/><ellipse cx="16" cy="12.6" rx="5.3" ry="3.4" fill="#C08650" ${SL}/>${FACE(16, 18.3)}`,
   sleep: `<path d="M19.5 4.5a11.5 11.5 0 1 0 8 18.5 9 9 0 0 1-8-18.5z" fill="#FFD86B" ${SL}/><path d="M9.6 17.3q1.4 1.2 2.8 0M15.4 17.3q1.4 1.2 2.8 0" fill="none" ${SL} stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><circle cx="9.3" cy="20.2" r="1.3"/><circle cx="18.5" cy="20.2" r="1.3"/></g><path d="M23 6.5h4l-4 4.4h4" fill="none" stroke="#5B6BD6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`,
   bath: `<circle cx="9" cy="8.5" r="2.3" fill="#DDF3FF" ${SL}/><circle cx="13.5" cy="5.5" r="1.6" fill="#DDF3FF" ${SL}/><ellipse cx="22" cy="12.6" rx="4.2" ry="3.2" fill="#FFD84D" ${SL}/><circle cx="24" cy="9.3" r="2.6" fill="#FFD84D" ${SL}/><path d="M26.3 9.6l2.3.4-2.1 1z" fill="#F49A4A"/><circle cx="24.6" cy="8.8" r=".7" fill="${IK}"/><path d="M3.5 15h25v2.5c0 5.5-4.2 9-9 9h-7c-4.8 0-9-3.5-9-9z" fill="#FFFDF7" ${SL}/><path d="M4.2 17.3h23.6" stroke="#7FD3CB" stroke-width="2.2"/>${FACE(16, 21.3)}`,
   walk: `<ellipse cx="16" cy="21" rx="7.2" ry="5.8" fill="#8FD19E" ${SL}/><ellipse cx="7.5" cy="14" rx="2.6" ry="3.3" fill="#8FD19E" ${SL} transform="rotate(-20 7.5 14)"/><ellipse cx="12.5" cy="8.5" rx="2.7" ry="3.5" fill="#8FD19E" ${SL}/><ellipse cx="19.5" cy="8.5" rx="2.7" ry="3.5" fill="#8FD19E" ${SL}/><ellipse cx="24.5" cy="14" rx="2.6" ry="3.3" fill="#8FD19E" ${SL} transform="rotate(20 24.5 14)"/>`,
