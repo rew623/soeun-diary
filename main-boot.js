@@ -75,3 +75,18 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
     try{staySave()}catch(x){}setTimeout(()=>location.reload(),150)};
   document.addEventListener('touchend',end);document.addEventListener('touchcancel',()=>{p=null;show(0,'')});
 })();
+// ---------- 맨 위로 가는 단추 (사용자 요청 2026.10.29): 500px 넘게 내리면 오른쪽 아래에 떠요, '+ 사진 올리기' 같은 떠 있는 단추가 있으면 그 바로 위 ----------
+(()=>{
+  const b=document.createElement('button');b.className='totop';b.type='button';b.setAttribute('aria-label','맨 위로');b.hidden=true;b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 19V6M6 11.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(b);
+  const st=document.createElement('style');
+  st.textContent=`.totop{position:fixed;right:max(20px,calc(50% - 260px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:7;width:44px;height:44px;border-radius:50%;border:2px solid var(--navy);background:var(--card);color:var(--navy);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(31,42,68,.25)}.totop[hidden]{display:none}.totop:active{transform:translateY(2px);box-shadow:none}html.shopen .totop,html.wk-open .totop,html.lb-open .totop,html.pk-open .totop,html.fpk-open .totop{display:none}`;
+  document.head.appendChild(st);
+  let raf=0;
+  const upd=()=>{raf=0;const show=window.scrollY>500&&S.mode==='ok';b.hidden=!show;if(!show)return;
+    const f=document.querySelector('.fab:not([hidden])');   // 떠 있는 빨간 단추가 있으면 그 바로 위로 (겹치지 않게)
+    b.style.bottom=f&&f.getClientRects().length?`${Math.round(innerHeight-f.getBoundingClientRect().top+10)}px`:''};
+  window.addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(upd)},{passive:true});
+  new MutationObserver(()=>{if(!raf)raf=requestAnimationFrame(upd)}).observe(document.getElementById('app'),{childList:true});
+  b.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+})();
