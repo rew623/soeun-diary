@@ -16,12 +16,12 @@
 | S.guesses | game, main-core, movie, wanted |
 | S.logs | charges, claims, day, fun, game, main-core, main-sick, movie, wanted |
 | S.looks | look, main-core, movie, wanted |
-| S.me | album, board, capsule, claims, day, explore, focus, game, look, main-core, main-render, main-sheets, paper, settings, studio, town, viewer, walk, wanted |
+| S.me | album, board, capsule, claims, day, explore, focus, game, look, main-core, main-render, main-sheets, main-sick, paper, settings, studio, town, viewer, walk, wanted |
 | S.meals | charges, day, fun, game, main-core, main-meal, movie, paper, wanted |
 | S.menus | main-core, main-meal, viewer |
 | S.moments | album, board, book, charges, dupes, explore, family, focus, fun, game, main-album, main-core, memories, movie, paper, posecam, room, settings, studio, viewer, walk, wanted |
 | S.periods | claims, main-album, main-core, main-render, main-sheets |
-| S.profile | album, board, book, capsule, characters, charges, checkups, day, dev, family, fun, game, look, main-album, main-boot, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, music, paper, posecam, posts, recipes, room, settings, studio, town, viewer, walk, wanted |
+| S.profile | album, board, book, calendar, capsule, characters, charges, checkups, day, dev, family, fun, game, look, main-album, main-boot, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, music, paper, posecam, posts, recipes, room, settings, studio, town, viewer, walk, wanted |
 | S.records | book, characters, charges, fun, game, main-core, main-render, main-sheets, memories, movie, paper, room, settings, studio, viewer, wanted |
 | S.vaccines | book, charges, claims, fun, game, main-album, main-core, main-render, main-sheets, movie, paper, settings, wanted |
 | S.visits | claims, fun, game, hospitals, main-core, main-sick, movie, wanted |
@@ -30,9 +30,10 @@
 ## 모듈 (만든 파일 → 부르는 파일)
 | 모듈 (파일) | 부르는 파일 |
 |---|---|
-| ALBUM (album) | family, main-album, main-core, main-render, main-sheets, posecam, studio, viewer, walk |
+| ALBUM (album) | calendar, family, main-album, main-core, main-render, main-sheets, posecam, studio, viewer, walk |
 | BOARD (board) | main-album, main-render, viewer |
 | BOOK (book) | main-render |
+| CAL (calendar) | main-album |
 | CAPSULE (capsule) | main-render |
 | CHARGES (charges) | board, main-render |
 | CHARS (characters) | board, book, day, explore, family, fun, game, main-album, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, paper, room, settings, themes, town, walk, wanted |

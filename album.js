@@ -564,5 +564,12 @@ css.textContent = `
 .acell small{position:absolute;left:3px;right:3px;bottom:3px;padding:2px 4px;font-size:11px;line-height:1.3;color:#fff;background:rgba(31,42,68,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}`;
 document.head.appendChild(css);
 
-window.ALBUM = { choose, pickInto, pkClose, pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
+// 달력에서 날짜를 누르면: 현장 사진첩을 펼치고 그 날이 보이게 (더 보기·달 접기 풀기) — calendar.js
+function reveal(date) {
+  const L = frees(), i = L.findIndex(m => m.date === date); if (i < 0) return false;
+  if (i >= A.more) A.more = i + 8;
+  setFold('a-free', false); setFold('m-' + date.slice(0, 7), false); A.opened = true; return true;
+}
+const photoDays = () => { const M = new Map(); frees().forEach(m => { const a = M.get(m.date) || []; a.push(m); M.set(m.date, a); }); return M; };
+window.ALBUM = { reveal, photoDays, choose, pickInto, pkClose, pickFiles: () => picker2.click(), shared, sectionHtml, openFree, isFree, photoDate, photoMeta, pump, openReport, reportDoc, queue, extras, exStrip, exField, dropExtras, afterRender };
 })();
