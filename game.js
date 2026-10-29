@@ -42,8 +42,8 @@ function merge(L) {
   // 화면엔 바로 합친 모습
   Object.keys(union).forEach(k => { g[k] = [...new Set([...(g[k] || []), ...union[k]])]; });
   Object.assign(g, clone(set)); g.acorn = (+g.acorn || 0) + add;
-  L.synced = true; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (e) {}
-  run('saveGame', set, add, union, undefined, '처음 한 번 이 폰 도토리 합치기').catch(e => { console.warn('놀이 저장 합치기 실패', e); L.synced = false; try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (x) {} }).finally(() => { merging = false; });
+  L.synced = true; try { if (!DEMO) localStorage.setItem(KEY, JSON.stringify(L)); } catch (e) {}
+  run('saveGame', set, add, union, undefined, '처음 한 번 이 폰 도토리 합치기').catch(e => { console.warn('놀이 저장 합치기 실패', e); L.synced = false; try { if (!DEMO) localStorage.setItem(KEY, JSON.stringify(L)); } catch (x) {} }).finally(() => { merging = false; });
 }
 function st() {
   const s = local(), g = S.game;
@@ -58,7 +58,7 @@ function st() {
 // 창을 열어 둔 사이 다른 폰이 바꾼 값(도토리·받은 보상 paid 등)을 옛날 값으로 덮어써 도토리가 늘었다 줄었다 했어요 (2026.10.13)
 function snap(s) { Object.defineProperty(s, '__o', { value: Object.fromEntries(SHARED.map(k => [k, JSON.stringify(s[k] === undefined ? null : s[k])])), writable: true, configurable: true }); }
 function save(s, why) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+  try { if (!DEMO) localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
   const g = S.game; if (!g || !s.synced || !canWrite()) return;
   const o = {}, b = s.__o;
   SHARED.forEach(k => { if (k === 'acorn' || s[k] === undefined) return; if (b ? JSON.stringify(s[k]) === b[k] : same(s[k], g[k])) return; o[k] = clone(s[k]); g[k] = clone(s[k]); });

@@ -67,7 +67,7 @@ function goBack(){
   const e=NAV.pop();
   if(!e){if(_view==='play'||_view==='fun'){_view='medals';if(window.GAME&&GAME.hub)GAME.hub('play')}else{if(_view==='hosp')S.tab='sick';else if(_view==='recipe')S.tab='food';_view=''}render();window.scrollTo(0,0);return}
   S.tab=e.tab;S.albumView=e.albumView;S.vacView=e.vacView;S.townView=e.townView||'';S.sickView=e.sickView||'';_view=e.view;render();window.scrollTo(0,e.y);requestAnimationFrame(()=>window.scrollTo(0,e.y))}
-const DEMO=false;
+let DEMO=false;   // 로그인 없이 둘러보기(예시 데이터)일 때만 true — 저장 안 되고, 이 폰에 사본도 안 남겨요
 const DB={me:{role:'엄마'},profile:{name:'미리보기',birth:'2026-07-06',photo:false,mom:'',dad:'',momPhoto:false,dadPhoto:false},
   records:[{id:'d1',date:'2026-07-06',weight:3.26,height:51,head:null,memo:'태어난 날',photo:false},{id:'d2',date:'2026-09-24',weight:5.7,height:null,head:null,memo:'',photo:false}],
   periods:[{id:'p1',name:'출생',month:0,confirmed:'',hospital:''},{id:'p2',name:'2개월',month:2,confirmed:'',hospital:''},{id:'p3',name:'4개월',month:4,confirmed:'2026-11-10',hospital:'우리동네 소아청소년과'},{id:'p4',name:'6개월',month:6,confirmed:'',hospital:''}],
@@ -110,6 +110,16 @@ const MOCK={
   completePeriod:(pid,date,ids,by)=>{DB.vaccines.forEach(v=>{if(ids.includes(v.id)){v.done=date;v.by=by||''}});return{data:MOCK.getData()}}
 };
 const run=(fn,...a)=>window.APIReady.then(api=>api.call(fn,a));
+// 로그인 없이 둘러보기 (2026.10.29 사용자 요청): 출입 화면의 단추 → 예시 데이터(DB)로만 앱을 열어요. Firebase에 연결도, 저장도 안 해요 (새로 고치면 처음 화면)
+// 예시 날짜는 오늘 기준 생후 100일쯤으로 옮겨서 늘 '지금 같은' 모습으로 보여 줘요
+window.__enterDemo=()=>{
+  if(DEMO)return;DEMO=true;
+  try{const delta=daysBetween(DB.profile.birth,addDays(today(),-100));
+    const sh=v=>{if(typeof v==='string'){const m=/^(\d{4}-\d\d-\d\d)(.*)$/.exec(v);return m&&/^[T]?[\d:]*$/.test(m[2])?addDays(m[1],delta)+m[2]:v}
+      if(Array.isArray(v))return v.map(sh);if(v&&typeof v==='object'){const o={};Object.keys(v).forEach(k=>{o[k]=sh(v[k])});return o}return v};
+    Object.keys(DB).forEach(k=>{DB[k]=sh(DB[k])})}catch(e){}
+  window.__resolveAPI({call:async(fn,a)=>MOCK[fn](...a)});
+};
 const errMsg=e=>'저장하지 못했어요: '+((e&&e.message)||'알 수 없는 오류');
 function setData(d){document.title=((d.profile&&d.profile.name)?d.profile.name+' ':'')+'성장 수사 일지';S.me=d.me||{role:''};S.eps=d.eps||[];S.logs=d.logs||[];S.visits=d.visits||[];S.moments=d.moments||[];S.foods=d.foods||[];S.meals=d.meals||[];S.cubes=d.cubes||[];S.menus=d.menus||[];S.people=d.people||[];S.devs=d.devs||[];S.guesses=d.guesses||[];S.looks=d.looks||[];S.capsules=d.capsules||[];S.walks=d.walks||[];S.docs=d.docs||[];S.cares=d.cares||[];S.profile=d.profile;S.records=d.records||[];S.periods=d.periods||[];S.vaccines=d.vaccines||[];S.hosp=d.hospitals||[];S.recipes=d.recipes||[];S.checkups=d.checkups||[];S.game=d.game||null;S.mode='ok'}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-fold]');if(!h||e.target.closest('button:not([data-fold]),a,[data-view]'))return;const k=h.dataset.fold,box=h.closest('section,.amon'),now=box?box.classList.contains('folded'):isFold(k);setFold(k,!now);if(box)box.classList.toggle('folded',!now);else render()});

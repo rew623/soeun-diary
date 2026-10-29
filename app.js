@@ -692,6 +692,7 @@ function showGate(mode, msg = '') {
     : mode === 'login'
     ? `<p>가족 수사관만 들어올 수 있어요. 구글 계정으로 출입해 주세요.</p>
        <p class="err">${esc(msg)}</p><button class="primary gbtn" data-g="login">구글 계정으로 출입</button>
+       <button class="ghost gbtn" data-g="demo">로그인 없이 둘러보기 (예시 데이터)</button>
        ${FB_OVR ? `<p class="gfb">연결: 내 Firebase <b>${esc(FB_OVR.projectId)}</b></p><button class="ghost gbtn" data-g="fbreset">기본 연결로 되돌리기</button>` : `<button class="ghost gbtn gfbbtn" data-g="fbopen">지인용: 내 Firebase로 연결하기</button>`}`
     : mode === 'choose'
     ? `<p>${esc((auth.currentUser && auth.currentUser.email) || '')} 수사관님, 어느 사건 파일로 갈까요?</p>
@@ -748,6 +749,7 @@ gate.addEventListener('click', async e => {
     if (b.dataset.g === 'login') await login();
     if (b.dataset.g === 'logout') await logout();
     if (b.dataset.g === 'create') { if (await ask('새 가족 공간을 만들까요?\n배우자는 만든 뒤에 초대 코드로 들어오면 돼요.')) { showGate('wait'); await createFamily(); } }
+    if (b.dataset.g === 'demo') { hideGate(); if (window.__enterDemo) window.__enterDemo(); }
     if (b.dataset.g === 'fbopen') showGate('fb');
     if (b.dataset.g === 'fbback') showGate('login');
     if (b.dataset.g === 'fbsave') await saveFbConfig(gate.querySelector('#g-fb').value);

@@ -26,3 +26,4 @@
 - 몸무게 표시 소수점 셋째 자리까지(2026.10.17 사용자 요청): main-core.js fmt('weight')가 늘 toFixed(3) — 6.450kg. 저장값은 그대로(입력한 만큼), 키·머리둘레는 소수 1자리 그대로
 - 증거 기록 카드(.stat .v) 한 줄 고정(nowrap, 20px, 몸무게 .vw 17px) — 6.445kg가 두 줄로 꺾이던 것(2026.10.17)
 - 아기 이름 일반화(2026.10.29): 코드에 박힌 '소은'을 프로필 이름으로 — CV.short()/CV.nick()(studio.js), characters.js short()/nick(), game.js WHO[0][1] getter, room.js keyName 등. 앱 이름(manifest name)은 '성장 수사 일지'. 지인이 쓰는 방법은 docs/friend-setup.md
+- 로그인 없이 둘러보기(2026.10.29 사용자 요청): 출입 화면 '로그인 없이 둘러보기 (예시 데이터)' → window.__enterDemo(main-core.js): DEMO=true, MOCK DB로만 앱을 열고(날짜는 생후 100일쯤으로 옮김) Firebase 연결·저장·폰 사본(saveCache·game local) 모두 안 함, 위 띠의 '나가기'(새로 고침)로 처음 화면
