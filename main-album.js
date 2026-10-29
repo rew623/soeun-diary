@@ -22,7 +22,7 @@ function renderAlbum(){
     return `<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진" loading="lazy" decoding="async">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`}).join('');
   const av=S.albumView==='board'||S.albumView==='family'?S.albumView:'album';
   const aseg=`<div class="seg aview">${[['album','<i>📷</i>앨범'],['family','<i>👨‍👩‍👧</i>가족'],['board','<i>📌</i>수사 보드']].map(([k,l])=>`<button class="${av===k?'on':''}" data-act="aview" data-v="${k}">${l}</button>`).join('')}</div>`;
-  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1>${aseg}<p>엄마·아빠·소은이가 함께한 사진을 모아요.</p></header>${FAMILY.render()}
+  if(av==='family')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>가족 앨범</h1>${aseg}<p>엄마·아빠·${window.CV&&CV.nick?esc(CV.nick()):'우리 아기'}가 함께한 사진을 모아요.</p></header>${FAMILY.render()}
   <button class="fab" data-fa="up">+ 가족 사진</button>`;
   if(S.albumView==='board')return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>수사 보드</h1>${aseg}</header>${BOARD.render()}`;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>사건 앨범</h1>${aseg}</header>${CHARS.guide('album')}${MEMO.onThisDay()}

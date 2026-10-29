@@ -79,7 +79,7 @@ CV.stamp = (ctx, cx, cy, r, top, big, rot, c = '#B3261E') => {
   ctx.lineWidth = r * .07; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = r * .03; ctx.beginPath(); ctx.arc(0, 0, r * .84, 0, Math.PI * 2); ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${Math.round(r * .26)}px Jua`; ctx.fillText(top, 0, -r * .36);
   ctx.font = `${Math.round(r * (big.length > 4 ? .34 : .44))}px Jua`; ctx.fillText(big, 0, r * .12);
-  ctx.font = `${Math.round(r * .17)}px Jua`; ctx.fillText('★ 소은 탐정 ★', 0, r * .52); ctx.restore();
+  ctx.font = `${Math.round(r * .17)}px Jua`; ctx.fillText(`★ ${CV.short()} 탐정 ★`, 0, r * .52); ctx.restore();
 };
 // 글자가 너비를 넘으면 줄 바꾸기 (띄어쓰기 우선, 없으면 글자 단위)
 CV.wrap = (ctx, text, maxW) => {
@@ -109,6 +109,7 @@ CV.stats = d => {
   const w = R.find(r => r.weight != null && r.weight !== ''), h = R.find(r => r.height != null && r.height !== '');
   return [w ? `몸무게 ${fmt('weight', w.weight)}kg` : '', h ? `키 ${fmt('height', h.height)}cm` : ''].filter(Boolean).join(' · ');
 };
+CV.short = () => ((S.profile && S.profile.name) || '우리 아기').replace(/^[가-힣](?=[가-힣]{2}$)/, '');
 CV.nick = () => { const n = ((S.profile && S.profile.name) || '우리 아기').replace(/^[가-힣](?=[가-힣]{2}$)/, ''); const c = n.charCodeAt(n.length - 1); return n + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? '이' : ''); };
 CV.dot = d => d.replace(/-/g, '.');
 // 오늘이 기념일이거나 3일 안에 오면 그날 (100일마다·돌), 매달 그날이면 N개월, 아니면 오늘
@@ -157,7 +158,7 @@ function drawTpl(ctx, W, H, im) {
   if (ST.tpl === 'clean') {
     ctx.fillStyle = '#1F2A44'; ctx.fillRect(0, 0, W, H); if (im) photo(ctx, im, 0, 0, W, H);
     const g = ctx.createLinearGradient(0, H * .55, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(15,20,35,.78)'); ctx.fillStyle = g; ctx.fillRect(0, H * .55, W, H * .45);
-    CV.rr(ctx, 40, 40, 360, 64, 32); ctx.fillStyle = 'rgba(255,253,247,.88)'; ctx.fill(); CV.text(ctx, '🔍 소은 탐정 수사 일지', 220, 84, '30px "Gowun Dodum"', '#1F2A44');
+    CV.rr(ctx, 40, 40, 360, 64, 32); ctx.fillStyle = 'rgba(255,253,247,.88)'; ctx.fill(); CV.text(ctx, `🔍 ${CV.short()} 탐정 수사 일지`, 220, 84, '30px "Gowun Dodum"', '#1F2A44');
     CV.text(ctx, title, W / 2, H - (stat ? 210 : 160), '104px Jua', '#fff', 'center', W - 120);
     CV.text(ctx, sub, W / 2, H - (stat ? 140 : 90), '42px "Gowun Dodum"', 'rgba(255,255,255,.92)', 'center', W - 120);
     if (stat) CV.text(ctx, stat, W / 2, H - 80, '36px "Gowun Dodum"', 'rgba(255,255,255,.85)', 'center', W - 120);

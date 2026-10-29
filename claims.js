@@ -148,7 +148,7 @@ async function share() {
     const files = []; let i = 0;
     for (const h of hs) for (const p of photosOf(h)) { const b = await blobOf(p); files.push(new File([b], `${kindsOf(h).join('+') || '서류'}_${h.date}_${++i}.jpg`, { type: b.type || 'image/jpeg' })); }
     if (!files.length) { toast('사진이 있는 건을 골라 주세요'); return; }
-    if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: '소은이 서류' }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: '우리 아기 서류' }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
     files.forEach(f => CV.save(f, f.name)); toast(`${files.length}장을 저장했어요 (다운로드·파일 앱)`);
   } catch (e) { toast(e.message || '공유하지 못했어요'); }
 }

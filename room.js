@@ -38,7 +38,7 @@ const CAT = [
   ['moonlamp', 'hang', '달 조명', 7, t('<path d="M204 0v14" stroke="#B9A889" stroke-width="1.5"/><path d="M212 16a17 17 0 1 0 0 30a13 13 0 0 1 0-30z" fill="#FCE8B4" stroke="#E0B341"/><circle cx="200" cy="31" r="22" fill="#FCE8B4" opacity=".18"/>')],
   ['cloudmob', 'hang', '구름 모빌', 6, t('<path d="M204 0v12" stroke="#B9A889" stroke-width="1.5"/><path d="M186 28a8 8 0 0 1 8-10a10 10 0 0 1 19 0a8 8 0 0 1 4 15h-27a6 6 0 0 1-4-5z" fill="#fff" stroke="#DCE7F1"/><path d="M192 38v8M202 38v10M212 38v6" stroke="#7FC4E8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 3"/>')],
   // 벽 가운데
-  ['frame', 'wallC', '소은이 액자', 10, 'FRAME'],
+  ['frame', 'wallC', '아기 액자', 10, 'FRAME'],
   ['clock', 'wallC', '벽시계', 12, 'CLOCK'],
   ['miniboard', 'wallC', '꼬마 수사 보드', 8, t('<rect x="108" y="38" width="56" height="44" rx="3" fill="#C79A6B" stroke="#A9764A" stroke-width="3"/><rect x="114" y="44" width="14" height="16" fill="#fff" transform="rotate(-6 121 52)"/><rect x="140" y="46" width="14" height="16" fill="#fff" transform="rotate(5 147 54)"/><rect x="126" y="62" width="16" height="12" fill="#EAD9B2"/><path d="M121 46L147 48M147 48L134 64" stroke="#B3261E" stroke-width="1"/><circle cx="121" cy="46" r="1.8" fill="#B3261E"/><circle cx="147" cy="48" r="1.8" fill="#B3261E"/><circle cx="134" cy="64" r="1.8" fill="#B3261E"/>')],
   ['toyshelf', 'wallC', '벽 선반', 5, t('<rect x="104" y="72" width="64" height="5" rx="2" fill="#B97648"/><path d="M110 77v6M162 77v6" stroke="#8C5530" stroke-width="3"/><rect x="110" y="58" width="12" height="14" rx="2" fill="#7FC4E8"/><text x="116" y="69" font-size="9" text-anchor="middle" fill="#fff" font-family="Jua">A</text><circle cx="134" cy="65" r="7" fill="#F49C9C"/><path d="M150 72v-12l8 6z" fill="#F4C542"/><path d="M146 72h16" stroke="#7FB77E" stroke-width="2"/>')],
@@ -110,7 +110,7 @@ const owns = (s, id) => { const c = item(id); return !!c && (c[3] === 0 || s.roo
 
 // ---------- 특수 소품: 방에서 누르면 기능이 나와요 (값이 더 비싸요) ----------
 const R = { sel: null, edit: false, night: false, radio: null, music: 0, tree: 0, tune: null };
-const FXDESC = { FRAME: '누르면 소은이 프로필 사진 이야기', CLOCK: '지금 시각으로 바늘이 움직여요 · 누르면 생후 며칠째인지', SIGN: '아기 이름이 들어가요 · 누르면 사건 파일 번호', GIRAFFE: '최근 키를 보여 줘요 · 누르면 키 변화', PIC: '우리 실제 사진을 넣어요 · 누르면 사진 고르기',
+const FXDESC = { FRAME: '누르면 아기 프로필 사진 이야기', CLOCK: '지금 시각으로 바늘이 움직여요 · 누르면 생후 며칠째인지', SIGN: '아기 이름이 들어가요 · 누르면 사건 파일 번호', GIRAFFE: '최근 키를 보여 줘요 · 누르면 키 변화', PIC: '우리 실제 사진을 넣어요 · 누르면 사진 고르기',
   CAL: '오늘 날짜와 다음 기념일 D-day · 누르면 기념일 안내', TV: '최근 사진이 나와요 · 누르면 성장 스토리 재생', MUSIC: '누르면 오르골 자장가가 10초 흘러나와요 (한 번 더 누르면 꺼져요)', BANK: '모은 도토리 수가 보여요 · 누르면 도토리 놀이터로',
   LAMP: '누르면 방 불을 끄고 무드등을 켜요', RADIO: '누르면 잔잔한 잠 소리(백색소음)를 틀고 끄기', BOOK: '누르면 성장 앨범 책이 열려요', MAIL: '새 육아 글이 오면 깃발이 올라가요 · 누르면 육아 글 모음', WEATHER: '지금 산책 지수·기온이 걸려요 · 누르면 동네 탐문', TREE: '누르면 트리 불이 반짝이고 크리스마스까지 며칠 남았는지 알려 줘요' };
 function latest(...types) { for (const t of types) { const m = (S.moments || []).filter(x => x.type === t && x.photo && safeImg(PHOTOS[x.id])).sort((a, b) => a.date < b.date ? 1 : -1)[0]; if (m) return safeImg(PHOTOS[m.id]); } return safeImg(PHOTOS.profile) || ''; }
@@ -145,8 +145,8 @@ function toggleRadio() {
 }
 const go = (fn) => { closeSheet(); fn(); render(); window.scrollTo(0, 0); };
 const FX = {
-  FRAME: () => toast('소은이 프로필 사진이에요. 탐정 정보에서 바꿀 수 있어요 📸'),
-  CLOCK: () => { const d = new Date(Date.now() + 9 * 3600e3); toast(`⏰ 지금 ${d.getUTCHours()}시 ${d.getUTCMinutes()}분 · 소은이 생후 ${dayNo(today())}일째`); },
+  FRAME: () => toast('아기 프로필 사진이에요. 탐정 정보에서 바꿀 수 있어요 📸'),
+  CLOCK: () => { const d = new Date(Date.now() + 9 * 3600e3); toast(`⏰ 지금 ${d.getUTCHours()}시 ${d.getUTCMinutes()}분 · ${window.CV && CV.nick ? CV.nick() : '아기'} 생후 ${dayNo(today())}일째`); },
   SIGN: () => toast(`🕵️ ${((S.profile && S.profile.name) || '우리 아기')} 탐정 사무소 · 사건 파일 No.${fileNo()}`),
   GIRAFFE: () => { const L = (S.records || []).filter(r => r.height != null && r.height !== '').sort((a, b) => a.date < b.date ? 1 : -1);
     if (!L.length) return toast('🦒 아직 키 기록이 없어요. 성장 수사에서 재 볼까요?');
@@ -273,7 +273,7 @@ function roomSvg(edit) {
   const fam = sl.fam || '', mom = fam === 'fam-both' || fam === 'fam-mom', dad = fam === 'fam-both' || fam === 'fam-dad';
   const person = (who, b) => mv(who, chr(who, window.GAME && GAME.propOf ? GAME.propOf(who) : '', b[0], b[1], b[2]));
   const order = ['ceil', 'hang', 'wallC', 'rug', 'floorR', 'corner', 'floorL', 'floorM'];
-  return `<svg class="groom${edit ? ' groom-edit' : ''}" viewBox="0 0 ${VW} ${VH}" aria-label="소은 탐정의 방"><defs><radialGradient id="rglow"><stop offset="0" stop-color="#FFE9A8" stop-opacity=".9"/><stop offset="1" stop-color="#FFE9A8" stop-opacity="0"/></radialGradient></defs>
+  return `<svg class="groom${edit ? ' groom-edit' : ''}" viewBox="0 0 ${VW} ${VH}" aria-label="탐정의 방"><defs><radialGradient id="rglow"><stop offset="0" stop-color="#FFE9A8" stop-opacity=".9"/><stop offset="1" stop-color="#FFE9A8" stop-opacity="0"/></radialGradient></defs>
     ${wallSvg(sl.wall)}<path d="M0 120h${VW}" stroke="rgba(0,0,0,.05)" stroke-width="10"/>${floorSvg(sl.floor)}<path d="M0 130h${VW}" stroke="rgba(150,110,60,.35)" stroke-width="2"/>
     ${mv('win', windowSvg(sl.win === 'roundwin') + (sl.win && sl.win !== 'roundwin' ? draw(sl.win) : ''))}
     ${order.filter(k => k !== 'floorM').map(k => sl[k] ? mv(k, draw(sl[k])) : '').join('')}${sl.pic ? mv('pic', draw(sl.pic)) : ''}
@@ -284,11 +284,11 @@ function roomSvg(edit) {
     ${R.night ? `<rect width="${VW}" height="${VH}" fill="#0B1430" opacity=".5" pointer-events="none"/>${sl.floorM === 'nightlamp' ? (() => { const [dx, dy] = off('floorM'); return `<circle cx="${98 + dx}" cy="${146 + dy}" r="40" fill="url(#rglow)" pointer-events="none"/>`; })() : ''}` : ''}</svg>`;
 }
 // 꾸미기 화면 위쪽: 방 그림 + 위치 옮기기
-const keyName = k => ({ baby: '소은', mom: '엄마', dad: '아빠' })[k] || (() => { const sl = state().slot[k], c = sl && item(sl); return c ? c[2] : ((SLOTS.find(x => x[0] === k) || [])[1] || k); })();
+const keyName = k => ({ baby: (window.CV && CV.short ? CV.short() : '아기'), mom: '엄마', dad: '아빠' })[k] || (() => { const sl = state().slot[k], c = sl && item(sl); return c ? c[2] : ((SLOTS.find(x => x[0] === k) || [])[1] || k); })();
 function editorHtml() {
   const p = R.sel && (state().pos || {})[R.sel], sc = p ? +p[2] || 1 : 1;
   return `<div class="redit"><button class="${R.edit ? 'primary' : 'ghost'}" data-roomedit="1">${R.edit ? '✓ 다 꾸몄어요' : '✋ 위치·크기 바꾸기'}</button>${R.edit ? '<button class="ghost" data-roomreset="1">처음대로</button>' : ''}</div>
-    ${R.edit ? `<p class="hint" style="margin:4px 0 6px;color:var(--red)">끌어서 옮기고, 눌러서 고른 다음 아래 −/+로 크기를 바꿔요.</p>` : '<p class="hint" style="margin:4px 0 6px">방에서 소은·엄마·아빠를 누르면 그 식구 꾸미기로 가요.</p>'}${roomSvg(R.edit)}
+    ${R.edit ? `<p class="hint" style="margin:4px 0 6px;color:var(--red)">끌어서 옮기고, 눌러서 고른 다음 아래 −/+로 크기를 바꿔요.</p>` : `<p class="hint" style="margin:4px 0 6px">방에서 ${window.CV && CV.short ? CV.short() : '아기'}·엄마·아빠를 누르면 그 식구 꾸미기로 가요.</p>`}${roomSvg(R.edit)}
     ${R.edit ? (R.sel ? `<div class="rsize"><b>${esc(keyName(R.sel))}</b><button data-rsize="-" ${sc <= .45 ? 'disabled' : ''}>−</button><span>${Math.round(sc * 100)}%</span><button data-rsize="+" ${sc >= 2.15 ? 'disabled' : ''}>+</button><button class="rsz0" data-rsize="0">원래 크기</button></div>` : '<div class="rsize none">크기를 바꿀 소품이나 식구를 눌러 골라요</div>') : ''}`;
 }
 

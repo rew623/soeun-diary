@@ -107,7 +107,7 @@ function cardView() {
   const tier = d >= 366 ? ['전설', 'leg'] : mo >= 6 || d >= 100 ? ['에픽', 'epic'] : mo >= 1 ? ['레어', 'rare'] : ['일반', 'nor'];
   const ph = safeImg(PHOTOS.profile) || (() => { const m = S.moments.filter(x => x.photo && safeImg(PHOTOS[x.id])).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return m ? safeImg(PHOTOS[m.id]) : ''; })();
   const bar = (label, v, max, unit) => `<div class="tcs"><small>${label}</small><i><u style="width:${Math.min(100, v / max * 100)}%"></u></i><b>${v ? v + unit : '?'}</b></div>`;
-  return `<header class="vhead"><span class="no">놀이터</span><h1>소은 탐정 카드</h1><p>지금까지의 기록으로 만든 카드예요. 누르면 뒤집혀요. 자랄수록 등급이 올라가요!</p></header>
+  return `<header class="vhead"><span class="no">놀이터</span><h1>${esc(nick())} 탐정 카드</h1><p>지금까지의 기록으로 만든 카드예요. 누르면 뒤집혀요. 자랄수록 등급이 올라가요!</p></header>
     <div class="tcard ${tier[1]}" data-fun="flip"><div class="tci">
       <div class="tcf"><div class="tct"><b>${esc(p.name || '우리 아기')}</b><span>LV.${mo}</span></div>
         <div class="tcp">${ph ? `<img src="${ph}" alt="">` : CHARS.svg('baby', 'lens', { size: 160 })}<em>${tier[0]}</em></div>
@@ -149,7 +149,7 @@ function playSection() {
         <button data-fun="open" data-v="roulette"><span>🎡</span><b>오늘 누가?</b><small>집안일 당번 룰렛</small></button>
         <button data-fun="cookie"><span>🥠</span><b>오늘의 운세</b><small>${GAME.played('cookie') ? '오늘 운세 다시 보기' : '포춘 쿠키 깨기'}</small></button>
         <button data-fun="open" data-v="stickers"><span>🥚</span><b>스티커 뽑기</b><small>스티커북 ${(s.stickers || []).length}/${STICK.length}</small></button>
-        <button data-fun="open" data-v="card"><span>🪪</span><b>소은 탐정 카드</b><small>지금 기록으로 만든 카드</small></button>
+        <button data-fun="open" data-v="card"><span>🪪</span><b>${esc(nick())} 탐정 카드</b><small>지금 기록으로 만든 카드</small></button>
       </div></section>`;
 }
 function render_() {

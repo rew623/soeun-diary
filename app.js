@@ -5,7 +5,12 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, Timestamp, increment, arrayUnion, runTransaction, deleteField } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, getBlob } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 
-const fb = initializeApp(FIREBASE_CONFIG);
+// 지인용 '내 Firebase 연결하기' (2026.10.29): 기본은 config.js(우리 가족). 이 폰에 지인 Firebase 설정값이 저장돼 있으면 그걸로 시작해요 → 로그인·기록·사진이 전부 그 프로젝트로 가요
+const FBK = 'soeun-fb-config', FB_KEYS = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+const FB_OVR = (() => { try { const o = JSON.parse(localStorage.getItem(FBK) || 'null'); if (o && o.apiKey && o.projectId && o.appId) return o; } catch (e) {} return null; })();
+if (FB_OVR) window.PUSH_VAPID = '';   // 알림 열쇠(push-key.js)는 우리 프로젝트 것이라 다른 프로젝트에선 못 써요
+window.__fbInfo = { custom: !!FB_OVR, projectId: (FB_OVR || FIREBASE_CONFIG).projectId };
+const fb = initializeApp(FB_OVR || FIREBASE_CONFIG);
 const auth = getAuth(fb);
 const db = initializeFirestore(fb, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 const storage = getStorage(fb);
@@ -665,6 +670,8 @@ css.textContent = `
 #gate p{margin:0 0 16px;color:var(--muted);font-size:14px}
 #gate .gbtn{width:100%;margin-top:10px}
 #gate .gor{text-align:center;color:var(--muted);font-size:12px;margin:18px 0 6px;letter-spacing:2px}
+#gate textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.45;padding:10px;border:2px solid var(--ink);background:#FFFDF7;border-radius:4px;color:var(--ink)}
+#gate .gfb{margin:14px 0 0;font-size:12.5px}#gate .gfbbtn{margin-top:18px;font-size:13px}
 #gate input{width:100%;box-sizing:border-box;font-family:var(--display);font-size:26px;letter-spacing:6px;text-align:center;text-transform:uppercase;padding:10px;border:2px solid var(--ink);background:#FFFDF7;border-radius:4px}
 #updbar{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:45;max-width:520px;margin:0 auto;background:var(--navy);color:var(--paper);border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 14px rgba(43,38,34,.3);font-size:14px}
 #updbar span{flex:1}#updbar button{border:0;background:var(--red);color:#fff;border-radius:4px;padding:8px 12px;font-family:var(--display);font-size:15px}
@@ -676,9 +683,16 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 function showGate(mode, msg = '') {
   const head = `<span class="gno">수사 본부 출입 기록</span><h1>성장 수사 일지</h1>`;
-  const body = mode === 'login'
+  const body = mode === 'fb'
+    ? `<p>지인용: <b>내 Firebase</b>의 웹 앱 설정을 아래에 붙여 넣어요. (Firebase 콘솔 → 프로젝트 설정 → 내 앱 → SDK 설정 및 구성에 나오는 <code>firebaseConfig</code> 글 통째로)</p>
+       <textarea id="g-fb" rows="8" spellcheck="false" placeholder='const firebaseConfig = {\n  apiKey: "AIza…",\n  authDomain: "…firebaseapp.com",\n  projectId: "…",\n  storageBucket: "…",\n  messagingSenderId: "…",\n  appId: "…"\n};'></textarea>
+       <p class="err" id="g-err" style="margin-top:8px">${esc(msg)}</p>
+       <button class="primary gbtn" data-g="fbsave">이 Firebase로 연결</button>
+       <button class="ghost gbtn" data-g="fbback">돌아가기</button>`
+    : mode === 'login'
     ? `<p>가족 수사관만 들어올 수 있어요. 구글 계정으로 출입해 주세요.</p>
-       <p class="err">${esc(msg)}</p><button class="primary gbtn" data-g="login">구글 계정으로 출입</button>`
+       <p class="err">${esc(msg)}</p><button class="primary gbtn" data-g="login">구글 계정으로 출입</button>
+       ${FB_OVR ? `<p class="gfb">연결: 내 Firebase <b>${esc(FB_OVR.projectId)}</b></p><button class="ghost gbtn" data-g="fbreset">기본 연결로 되돌리기</button>` : `<button class="ghost gbtn gfbbtn" data-g="fbopen">지인용: 내 Firebase로 연결하기</button>`}`
     : mode === 'choose'
     ? `<p>${esc((auth.currentUser && auth.currentUser.email) || '')} 수사관님, 어느 사건 파일로 갈까요?</p>
        <input id="g-code" maxlength="6" placeholder="초대코드" autocomplete="off" autocapitalize="characters">
@@ -700,6 +714,26 @@ async function login() {
     else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') showGate('login', '출입하지 못했어요: ' + (e.code || e.message));
   }
 }
+// 붙여 넣은 firebaseConfig 글(JS든 JSON이든)에서 6칸을 뽑아요
+function parseFbConfig(txt) {
+  const o = {}; FB_KEYS.forEach(k => { const m = new RegExp('["\']?' + k + '["\']?\\s*[:=]\\s*["\']([^"\']+)["\']').exec(txt || ''); if (m) o[k] = m[1].trim(); });
+  if (!o.authDomain && o.projectId) o.authDomain = o.projectId + '.firebaseapp.com';
+  if (!o.storageBucket && o.projectId) o.storageBucket = o.projectId + '.firebasestorage.app';
+  return o;
+}
+function wipeLocal() { try { Object.keys(localStorage).forEach(k => { if (k.startsWith('fam-') || k.startsWith('soeun-cache') || k.startsWith('viewer-') || k === 'investigator') localStorage.removeItem(k); }); } catch (e) {} }
+async function saveFbConfig(txt) {
+  const o = parseFbConfig(txt), miss = ['apiKey', 'projectId', 'appId'].filter(k => !o[k]);
+  if (miss.length) throw new Error('설정에서 ' + miss.join(', ') + ' 값을 못 찾았어요. firebaseConfig 글을 통째로 붙여 넣어 주세요');
+  if (!/^AIza/.test(o.apiKey) || !/:web:/.test(o.appId)) throw new Error('웹 앱(</>) 설정이 아니에요. 프로젝트 설정 → 내 앱 → 웹 앱의 값이어야 해요');
+  if (o.projectId === FIREBASE_CONFIG.projectId) throw new Error('이건 기본(우리 가족) 프로젝트예요. 지인 본인의 Firebase 값을 넣어 주세요');
+  if (!(await ask(`'${o.projectId}' 프로젝트로 연결할까요?\n이 폰의 기록·로그인은 그 프로젝트 것이 돼요. 잘 모르는 사람이 준 값이면 연결하지 마세요.`, { ok: '연결하기' }))) return;
+  const out = {}; FB_KEYS.forEach(k => { if (o[k]) out[k] = o[k]; });
+  stopAll(); wipeLocal(); try { await signOut(auth); } catch (e) {}
+  localStorage.setItem(FBK, JSON.stringify(out)); location.reload();
+}
+async function resetFb() { stopAll(); wipeLocal(); try { await signOut(auth); } catch (e) {} try { localStorage.removeItem(FBK); } catch (e) {} location.reload(); }
+window.__fbReset = resetFb;
 async function logout() {
   stopAll();
   try { Object.keys(localStorage).forEach(k => { if (k.startsWith('fam-') || k.startsWith('soeun-cache') || k === 'investigator') localStorage.removeItem(k); }); } catch (e) {}
@@ -714,6 +748,10 @@ gate.addEventListener('click', async e => {
     if (b.dataset.g === 'login') await login();
     if (b.dataset.g === 'logout') await logout();
     if (b.dataset.g === 'create') { if (await ask('새 가족 공간을 만들까요?\n배우자는 만든 뒤에 초대 코드로 들어오면 돼요.')) { showGate('wait'); await createFamily(); } }
+    if (b.dataset.g === 'fbopen') showGate('fb');
+    if (b.dataset.g === 'fbback') showGate('login');
+    if (b.dataset.g === 'fbsave') await saveFbConfig(gate.querySelector('#g-fb').value);
+    if (b.dataset.g === 'fbreset') { if (await ask('기본 연결(우리 가족)으로 되돌릴까요?\n이 폰의 로그인 정보는 지워져요.', { ok: '되돌리기' })) await resetFb(); }
     if (b.dataset.g === 'join') { err(''); await joinFamily(gate.querySelector('#g-code').value); showGate('wait'); }
   } catch (x) { console.error(x); if (gate.querySelector('#g-err')) err(x.message || String(x)); else showGate('choose', x.message || String(x)); }
   finally { b.disabled = false; }
@@ -793,11 +831,11 @@ document.addEventListener('click', async e => {
     return;
   }
   if (act === 'push-test') {
-    try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('🐿️ 소은 탐정 시험 알림', { body: '알림이 이렇게 와요. 챙길 일이 있는 날 아침에만 와요', icon: './icons/icon-192.png', badge: './icons/badge-96.png', tag: 'test' }); } catch (x) { app().toast('알림을 띄우지 못했어요: ' + (x.message || '')); }
+    try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('🐿️ 탐정 시험 알림', { body: '알림이 이렇게 와요. 챙길 일이 있는 날 아침에만 와요', icon: './icons/icon-192.png', badge: './icons/badge-96.png', tag: 'test' }); } catch (x) { app().toast('알림을 띄우지 못했어요: ' + (x.message || '')); }
     return;
   }
   if (act === 'share') {
-    const url = location.origin + location.pathname, text = `${/^V[A-Z2-9]{4}9$/.test(b.dataset.code) ? '소은이 사진 구경하러 오세요! ' : ''}성장 수사 일지 초대 코드: ${b.dataset.code}\n${url}`;
+    const url = location.origin + location.pathname, text = `${/^V[A-Z2-9]{4}9$/.test(b.dataset.code) ? `${((M.family && M.family.name) || '우리 아기').replace(/^[가-힣](?=[가-힣]{2}$)/, '')} 사진 구경하러 오세요! ` : ''}성장 수사 일지 초대 코드: ${b.dataset.code}\n${url}`;
     try { if (navigator.share) await navigator.share({ title: '성장 수사 일지 초대', text }); else { await navigator.clipboard.writeText(text); app().toast('복사했어요'); } } catch (x) {}
     return;
   }

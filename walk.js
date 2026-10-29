@@ -767,7 +767,7 @@ function offerSave(f) {
 }
 async function saveCam() {
   const f = lastCam, b = lEl.querySelector('.wksave'); if (!f) { if (b) b.hidden = true; return; }
-  const r = await CV.share(f, `soeun-${hms(Date.now()).replace(/:/g, '')}.jpg`, '소은이 사진');
+  const r = await CV.share(f, `soeun-${hms(Date.now()).replace(/:/g, '')}.jpg`, '우리 아기 사진');
   if (r === 'shared') { toast('공유 창에서 \'이미지 저장\'을 눌렀다면 앨범에 들어갔어요'); } else if (r === 'saved') toast('다운로드로 저장했어요 (파일 앱)');
   if (r !== 'cancel') { clearTimeout(camT); lastCam = null; if (b) b.hidden = true; }
 }

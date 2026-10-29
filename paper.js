@@ -107,7 +107,7 @@ function articles(I) {
     const tmax = Math.max(...D.map(r => r[1])), tmin = Math.min(...D.map(r => r[0]));
     A.push(['☀️ 이달의 날씨', `맑음 ${cnt(1)}일 · 구름 많음 ${cnt(3)}일 · 흐림 ${cnt(4)}일${rain ? ` · 비 온 날 ${rain}일` : ''}${snow ? ` · 눈 온 날 ${snow}일` : ''}. 가장 더울 때 ${Math.round(tmax)}℃, 가장 추울 때 ${Math.round(tmin)}℃. (${D.length}일 기록, 예보 기준)`]);
   }
-  const ads = [['📢 광고', `소은 탐정 사무소 수사관 상시 모집. 자격: 무한한 사랑. 급여: ${n} 웃음 무제한.`], ['📢 광고', `도토리 은행: 지금 모은 도토리 🌰 ${(S.game && +S.game.acorn) || 0}개. 이자는 뽀뽀로 지급.`], ['📢 광고', '꿀잠 연구소: 오늘 밤 통잠 성공 시 수사관 전원 포상 휴가.']];
+  const ads = [['📢 광고', `${nm()} 탐정 사무소 수사관 상시 모집. 자격: 무한한 사랑. 급여: ${n} 웃음 무제한.`], ['📢 광고', `도토리 은행: 지금 모은 도토리 🌰 ${(S.game && +S.game.acorn) || 0}개. 이자는 뽀뽀로 지급.`], ['📢 광고', '꿀잠 연구소: 오늘 밤 통잠 성공 시 수사관 전원 포상 휴가.']];
   A.push(ads[hash(I.ym) % ads.length]);
   return A;
 }

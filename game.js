@@ -299,7 +299,8 @@ function card() {
 const CLOTHES = [['', '기본', 0], ['conan', '코난 옷', 0], ['sherlock', '셜록 망토 코트', 0], ['watson', '왓슨 트위드 재킷', 0], ['stripe', '줄무늬 티', 4], ['pajama', '별 잠옷', 5], ['overall', '멜빵바지', 6], ['rain', '노란 우비', 6], ['apron', '앞치마', 6], ['knit', '꽈배기 니트', 7], ['cardigan', '보라 가디건', 7],
   ['hoodie', '곰 후드티', 8], ['sailor', '세일러복', 8], ['bee', '꿀벌 옷', 9], ['tiger', '호랑이 옷', 9], ['soccer', '축구 유니폼', 9], ['dress', '꽃무늬 원피스', 10], ['trench', '탐정 코트', 10],
   ['dino', '공룡 옷', 10], ['tutu', '발레 튜튜', 11], ['suit', '정장', 12], ['santa', '산타 옷', 12], ['hanbok', '색동 한복', 15], ['hanbokB', '파랑 한복', 15], ['rudolph', '루돌프 옷', 10], ['elf', '요정 옷', 10], ['santaDress', '산타 원피스', 12], ['kitty', '키티 멜빵 (키티 컨셉)', 10], ['purin', '푸린 우주복 (폼폼푸린 컨셉)', 10], ['miffybib', '미피 턱받이 (미피 컨셉)', 6], ['cinna', '구름 우주복 (시나모롤 컨셉)', 10]];
-const WHO = [['baby', '소은'], ['mom', '엄마'], ['dad', '아빠']];
+const WHO = [['baby', '아기'], ['mom', '엄마'], ['dad', '아빠']];
+Object.defineProperty(WHO[0], 1, { get: () => (window.CV && CV.short ? CV.short() : '아기'), enumerable: true });   // 아기 이름은 프로필에서 (2026.10.29)
 // 식구마다 따로 사는 꾸미기 (산 물건은 그 사람만, 두 폰엔 같이): [id, 이름, 도토리], 맨 앞은 기본(무료)
 const HATN = { cinnaears: '구름 강아지 귀 머리띠 (시나모롤 컨셉)', kittybow: '키티 빨간 리본 (키티 컨셉)', purinhat: '푸린 갈색 베레모 (폼폼푸린 컨셉)', none: '모자 없음 (코난)', deer: '셜록 사냥모자', bowler: '왓슨 보울러 모자', det: '탐정 모자', flower: '꽃 화관', bunny: '토끼 머리띠', bear: '곰돌이 귀', beanie: '털모자', party: '생일 고깔', cap: '야구 모자', straw: '밀짚모자', chef: '요리사 모자', santa: '산타 모자', crown: '왕관', beret: '베레모', tiara: '티아라', antler: '루돌프 뿔', elfhat: '요정 모자' };
 const CLN = Object.fromEntries(CLOTHES.map(c => [c[0], c]));
@@ -347,7 +348,7 @@ function medalsView() {
   if (tab === 'play') {
     body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
       <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
-      <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>소은이 사진 카드 짝 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button></div></section>
+      <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>${window.CV && CV.nick ? esc(CV.nick()) : '아기'} 사진 카드 짝 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
@@ -387,7 +388,7 @@ function kitHtml(s) {
   const allOpen = KINDS.every(([k]) => !isFold(`k-${k}`, true));
   const bar = `<div class="rbar"><button class="ghost" data-game="kitfold" data-v="${allOpen ? 'close' : 'open'}">${allOpen ? '모두 접기 ▴' : '모두 펼치기 ▾'}</button></div>`;
   return `<section id="gkit"><h2 class="sh"><span>👗 식구 꾸미기</span><span>모자 · 옷 · 소품</span></h2>
-    <p class="hint" style="margin:0 0 8px">소은·엄마·아빠가 각자 어울리는 물건을 따로 사요. 산 물건은 그 사람만 써요.${e && s.hat === 'det' ? ` 오늘은 ${e[1]}! 소은이가 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.` : ''}</p>
+    <p class="hint" style="margin:0 0 8px">${(window.CV && CV.short ? esc(CV.short()) : '아기')}·엄마·아빠가 각자 어울리는 물건을 따로 사요. 산 물건은 그 사람만 써요.${e && s.hat === 'det' ? ` 오늘은 ${e[1]}! 프로필 아기가 탐정 모자를 쓰고 있으면 특별 모자로 바뀌어요.` : ''}</p>
     ${whoSeg()}
     <div class="gwear">${WHO.map(([k, l]) => `<button class="${who === k ? 'on' : ''}" data-game="wearwho" data-v="${k}">${CHARS.svg(k, cur(s, k, 'prop'), { size: 78 })}<b>${l}</b></button>`).join('')}</div>
     ${bar}${KINDS.map(([kind, label]) => { const L = KIT[who][kind], c = cur(s, who, kind), ci = L.find(x => x[0] === c), have = L.filter(x => owns(s, who, kind, x[0])).length;   // 무료 물건도 셈 (자리 숫자 = 가진 것 / 전체)
@@ -501,7 +502,7 @@ function quizView() {
   const q = G.q; if (!q) return '';
   if (q.i >= q.rounds.length) {
     const s = st(), best = q.score > s.quizBest;
-    return `<header class="vhead"><span class="no">놀이터</span><h1>퀴즈 결과</h1></header><section class="gq end"><span class="gbig">${q.score}<small>/${q.rounds.length}</small></span><b>${q.score === q.rounds.length ? '완벽해요! 소은이 전담 수사관 인정 🎖️' : q.score >= q.rounds.length * .7 ? '눈썰미가 대단해요!' : '사진 속 소은이가 너무 빨리 자라죠?'}</b>${best ? '<span class="stamp">최고 기록</span>' : ''}<button class="primary" data-game="quiz" style="margin-top:14px;width:100%">한 판 더</button></section>`;
+    return `<header class="vhead"><span class="no">놀이터</span><h1>퀴즈 결과</h1></header><section class="gq end"><span class="gbig">${q.score}<small>/${q.rounds.length}</small></span><b>${q.score === q.rounds.length ? `완벽해요! ${window.CV && CV.nick ? CV.nick() : '아기'} 전담 수사관 인정 🎖️` : q.score >= q.rounds.length * .7 ? '눈썰미가 대단해요!' : `사진 속 ${window.CV && CV.nick ? CV.nick() : '아기'}가 너무 빨리 자라죠?`}</b>${best ? '<span class="stamp">최고 기록</span>' : ''}<button class="primary" data-game="quiz" style="margin-top:14px;width:100%">한 판 더</button></section>`;
   }
   const r = q.rounds[q.i], ph = safeImg(PHOTOS[r.key]);
   return `<header class="vhead"><span class="no">놀이터 · ${q.i + 1}/${q.rounds.length} · ${q.score}점</span><h1>생후 며칠?</h1></header>

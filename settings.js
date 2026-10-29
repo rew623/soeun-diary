@@ -5,7 +5,7 @@
 const get = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
 const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const TABS = [['day', '하루 수사', '🍼'], ['town', '동네 탐문', '🗺️'], ['album', '사건 앨범', '📷'], ['vac', '예방접종', '💉'], ['food', '급식 수사', '🥄'], ['sick', '긴급 출동', '🚨']];
-const CARDS = [['game', '🔥 오늘의 수사 지령·놀이터 카드'], ['thief', '🎩 괴도 깍정이 추적 카드 (방 창밖의 깍정이도)'], ['charges', '🚔 장난 혐의 사실'], ['look', '👀 닮은꼴 판정단 카드'], ['guess', '⚖️ 몸무게 예측 대결'], ['capsule', '✉️ 봉인된 증거물 알림'], ['paper', '📰 이달의 소은일보 알림']];   // 첫 화면 부가 카드 (2026.10.13: 핵심만 보기)
+const CARDS = [['game', '🔥 오늘의 수사 지령·놀이터 카드'], ['thief', '🎩 괴도 깍정이 추적 카드 (방 창밖의 깍정이도)'], ['charges', '🚔 장난 혐의 사실'], ['look', '👀 닮은꼴 판정단 카드'], ['guess', '⚖️ 몸무게 예측 대결'], ['capsule', '✉️ 봉인된 증거물 알림'], ['paper', '📰 이달의 신문 알림']];   // 첫 화면 부가 카드 (2026.10.13: 핵심만 보기)
 const THEMES = () => (window.THEME ? THEME.list : [['det', '탐정 수첩']]);   // themes.js (2026.10.13)
 const V = { ver: '', latest: '', checked: false, est: null, busy: false };
 const sw = () => 'serviceWorker' in navigator;
@@ -46,6 +46,9 @@ function render_() {
     <div class="stver"><div><small>이 폰</small><b id="st-ver">${esc(V.ver || (V.checked ? '알 수 없음' : '…'))}</b></div><div><small>최신</small><b>${esc(V.latest || (V.checked ? '확인 못 함' : '…'))}</b></div></div>
     ${newer() ? `<button class="primary" data-stg="update" style="width:100%" ${V.busy ? 'disabled' : ''}>⬆️ 새 버전으로 업데이트</button>` : `<button class="ghost" data-stg="check" style="width:100%">🔄 새 버전 확인</button>`}
     <p class="foot" style="margin:8px 0 0">새 버전이 나오면 화면 아래에 '새 버전이 있어요'도 떠요.</p></section>
+  ${window.__fbInfo ? `<section class="stsec"><h2 class="sh"><span>☁️ 저장 위치</span><span>${window.__fbInfo.custom ? '내 Firebase' : '기본 (우리 가족)'}</span></h2>
+    <p class="foot" style="margin:0 0 8px">${window.__fbInfo.custom ? `로그인·기록·사진이 <b>${esc(window.__fbInfo.projectId)}</b> 프로젝트에 저장돼요.` : `지금은 기본 저장소(<b>${esc(window.__fbInfo.projectId)}</b>)를 쓰고 있어요. 지인처럼 자기 Firebase를 쓰려면 로그아웃한 첫 화면의 '내 Firebase로 연결하기'를 눌러요.`}</p>
+    ${window.__fbInfo.custom ? '<button class="ghost" data-stg="fbreset" style="width:100%">기본 연결로 되돌리기 (로그아웃돼요)</button>' : ''}</section>` : ''}
   <section class="stsec"><h2 class="sh"><span>🎨 테마</span><span>이 폰만</span></h2>
     <div class="sttheme">${THEMES().map(([k, n, c1]) => `<button class="${(window.THEME ? THEME.current() : 'det') === k ? 'on' : ''}" data-stg="theme" data-v="${k}" style="--t1:${c1}"><i>${window.THEME ? THEME.icon(k) : ''}</i><b>${n}</b></button>`).join('')}</div>
     <p class="sttip">바탕에 그 컨셉 캐릭터·소품 그림이 깔려요. 공식 그림이 아니라 직접 그린 '컨셉' 그림이에요.</p></section>
@@ -75,7 +78,7 @@ function render_() {
   <section class="stsec"><h2 class="sh"><span>수사 통계</span><span>${esc(CV.nick())}</span></h2>
     <div class="ststat">${stat.map(([i, l, n]) => `<span><i>${i}</i><b>${n.toLocaleString()}</b><small>${l}</small></span>`).join('')}</div>
     <button class="ghost" data-act="settings" style="width:100%;margin-top:10px">🕵️ 명탐정 정보 고치기</button></section>
-  <p class="foot" style="text-align:center;margin:14px 0 0">소은이 성장 수사 일지 · ${esc(V.ver || '')}<br>${CHARS.svg('thief', '', { face: true, size: 34 })}</p>
+  <p class="foot" style="text-align:center;margin:14px 0 0">성장 수사 일지 · ${esc(V.ver || '')}<br>${CHARS.svg('thief', '', { face: true, size: 34 })}</p>
   <button class="secondary" data-stg="back" style="width:100%;margin-top:12px">돌아가기</button>`;
 }
 // 그린 뒤 버전 칸만 다시
@@ -154,6 +157,7 @@ document.addEventListener('click', async e => {
   const a = b.dataset.stg, v = b.dataset.v;
   if (a === 'open') return open();
   if (a === 'back') return goBack();
+  if (a === 'fbreset') { if (window.__fbReset && await ask('기본 연결(우리 가족)으로 되돌릴까요?\n로그아웃되고 이 폰의 임시 저장 기록이 지워져요.', { ok: '되돌리기' })) window.__fbReset(); return; }
   if (a === 'check') { V.checked = false; paint(); return versions(); }
   if (a === 'update') return update();
   if (a === 'tab') { const off = hiddenTabs(); const i = off.indexOf(v); if (i >= 0) off.splice(i, 1); else off.push(v); put('soeun-tabs-off', off); toast(i >= 0 ? `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 다시 보여요` : `${(TABS.find(t => t[0] === v) || [])[1]} 탭을 숨겼어요`); render(); return; }

@@ -39,7 +39,7 @@
 | CHARS (characters) | board, book, day, explore, family, fun, game, main-album, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, paper, room, settings, themes, town, walk, wanted |
 | CHECKUPS (checkups) | board, main-render |
 | CLAIM (claims) | checkups, main-render, main-sheets, main-sick |
-| CV (studio) | album, capsule, claims, dupes, explore, focus, look, main-meal, main-render, movie, paper, posecam, settings, viewer, walk, wanted |
+| CV (studio) | album, capsule, claims, dupes, explore, focus, game, look, main-album, main-meal, main-render, movie, paper, posecam, room, settings, viewer, walk, wanted |
 | DAY (day) | main-render, main-sick |
 | DEV (dev) | main-render |
 | DUPES (dupes) | album |

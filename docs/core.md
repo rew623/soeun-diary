@@ -25,3 +25,4 @@
 - 제목줄 글씨 혼자 두 줄 방지(2026.10.13): index.html .sh·.agh 앞쪽 글씨 flex:none+nowrap, 뒤쪽 설명이 줄어들게(꾸미기 '모자'·놀이터 '함께 놀기')
 - 몸무게 표시 소수점 셋째 자리까지(2026.10.17 사용자 요청): main-core.js fmt('weight')가 늘 toFixed(3) — 6.450kg. 저장값은 그대로(입력한 만큼), 키·머리둘레는 소수 1자리 그대로
 - 증거 기록 카드(.stat .v) 한 줄 고정(nowrap, 20px, 몸무게 .vw 17px) — 6.445kg가 두 줄로 꺾이던 것(2026.10.17)
+- 아기 이름 일반화(2026.10.29): 코드에 박힌 '소은'을 프로필 이름으로 — CV.short()/CV.nick()(studio.js), characters.js short()/nick(), game.js WHO[0][1] getter, room.js keyName 등. 앱 이름(manifest name)은 '성장 수사 일지'. 지인이 쓰는 방법은 docs/friend-setup.md
