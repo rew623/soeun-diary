@@ -353,6 +353,7 @@ function medalsView() {
       <button data-game="pz"><span>🧩</span><b>사진 퍼즐</b><small>조각 밀어서 사진 맞추기</small>${recRows([['3×3', 'pz3'], ['4×4', 'pz4']])}</button>
       <button data-game="ord"><span>📅</span><b>순서 맞추기</b><small>사진 4장을 찍은 순서대로 누르기</small>${recRows([['', 'ordt']])}</button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
+      <p class="foot">📡 서버에 올라간 기록 — 👩 엄마 ${recCount('엄마')}개 · 👨 아빠 ${recCount('아빠')}개 (두 폰이 같은 숫자면 서로 보이는 거예요)</p>
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 사진 놀이 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
     const rc = window.ROOMS ? ROOMS.count() : { own: 0, all: 0 };
@@ -555,6 +556,7 @@ function recSeed(s) {
   Object.keys(src).forEach(k => { if (RECS[k]) recSet(s, k, src[k]); });
   if (JSON.stringify(s.rec || {}) !== before) { if (s.__o) s.__o.rec = ''; save(s, '놀이 기록 올림'); }
 }
+const recCount = who => Object.values((S.game && S.game.rec) || {}).filter(o => o && o[who] !== undefined).length;
 // 크기 고르기 (게임 안에서) — 누르면 그 크기로 새 판
 const sizeSeg = (g, opts, cur) => `<div class="seg gsize">${opts.map(([n, l]) => `<button class="${n === cur ? 'on' : ''}" data-game="${g}" data-n="${n}">${l}</button>`).join('')}</div>`;
 const winGame = (k, rec, val, bonus, why) => {   // 끝났을 때 공통: 하루 첫 판 +1, 잘하면 보너스, 엄마·아빠 기록
