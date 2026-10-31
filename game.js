@@ -348,8 +348,8 @@ function medalsView() {
   if (tab === 'play') {
     body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
       <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}${recLine('quiz')}</small></button>
-      <button data-game="mem" data-n="6"><span>🃏</span><b>사진 짝맞추기</b><small>${window.CV && CV.nick ? esc(CV.nick()) : '아기'} 사진 카드 짝 찾기 (3×4)${s.memBest ? ` · 최고 ${s.memBest}번` : ''}${recLine('mem6')}</small></button>
-      <button data-game="mem" data-n="10"><span>🃏</span><b>사진 짝맞추기 (5×4)</b><small>카드 20장, 10쌍 찾기${s.memBest10 ? ` · 최고 ${s.memBest10}번` : ''}${recLine('mem10')}</small></button></div></section>
+      <button data-game="mem" data-n="6"><span>🃏</span><b>사진 짝맞추기 3×4</b><small>카드 12장, 6쌍 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}${recLine('mem6')}</small></button>
+      <button data-game="mem" data-n="10"><span>🃏</span><b>사진 짝맞추기 5×4</b><small>카드 20장, 10쌍 찾기${s.memBest10 ? ` · 최고 ${s.memBest10}번` : ''}${recLine('mem10')}</small></button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
@@ -539,7 +539,7 @@ function memStart(n) {
 }
 function memView() {
   const m = G.m; if (!m) return '';
-  return `<header class="vhead"><span class="no">놀이터 · <span id="gmv">${m.moves}</span>번 뒤집음</span><h1>사진 짝맞추기</h1></header>
+  return `<header class="vhead"><span class="no">놀이터 · <span id="gmv">${m.moves}</span>번 뒤집음</span><h1>사진 짝맞추기 ${m.n === 10 ? "5×4" : "3×4"}</h1></header>
     <section class="gmem${m.n === 10 ? ' g10' : ''}" id="gmem">${m.cards.map(c => `<button class="gc${c.open || c.done ? ' open' : ''}${c.done ? ' done' : ''}" data-game="mc" data-i="${c.i}"><span class="back">🌰</span><span class="face">${c.img ? `<img src="${c.img}" alt="">` : `<b>${c.e}</b>`}</span></button>`).join('')}</section>
     ${m.left ? '' : `<section class="gq end"><b>${m.moves}번 만에 성공!</b><button class="primary" data-game="mem" data-n="${m.n}" style="margin-top:10px;width:100%">한 판 더</button></section>`}`;
 }
