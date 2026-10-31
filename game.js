@@ -351,7 +351,7 @@ function medalsView() {
       <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기</small>${recRows([['', 'quiz']])}</button>
       <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>카드 짝 찾기</small>${recRows([['3×4', 'mem6'], ['5×4', 'mem10']])}</button>
       <button data-game="pz"><span>🧩</span><b>사진 퍼즐</b><small>조각 밀어서 사진 맞추기</small>${recRows([['3×3', 'pz3'], ['4×4', 'pz4']])}</button>
-      <button data-game="ord"><span>📅</span><b>순서 맞추기</b><small>사진 4장을 찍은 순서대로 누르기</small>${recRows([['', 'ord']])}</button></div></section>
+      <button data-game="ord"><span>📅</span><b>순서 맞추기</b><small>사진 4장을 찍은 순서대로 누르기</small>${recRows([['', 'ordt']])}</button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 사진 놀이 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
@@ -525,7 +525,7 @@ function quizEnd() {
 }
 // 사진 짝맞추기 (사진이 6장 안 되면 그림 카드)
 // 엄마·아빠 게임 최고 기록 (두 폰 공유 game/shared.rec = { mem6|mem10|quiz: { 엄마: 값, 아빠: 값 } }) — 서로 경쟁!
-const RECS = { quiz: ['생후 며칠 퀴즈', false, '점'], mem6: ['짝맞추기 3×4', true, '번'], mem10: ['짝맞추기 5×4', true, '번'], pz3: ['퍼즐 3×3', true, '번'], pz4: ['퍼즐 4×4', true, '번'], ord: ['순서 맞추기', false, '점'] };
+const RECS = { quiz: ['생후 며칠 퀴즈', false, '점'], mem6: ['짝맞추기 3×4', true, '번'], mem10: ['짝맞추기 5×4', true, '번'], pz3: ['퍼즐 3×3', true, '번'], pz4: ['퍼즐 4×4', true, '번'], ordt: ['순서 맞추기', true, '번'] };
 function recSet(s, k, v) { const me = myRole(), o = (s.rec && s.rec[k]) || {}, old = o[me]; if (old !== undefined && (RECS[k][1] ? v >= old : v <= old)) return; s.rec = Object.assign({}, s.rec, { [k]: Object.assign({}, o, { [me]: v }) }); }
 function recLine(k) {
   const o = (st().rec || {})[k] || {}, [, low, u] = RECS[k], a = o['엄마'], d = o['아빠'];
@@ -595,34 +595,42 @@ function pzMove(i) {
   const b = document.getElementById('pzb'); if (b) b.innerHTML = pzTiles();
   const m = document.getElementById('pzm'); if (m) m.textContent = p.moves;
 }
-// 📅 순서 맞추기 — 찍은 날이 다른 사진 4장, 오래된 것부터 차례로 누르기. 3판, 맞힌 자리 수가 점수 (12점 만점)
-function ordRound() {
-  const seen = new Set(), pick = [];
-  for (const p of shuffle(photoPool())) { if (seen.has(p.date)) continue; seen.add(p.date); pick.push(p); if (pick.length === 4) break; }
-  return pick.length < 4 ? null : { ph: shuffle(pick), sel: [], chk: false };
+// 📅 순서 맞추기 — 사진 4장(서로 1주 넘게 떨어진 날), 오래된 것부터 차례로 누르기. 틀리면 몇 장 맞았는지만 알려 주고 다시. 3판 동안 시도 횟수로 대결 (적을수록 좋음)
+function ordRound(prev) {
+  const used = new Set(prev || []), dn = d => daysBetween(S.profile && S.profile.birth || d, d);
+  const pool = shuffle(photoPool());
+  for (const gap of [7, 4, 1]) {   // 1주 이상 떨어진 4장이 없으면 조금씩 느슨하게
+    const pick = [];
+    for (const p of pool) { if (used.has(p.key) && gap > 1) continue; const far = q => { const a = dn(q.date), b = dn(p.date); return Math.abs(a - b) >= gap && (gap < 7 || Math.floor(a / 7) !== Math.floor(b / 7)); }; if (pick.every(far)) pick.push(p); if (pick.length === 4) break; }
+    if (pick.length === 4) return { ph: shuffle(pick), sel: [], ok: false, msg: '' };
+  }
+  return null;
 }
-function ordStart() { const r = ordRound(); if (!r) { toast('찍은 날이 다른 사진이 4장 이상 있어야 해요'); return false; } G.o = { i: 0, score: 0, r, done: false }; return true; }
+function ordStart() { const r = ordRound(); if (!r) { toast('찍은 날이 다른 사진이 4장 이상 있어야 해요'); return false; } G.o = { i: 0, tries: 0, r, done: false, seen: r.ph.map(p => p.key) }; return true; }
 function ordView() {
   const o = G.o; if (!o) return '';
-  if (o.done) return `<header class="vhead"><span class="no">놀이터</span><h1>순서 맞추기</h1></header><section class="gq end"><div class="gbig">${o.score}<small>/12</small></div><b>${o.score === 12 ? '완벽해요! 날짜 수사 만점' : '수고했어요!'}</b><p class="foot grecs" style="margin:8px 0 0">${recLine('ord').replace('<br>', '')}</p><button class="primary" data-game="ord" style="margin-top:10px;width:100%">한 판 더</button></section>`;
+  if (o.done) return `<header class="vhead"><span class="no">놀이터</span><h1>순서 맞추기</h1></header><section class="gq end"><div class="gbig">${o.tries}<small>번</small></div><b>${o.tries === 3 ? '한 번에 다 맞혔어요! 날짜 수사 만점' : `3판을 ${o.tries}번 만에 다 맞혔어요!`}</b><p class="foot grecs" style="margin:8px 0 0">${recLine('ordt').replace('<br>', '')}</p><button class="primary" data-game="ord" style="margin-top:10px;width:100%">한 판 더</button></section>`;
   const r = o.r, birth = S.profile && S.profile.birth;
-  const right = r.ph.slice().sort((a, b) => a.date < b.date ? -1 : 1);
-  return `<header class="vhead"><span class="no">놀이터 · ${o.i + 1}/3판 · ${o.score}점</span><h1>순서 맞추기</h1></header>
-    <section class="gq"><p class="foot" style="margin:0 0 8px">${r.chk ? '정답은 이래요' : '가장 옛날 사진부터 차례로 눌러 주세요 (다시 누르면 취소)'}</p>
-    <div class="ordg">${r.ph.map((p, k) => { const n = r.sel.indexOf(k), ok = r.chk && right[n] === p, ans = right.indexOf(p);
-      return `<button class="ordc${r.chk ? (ok ? ' ok' : ' no') : ''}" data-game="ordp" data-i="${k}"><img src="${safeImg(PHOTOS[p.key])}" alt="">${n >= 0 ? `<b>${n + 1}</b>` : ''}${r.chk ? `<small>${ok ? '⭕' : `정답 ${ans + 1}번`} · ${birth ? `생후 ${daysBetween(birth, p.date) + 1}일` : p.date}</small>` : ''}</button>`; }).join('')}</div>
-    ${r.chk ? `<button class="primary" data-game="ordn" style="width:100%;margin-top:10px">${o.i < 2 ? '다음 판' : '결과 보기'}</button>` : ''}</section>`;
+  return `<header class="vhead"><span class="no">놀이터 · ${o.i + 1}/3판 · 시도 ${o.tries}번</span><h1>순서 맞추기</h1></header>
+    <section class="gq"><p class="foot ordmsg${r.msg ? ' bad' : ''}" style="margin:0 0 8px">${r.ok ? '⭕ 맞았어요!' : r.msg || '가장 옛날 사진부터 차례로 눌러 주세요 (다시 누르면 취소)'}</p>
+    <div class="ordg">${r.ph.map((p, k) => { const n = r.sel.indexOf(k);
+      return `<button class="ordc${r.ok ? ' ok' : ''}" data-game="ordp" data-i="${k}"><img src="${safeImg(PHOTOS[p.key])}" alt="">${n >= 0 ? `<b>${n + 1}</b>` : ''}${r.ok ? `<small>${birth ? `생후 ${daysBetween(birth, p.date) + 1}일` : p.date}</small>` : ''}</button>`; }).join('')}</div>
+    ${r.ok ? `<button class="primary" data-game="ordn" style="width:100%;margin-top:10px">${o.i < 2 ? '다음 판' : '결과 보기'}</button>` : ''}</section>`;
 }
 function ordPick(k) {
-  const o = G.o, r = o && o.r; if (!r || r.chk) return;
+  const o = G.o, r = o && o.r; if (!r || r.ok) return;
   const j = r.sel.indexOf(k); if (j >= 0) r.sel.splice(j, 1); else r.sel.push(k);
-  if (r.sel.length === 4) { r.chk = true; const right = r.ph.slice().sort((a, b) => a.date < b.date ? -1 : 1); o.score += r.sel.filter((x, n) => r.ph[x] === right[n]).length; }
+  r.msg = '';
+  if (r.sel.length === 4) {
+    o.tries++; const right = r.ph.slice().sort((a, b) => a.date < b.date ? -1 : 1), n = r.sel.filter((x, i) => r.ph[x] === right[i]).length;
+    if (n === 4) r.ok = true; else { r.msg = `❌ 틀렸어요! 4장 중 ${n}장만 제자리예요. 다시 해 보세요`; r.sel = []; }
+  }
   render();
 }
 function ordNext() {
   const o = G.o; if (!o) return;
-  if (o.i < 2) { o.i++; o.r = ordRound(); render(); window.scrollTo(0, 0); return; }
-  o.done = true; winGame('ord', 'ord', o.score, o.score === 12 ? 2 : 0, '놀이터: 순서 맞추기');
+  if (o.i < 2) { const r = ordRound(o.seen); if (r) { o.i++; o.r = r; o.seen.push(...r.ph.map(p => p.key)); render(); window.scrollTo(0, 0); return; } }
+  o.done = true; winGame('ord', 'ordt', o.tries, o.tries <= 6 ? 2 : 0, '놀이터: 순서 맞추기');
   render();
 }
 const EMO = ['🍼', '🧸', '🌰', '🐿️', '🎈', '🧦', '🦆', '🍓', '🚗', '🐻'];
@@ -787,7 +795,7 @@ button.gchip{min-height:30px}
 .pzt img{position:absolute;max-width:none;pointer-events:none}.pzt.empty{background:transparent}
 .ordg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ordc{position:relative;aspect-ratio:1;border:2px solid var(--line);border-radius:12px;overflow:hidden;padding:0;background:#FFFDF7}
 .ordc img{width:100%;height:100%;object-fit:cover;display:block}.ordc b{position:absolute;left:6px;top:6px;width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;font-family:var(--display);font-weight:400;font-size:19px;line-height:32px;text-align:center;box-shadow:0 2px 4px #0005}
-.ordc small{position:absolute;left:0;right:0;bottom:0;background:#1F2A44D9;color:#fff;font-size:12px;padding:4px 6px;text-align:center}.ordc.ok{border-color:#5E9E57;box-shadow:0 0 0 3px #CFE6C3}.ordc.no{border-color:var(--red)}
+.ordc small{position:absolute;left:0;right:0;bottom:0;background:#1F2A44D9;color:#fff;font-size:12px;padding:4px 6px;text-align:center}.ordc.ok{border-color:#5E9E57;box-shadow:0 0 0 3px #CFE6C3}.ordc.no{border-color:var(--red)}.ordmsg{text-align:center;font-size:14px}.ordmsg.bad{color:var(--red);animation:ordshk .35s}@keyframes ordshk{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 .grec{color:var(--red);font-size:11.5px}
 .gmem.g10{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:8px!important}.g10 .gc .back{font-size:18px;box-shadow:inset 0 0 0 2px #FFFDF7,0 2px 0 #121a2e}.g10 .gc .face b{font-size:24px}.g10 .gc span{border-radius:9px}
 .gc{position:relative;aspect-ratio:3/4;border:0;padding:0;background:none;perspective:600px}
