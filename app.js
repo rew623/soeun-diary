@@ -69,7 +69,7 @@ const dateOk = d => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
 const numOrNull = v => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v);
 const fref = () => doc(db, 'families', M.fid);
-const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'regrant', 'wanted', 'look', 'bpos', 'whome', 'paper', 'feed'];   // feed: 수유 알람 설정 {on, day, night, ns, ne, pre}   // whome: 탐문 기록 기본 출발지 {g:'위도,경도', n:이름}   // look: 캐릭터 컨셉 옷을 한 번 입힌 표시
+const GAME_KEYS = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'regrant', 'wanted', 'look', 'bpos', 'whome', 'paper', 'feed', 'rec'];   // feed: 수유 알람 설정 {on, day, night, ns, ne, pre}   // whome: 탐문 기록 기본 출발지 {g:'위도,경도', n:이름}   // look: 캐릭터 컨셉 옷을 한 번 입힌 표시
 const dref = (c, id) => doc(db, 'families', M.fid, c, String(id));
 // 아직 서버에 안 닿은 내 놀이 저장 (2026.10.13): 트랜잭션(도토리 쓰기)은 폰 안 사본에 바로 안 들어가서, 그 사이 다른 데이터가 와서 화면을 다시 그리면 방금 산 물건·도토리가 옛 값으로 돌아갔다 서버 값이 오면 다시 나타났어요
 // → 서버에서 같은 값이 확인될 때까지(최대 20초) 내 값을 위에 덮어 보여 줘요

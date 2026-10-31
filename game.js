@@ -526,7 +526,12 @@ function quizEnd() {
 // 사진 짝맞추기 (사진이 6장 안 되면 그림 카드)
 // 엄마·아빠 게임 최고 기록 (두 폰 공유 game/shared.rec = { mem6|mem10|quiz: { 엄마: 값, 아빠: 값 } }) — 서로 경쟁!
 const RECS = { quiz: ['생후 며칠 퀴즈', false, '점'], mem6: ['짝맞추기 3×4', true, '번'], mem10: ['짝맞추기 5×4', true, '번'], pz3: ['퍼즐 3×3', true, '번'], pz4: ['퍼즐 4×4', true, '번'], ordt: ['순서 맞추기', true, '번'] };
-function recSet(s, k, v) { const me = myRole(), o = (s.rec && s.rec[k]) || {}, old = o[me]; if (old !== undefined && (RECS[k][1] ? v >= old : v <= old)) return; s.rec = Object.assign({}, s.rec, { [k]: Object.assign({}, o, { [me]: v }) }); }
+function recSet(s, k, v) {
+  const me = myRole(), low = RECS[k][1], better = (n, o) => o === undefined || (low ? n < o : n > o);
+  s.mine = Object.assign({}, s.mine, better(v, (s.mine || {})[k]) ? { [k]: v } : {});   // 이 폰에서 세운 내 기록 (공유 기록이 덮여도 다시 올리려고)
+  const o = (s.rec && s.rec[k]) || {}; if (!better(v, o[me])) return;
+  s.rec = Object.assign({}, s.rec, { [k]: Object.assign({}, o, { [me]: v }) });
+}
 function recLine(k) {
   const o = (st().rec || {})[k] || {}, [, low, u] = RECS[k], a = o['엄마'], d = o['아빠'];
   if (a === undefined && d === undefined) return '';
@@ -542,12 +547,13 @@ function recRows(rows) {
     const v = (x, w) => x === undefined ? '–' : `<b>${x}</b>${u}${win === w ? '👑' : ''}`;
     return `<span>${lab ? `<em>${lab}</em>` : '<em>최고</em>'}👩${v(a, 'a')} 👨${v(d, 'd')}</span>`; }).join('')}</span>`;
 }
-// 예전에 이 폰에만 있던 최고 기록을 내 역할(엄마/아빠) 기록으로 한 번 옮김
+// 이 폰의 내 최고 기록(예전 quizBest·memBest 포함)이 공유 기록(엄마·아빠 칸)에 없거나 더 낮으면 다시 올림
 function recSeed(s) {
-  const me = myRole(); if (!me || s.recSeeded === me) return;
+  const me = myRole(); if (!me) return;
+  const src = Object.assign({}, s.mine); [['quiz', s.quizBest], ['mem6', s.memBest], ['mem10', s.memBest10]].forEach(([k, v]) => { if (v && (src[k] === undefined || (RECS[k][1] ? v < src[k] : v > src[k]))) src[k] = v; });
   const before = JSON.stringify(s.rec || {});
-  if (s.quizBest) recSet(s, 'quiz', s.quizBest); if (s.memBest) recSet(s, 'mem6', s.memBest); if (s.memBest10) recSet(s, 'mem10', s.memBest10);
-  s.recSeeded = me; save(s, JSON.stringify(s.rec || {}) !== before ? '놀이 기록 옮김' : undefined);
+  Object.keys(src).forEach(k => { if (RECS[k]) recSet(s, k, src[k]); });
+  if (JSON.stringify(s.rec || {}) !== before) { if (s.__o) s.__o.rec = ''; save(s, '놀이 기록 올림'); }
 }
 // 크기 고르기 (게임 안에서) — 누르면 그 크기로 새 판
 const sizeSeg = (g, opts, cur) => `<div class="seg gsize">${opts.map(([n, l]) => `<button class="${n === cur ? 'on' : ''}" data-game="${g}" data-n="${n}">${l}</button>`).join('')}</div>`;
