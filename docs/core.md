@@ -27,3 +27,4 @@
 - 증거 기록 카드(.stat .v) 한 줄 고정(nowrap, 20px, 몸무게 .vw 17px) — 6.445kg가 두 줄로 꺾이던 것(2026.10.17)
 - 아기 이름 일반화(2026.10.29): 코드에 박힌 '소은'을 프로필 이름으로 — CV.short()/CV.nick()(studio.js), characters.js short()/nick(), game.js WHO[0][1] getter, room.js keyName 등. 앱 이름(manifest name)은 '성장 수사 일지'. 지인이 쓰는 방법은 docs/friend-setup.md
 - 로그인 없이 둘러보기(2026.10.29 사용자 요청): 출입 화면 '로그인 없이 둘러보기 (예시 데이터)' → window.__enterDemo(main-core.js): DEMO=true, MOCK DB로만 앱을 열고(날짜는 생후 100일쯤으로 옮김) Firebase 연결·저장·폰 사본(saveCache·game local) 모두 안 함, 위 띠의 '나가기'(새로 고침)로 처음 화면
+- app.js: Firestore initializeFirestore에 experimentalAutoDetectLongPolling 추가(2026.10.31) — 아이폰 홈화면 앱에서 실시간 연결이 막혀 다른 폰의 변경(사진 날짜·놀이 기록)이 안 오던 문제 의심

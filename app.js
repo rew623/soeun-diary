@@ -12,7 +12,7 @@ if (FB_OVR) window.PUSH_VAPID = '';   // 알림 열쇠(push-key.js)는 우리 �
 window.__fbInfo = { custom: !!FB_OVR, projectId: (FB_OVR || FIREBASE_CONFIG).projectId };
 const fb = initializeApp(FB_OVR || FIREBASE_CONFIG);
 const auth = getAuth(fb);
-const db = initializeFirestore(fb, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+const db = initializeFirestore(fb, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalAutoDetectLongPolling: true });
 const storage = getStorage(fb);
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
