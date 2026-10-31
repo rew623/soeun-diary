@@ -3,7 +3,7 @@
 // 도토리·방·옷·모자·스티커·룰렛은 두 폰이 같이 씀 (Firestore families/{fid}/game/shared ↔ S.game), 최고 기록·오늘 한 놀이 등은 이 폰에만 (localStorage soeun-game)
 (function () {
 const KEY = 'soeun-game';
-const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'bpos', 'whome', 'paper', 'feed'];   // feed: 수유 알람 설정 (day.js)   // paper: 소은일보 고친 것   // bpos: 수사 보드 카드 옮긴 자리
+const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'bpos', 'whome', 'paper', 'feed', 'rec'];   // feed: 수유 알람 설정 (day.js)   // paper: 소은일보 고친 것   // bpos: 수사 보드 카드 옮긴 자리
 const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, memBest10: 0, diffBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -347,10 +347,10 @@ function medalsView() {
   let body = '';
   if (tab === 'play') {
     body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
-      <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
-      <button data-game="mem" data-n="6"><span>🃏</span><b>사진 짝맞추기</b><small>${window.CV && CV.nick ? esc(CV.nick()) : '아기'} 사진 카드 짝 찾기 (3×4)${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button>
-      <button data-game="mem" data-n="10"><span>🃏</span><b>사진 짝맞추기 (5×4)</b><small>카드 20장, 10쌍 찾기${s.memBest10 ? ` · 최고 ${s.memBest10}번` : ''}</small></button>
-      <button data-game="diff"><span>🔍</span><b>틀린그림찾기</b><small>사진 속 다른 곳 5군데 찾기${s.diffBest ? ` · 최소 실수 ${s.diffBest - 1}번` : ''}</small></button></div></section>
+      <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}${recLine('quiz')}</small></button>
+      <button data-game="mem" data-n="6"><span>🃏</span><b>사진 짝맞추기</b><small>${window.CV && CV.nick ? esc(CV.nick()) : '아기'} 사진 카드 짝 찾기 (3×4)${s.memBest ? ` · 최고 ${s.memBest}번` : ''}${recLine('mem6')}</small></button>
+      <button data-game="mem" data-n="10"><span>🃏</span><b>사진 짝맞추기 (5×4)</b><small>카드 20장, 10쌍 찾기${s.memBest10 ? ` · 최고 ${s.memBest10}번` : ''}${recLine('mem10')}</small></button>
+      <button data-game="diff"><span>🔍</span><b>틀린그림찾기</b><small>사진 속 다른 곳 5군데 찾기${s.diffBest ? ` · 최소 실수 ${s.diffBest - 1}번` : ''}${recLine('diff')}</small></button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
@@ -518,10 +518,20 @@ function quizEnd() {
   const q = G.q, s = st(); let gain = 0;
   if (s.played.quiz !== today()) gain++;
   if (q.score === q.rounds.length && q.rounds.length >= 5) gain += 2;
-  s.quizBest = Math.max(s.quizBest, q.score); s.played.quiz = today(); s.acorn += gain; save(s, '놀이터: 생후 며칠 퀴즈');
+  s.quizBest = Math.max(s.quizBest, q.score); recSet(s, 'quiz', q.score); s.played.quiz = today(); s.acorn += gain; save(s, '놀이터: 생후 며칠 퀴즈');
   if (gain) toast(`도토리 🌰 +${gain}`);
 }
 // 사진 짝맞추기 (사진이 6장 안 되면 그림 카드)
+// 엄마·아빠 게임 최고 기록 (두 폰 공유 game/shared.rec = { mem6|mem10|quiz|diff: { 엄마: 값, 아빠: 값 } }) — 서로 경쟁!
+const RECS = { quiz: ['생후 며칠 퀴즈', false, '점'], mem6: ['짝맞추기 3×4', true, '번'], mem10: ['짝맞추기 5×4', true, '번'], diff: ['틀린그림찾기', true, '번'] };
+function recSet(s, k, v) { const me = myRole(), o = (s.rec && s.rec[k]) || {}, old = o[me]; if (old !== undefined && (RECS[k][1] ? v >= old : v <= old)) return; s.rec = Object.assign({}, s.rec, { [k]: Object.assign({}, o, { [me]: v }) }); }
+function recLine(k) {
+  const o = (st().rec || {})[k] || {}, [, low, u] = RECS[k], a = o['엄마'], d = o['아빠'];
+  if (a === undefined && d === undefined) return '';
+  const win = a !== undefined && d !== undefined && a !== d ? ((low ? a < d : a > d) ? '엄마' : '아빠') : '';
+  const one = (n, ic, v) => v === undefined ? '' : `${ic} ${n} ${v}${u}${win === n ? ' 👑' : ''}`;
+  return `<br><span class="grec">${[one('엄마', '👩', a), one('아빠', '👨', d)].filter(Boolean).join(' · ')}</span>`;
+}
 // 틀린그림찾기 — 앨범 사진 한 장을 캔버스로 복사해서 5군데를 바꿔 놓고, 위·아래 어디든 다른 곳을 누르면 찾기
 const DW = 640, DH = 480;
 async function diffStart() {
@@ -569,7 +579,7 @@ function diffTap(w, e) {
   const f = document.getElementById('dfound'); if (f) f.textContent = 5 - d.left;
   if (!d.left) {
     d.done = true; const s = st(); let gain = s.played.diff !== today() ? 1 : 0; if (d.miss <= 3) gain += 2;
-    s.diffBest = s.diffBest ? Math.min(s.diffBest, d.miss + 1) : d.miss + 1; s.played.diff = today(); s.acorn += gain; save(s, '놀이터: 틀린그림찾기');
+    s.diffBest = s.diffBest ? Math.min(s.diffBest, d.miss + 1) : d.miss + 1; recSet(s, 'diff', d.miss); s.played.diff = today(); s.acorn += gain; save(s, '놀이터: 틀린그림찾기');
     confetti(); setTimeout(() => { render(); if (gain) toast(`도토리 🌰 +${gain}`); }, 500);
   }
 }
@@ -596,7 +606,7 @@ function memFlip(i) {
     [a.i, c.i].forEach(j => document.querySelector(`.gc[data-i="${j}"]`).classList.add('done'));
     if (!m.left) {
       const s = st(); let gain = s.played.mem !== today() ? 1 : 0; const big = m.n === 10; if (m.moves <= (big ? 20 : 10)) gain += big ? 3 : 2;
-      if (big) s.memBest10 = s.memBest10 ? Math.min(s.memBest10, m.moves) : m.moves; else s.memBest = s.memBest ? Math.min(s.memBest, m.moves) : m.moves; s.played.mem = today(); s.acorn += gain; save(s, '놀이터: 사진 짝맞추기');
+      if (big) s.memBest10 = s.memBest10 ? Math.min(s.memBest10, m.moves) : m.moves; else s.memBest = s.memBest ? Math.min(s.memBest, m.moves) : m.moves; recSet(s, big ? 'mem10' : 'mem6', m.moves); s.played.mem = today(); s.acorn += gain; save(s, '놀이터: 사진 짝맞추기');
       confetti(); setTimeout(() => { render(); if (gain) toast(`도토리 🌰 +${gain}`); }, 500);
     }
   } else {
@@ -724,6 +734,7 @@ button.gchip{min-height:30px}
 .gbig{font-family:var(--display);font-size:64px;color:var(--red);line-height:1}.gbig small{font-size:24px;color:var(--muted)}
 .gq.end .stamp{position:absolute;right:16px;top:14px;margin:0}
 .gmem{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px!important}
+.grec{color:var(--red);font-size:11.5px}
 .dwrap{position:relative;border-radius:10px;overflow:hidden;border:2px solid var(--line);line-height:0;touch-action:manipulation}.dwrap canvas{width:100%;height:auto;display:block}.dwrap.dbad{box-shadow:inset 0 0 0 4px var(--red)}
 .dring{position:absolute;transform:translate(-50%,-50%);border:3px solid var(--red);border-radius:50%;pointer-events:none;box-shadow:0 0 0 2px #fff8}
 .gmem.g10{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:8px!important}.g10 .gc .back{font-size:18px;box-shadow:inset 0 0 0 2px #FFFDF7,0 2px 0 #121a2e}.g10 .gc .face b{font-size:24px}.g10 .gc span{border-radius:9px}
