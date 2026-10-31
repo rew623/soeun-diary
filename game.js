@@ -634,9 +634,21 @@ function ordNext() {
   render();
 }
 const EMO = ['🍼', '🧸', '🌰', '🐿️', '🎈', '🧦', '🦆', '🍓', '🚗', '🐻'];
+// 서로 날짜가 먼 사진 n장 고르기 (1주 넘게·다른 생후 주차 → 없으면 4일 → 1일 → 그래도 모자라면 아무거나)
+function apartPick(all, n) {
+  const dn = d => daysBetween(S.profile && S.profile.birth || d, d);
+  for (const gap of [7, 4, 1]) {
+    const pick = [];
+    for (const p of all) {
+      if (pick.every(q => { const a = dn(q.date), b = dn(p.date); return Math.abs(a - b) >= gap && (gap < 7 || Math.floor(a / 7) !== Math.floor(b / 7)); })) pick.push(p);
+      if (pick.length === n) return pick;
+    }
+  }
+  return all.slice(0, n);
+}
 function memStart(n) {
   n = n === 10 ? 10 : 6;
-  const pool = shuffle(photoPool()).slice(0, n);
+  const all = shuffle(photoPool()), pool = apartPick(all, n);
   const faces = pool.length >= n ? pool.map(p => ({ k: p.key, img: safeImg(PHOTOS[p.key]) })) : EMO.slice(0, n).map(e => ({ k: e, e }));
   G.m = { n, cards: shuffle([...faces, ...faces]).map((f, i) => ({ ...f, i, open: false, done: false })), first: null, moves: 0, lock: false, left: n };
 }
