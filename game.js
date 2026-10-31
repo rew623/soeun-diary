@@ -4,7 +4,7 @@
 (function () {
 const KEY = 'soeun-game';
 const SHARED = ['acorn', 'hats', 'hat', 'hatOf', 'room', 'slot', 'clothes', 'wear', 'stickers', 'roulette', 'pic', 'paid', 'props', 'propOf', 'pos', 'bpos', 'whome', 'paper', 'feed'];   // feed: 수유 알람 설정 (day.js)   // paper: 소은일보 고친 것   // bpos: 수사 보드 카드 옮긴 자리
-const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
+const DEF = () => ({ acorn: 0, hats: ['det'], hat: 'det', quizBest: 0, memBest: 0, memBest10: 0, diffBest: 0, done: [], seenMedals: null, seenRank: null, played: {}, room: [], seenGuess: '', walls: ['cream'], wall: 'cream' });
 const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function local() { let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {} return Object.assign(DEF(), s || {}); }
@@ -348,7 +348,9 @@ function medalsView() {
   if (tab === 'play') {
     body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
       <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}</small></button>
-      <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>${window.CV && CV.nick ? esc(CV.nick()) : '아기'} 사진 카드 짝 찾기${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button></div></section>
+      <button data-game="mem" data-n="6"><span>🃏</span><b>사진 짝맞추기</b><small>${window.CV && CV.nick ? esc(CV.nick()) : '아기'} 사진 카드 짝 찾기 (3×4)${s.memBest ? ` · 최고 ${s.memBest}번` : ''}</small></button>
+      <button data-game="mem" data-n="10"><span>🃏</span><b>사진 짝맞추기 (5×4)</b><small>카드 20장, 10쌍 찾기${s.memBest10 ? ` · 최고 ${s.memBest10}번` : ''}</small></button>
+      <button data-game="diff"><span>🔍</span><b>틀린그림찾기</b><small>사진 속 다른 곳 5군데 찾기${s.diffBest ? ` · 최소 실수 ${s.diffBest - 1}번` : ''}</small></button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 퀴즈·짝맞추기 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
@@ -475,6 +477,7 @@ function playView() {
   const back = '<button class="secondary" data-game="medals" style="width:100%;margin-top:14px">놀이터로</button>';
   if (G.game === 'quiz') return quizView() + back;
   if (G.game === 'mem') return memView() + back;
+  if (G.game === 'diff') return diffView() + back;
   return medalsView();
 }
 // 생후 며칠 퀴즈
@@ -519,17 +522,69 @@ function quizEnd() {
   if (gain) toast(`도토리 🌰 +${gain}`);
 }
 // 사진 짝맞추기 (사진이 6장 안 되면 그림 카드)
-const EMO = ['🍼', '🧸', '🌰', '🐿️', '🎈', '🧦', '🦆', '🍓'];
-function memStart() {
-  const pool = shuffle(photoPool()).slice(0, 6);
-  const faces = pool.length >= 6 ? pool.map(p => ({ k: p.key, img: safeImg(PHOTOS[p.key]) })) : EMO.slice(0, 6).map(e => ({ k: e, e }));
-  G.m = { cards: shuffle([...faces, ...faces]).map((f, i) => ({ ...f, i, open: false, done: false })), first: null, moves: 0, lock: false, left: 6 };
+// 틀린그림찾기 — 앨범 사진 한 장을 캔버스로 복사해서 5군데를 바꿔 놓고, 위·아래 어디든 다른 곳을 누르면 찾기
+const DW = 640, DH = 480;
+async function diffStart() {
+  const pool = photoPool(); if (!pool.length) { toast('앨범에 사진이 있어야 해요'); return; }
+  const p = pool[Math.floor(Math.random() * pool.length)], src = safeImg(PHOTOS[p.key]);
+  G.d = { loading: true }; G.game = 'diff'; S.view = 'play'; render(); window.scrollTo(0, 0);
+  try {
+    const im = await CV.img(src), mk = () => { const c = document.createElement('canvas'); c.width = DW; c.height = DH; return c; };
+    const ca = mk(), cb = mk(), a = ca.getContext('2d'), b = cb.getContext('2d');
+    const sc = Math.max(DW / im.width, DH / im.height), w = im.width * sc, h = im.height * sc;
+    a.drawImage(im, (DW - w) / 2, (DH - h) / 2, w, h); b.drawImage(ca, 0, 0);
+    const R = 46, pts = []; let guard = 0;
+    while (pts.length < 5 && guard++ < 400) { const x = R + 8 + Math.random() * (DW - 2 * R - 16), y = R + 8 + Math.random() * (DH - 2 * R - 16); if (pts.every(q => Math.hypot(q.x - x, q.y - y) > R * 2.6)) pts.push({ x, y, r: R, f: false }); }
+    const emo = shuffle(['🎈', '⭐', '🍓', '🐥', '🧸', '❤️']), kinds = shuffle([0, 1, 2, 3, 4]);
+    pts.forEach((q, i) => {
+      b.save(); b.beginPath(); b.arc(q.x, q.y, q.r, 0, 7); b.clip();
+      const k = kinds[i % 5];
+      if (k === 0) { b.fillStyle = 'rgba(220,40,60,.5)'; b.fillRect(q.x - q.r, q.y - q.r, 2 * q.r, 2 * q.r); }
+      else if (k === 1) { b.translate(2 * q.x, 0); b.scale(-1, 1); b.drawImage(ca, 0, 0); }
+      else if (k === 2) { b.font = `${q.r * 1.7}px serif`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText(emo[i % 6], q.x, q.y + 3); }
+      else if (k === 3) { const t0 = document.createElement('canvas'); t0.width = t0.height = 5; t0.getContext('2d').drawImage(ca, q.x - q.r, q.y - q.r, 2 * q.r, 2 * q.r, 0, 0, 5, 5); b.imageSmoothingEnabled = false; b.drawImage(t0, 0, 0, 5, 5, q.x - q.r, q.y - q.r, 2 * q.r, 2 * q.r); }
+      else { const dx = q.x + q.r * 2.4 < DW ? q.r * 2.4 : -q.r * 2.4; b.drawImage(ca, dx, 0); }
+      b.restore();
+    });
+    G.d = { ca, cb, pts, miss: 0, left: 5, done: false };
+  } catch (e) { G.d = null; G.game = ''; toast('사진을 불러오지 못했어요'); }
+  if (G.game === 'diff') render();
+}
+function diffView() {
+  const d = G.d; if (!d) return '';
+  if (d.loading) return '<header class="vhead"><span class="no">놀이터</span><h1>틀린그림찾기</h1></header><section class="gq"><p class="foot">사진을 준비하고 있어요…</p></section>';
+  requestAnimationFrame(() => { ['A', 'B'].forEach(k => { const w = document.getElementById('d' + k); if (!w || w.firstChild) return; w.appendChild(k === 'A' ? d.ca : d.cb); d.pts.forEach(q => q.f && diffRing(w, q)); }); });
+  return `<header class="vhead"><span class="no">놀이터 · 찾은 곳 <span id="dfound">${5 - d.left}</span>/5 · 실수 <span id="dmiss">${d.miss}</span></span><h1>틀린그림찾기</h1></header>
+    <section class="gq"><p class="foot" style="margin:0 0 8px">위·아래 사진에서 다른 곳 5군데를 눌러 보세요.</p>
+    <div class="dwrap" id="dA" data-game="dt"></div><div class="dwrap" id="dB" data-game="dt" style="margin-top:8px"></div>
+    ${d.done ? `<div class="gq end"><b>${d.miss ? `실수 ${d.miss}번, ` : '실수 없이 '}다 찾았어요!</b><button class="primary" data-game="diff" style="margin-top:10px;width:100%">한 판 더</button></div>` : '<button class="secondary" data-game="diff" style="width:100%;margin-top:10px">다른 사진으로</button>'}</section>`;
+}
+function diffRing(w, q) { const r = document.createElement('i'); r.className = 'dring'; r.style.cssText = `left:${(q.x / DW) * 100}%;top:${(q.y / DH) * 100}%;width:${(q.r * 2 / DW) * 100}%;height:${(q.r * 2 / DH) * 100}%`; w.appendChild(r); }
+function diffTap(w, e) {
+  const d = G.d; if (!d || d.done || d.loading) return;
+  const rc = w.getBoundingClientRect(), x = (e.clientX - rc.left) / rc.width * DW, y = (e.clientY - rc.top) / rc.height * DH;
+  const q = d.pts.find(q => !q.f && Math.hypot(q.x - x, q.y - y) <= q.r * 1.2);
+  if (!q) { d.miss++; const m = document.getElementById('dmiss'); if (m) m.textContent = d.miss; w.classList.add('dbad'); setTimeout(() => w.classList.remove('dbad'), 300); return; }
+  q.f = true; d.left--; ['dA', 'dB'].forEach(id => diffRing(document.getElementById(id), q));
+  const f = document.getElementById('dfound'); if (f) f.textContent = 5 - d.left;
+  if (!d.left) {
+    d.done = true; const s = st(); let gain = s.played.diff !== today() ? 1 : 0; if (d.miss <= 3) gain += 2;
+    s.diffBest = s.diffBest ? Math.min(s.diffBest, d.miss + 1) : d.miss + 1; s.played.diff = today(); s.acorn += gain; save(s, '놀이터: 틀린그림찾기');
+    confetti(); setTimeout(() => { render(); if (gain) toast(`도토리 🌰 +${gain}`); }, 500);
+  }
+}
+const EMO = ['🍼', '🧸', '🌰', '🐿️', '🎈', '🧦', '🦆', '🍓', '🚗', '🐻'];
+function memStart(n) {
+  n = n === 10 ? 10 : 6;
+  const pool = shuffle(photoPool()).slice(0, n);
+  const faces = pool.length >= n ? pool.map(p => ({ k: p.key, img: safeImg(PHOTOS[p.key]) })) : EMO.slice(0, n).map(e => ({ k: e, e }));
+  G.m = { n, cards: shuffle([...faces, ...faces]).map((f, i) => ({ ...f, i, open: false, done: false })), first: null, moves: 0, lock: false, left: n };
 }
 function memView() {
   const m = G.m; if (!m) return '';
   return `<header class="vhead"><span class="no">놀이터 · <span id="gmv">${m.moves}</span>번 뒤집음</span><h1>사진 짝맞추기</h1></header>
-    <section class="gmem" id="gmem">${m.cards.map(c => `<button class="gc${c.open || c.done ? ' open' : ''}${c.done ? ' done' : ''}" data-game="mc" data-i="${c.i}"><span class="back">🌰</span><span class="face">${c.img ? `<img src="${c.img}" alt="">` : `<b>${c.e}</b>`}</span></button>`).join('')}</section>
-    ${m.left ? '' : `<section class="gq end"><b>${m.moves}번 만에 성공!</b><button class="primary" data-game="mem" style="margin-top:10px;width:100%">한 판 더</button></section>`}`;
+    <section class="gmem${m.n === 10 ? ' g10' : ''}" id="gmem">${m.cards.map(c => `<button class="gc${c.open || c.done ? ' open' : ''}${c.done ? ' done' : ''}" data-game="mc" data-i="${c.i}"><span class="back">🌰</span><span class="face">${c.img ? `<img src="${c.img}" alt="">` : `<b>${c.e}</b>`}</span></button>`).join('')}</section>
+    ${m.left ? '' : `<section class="gq end"><b>${m.moves}번 만에 성공!</b><button class="primary" data-game="mem" data-n="${m.n}" style="margin-top:10px;width:100%">한 판 더</button></section>`}`;
 }
 function memFlip(i) {
   const m = G.m, c = m.cards[i]; if (!m || m.lock || c.open || c.done) return;
@@ -540,8 +595,8 @@ function memFlip(i) {
     a.done = c.done = true; m.first = null; m.left--;
     [a.i, c.i].forEach(j => document.querySelector(`.gc[data-i="${j}"]`).classList.add('done'));
     if (!m.left) {
-      const s = st(); let gain = s.played.mem !== today() ? 1 : 0; if (m.moves <= 10) gain += 2;
-      s.memBest = s.memBest ? Math.min(s.memBest, m.moves) : m.moves; s.played.mem = today(); s.acorn += gain; save(s, '놀이터: 사진 짝맞추기');
+      const s = st(); let gain = s.played.mem !== today() ? 1 : 0; const big = m.n === 10; if (m.moves <= (big ? 20 : 10)) gain += big ? 3 : 2;
+      if (big) s.memBest10 = s.memBest10 ? Math.min(s.memBest10, m.moves) : m.moves; else s.memBest = s.memBest ? Math.min(s.memBest, m.moves) : m.moves; s.played.mem = today(); s.acorn += gain; save(s, '놀이터: 사진 짝맞추기');
       confetti(); setTimeout(() => { render(); if (gain) toast(`도토리 🌰 +${gain}`); }, 500);
     }
   } else {
@@ -585,8 +640,10 @@ document.addEventListener('click', async e => {
     case 'quiz': if (quizStart()) { G.game = 'quiz'; S.view = 'play'; render(); window.scrollTo(0, 0); } break;
     case 'qa': { const q = G.q, r = q.rounds[q.i]; if (q.picked != null) return; q.picked = +v; if (q.picked === r.ans) q.score++; render(); break; }
     case 'qn': { const q = G.q; q.i++; q.picked = null; if (q.i >= q.rounds.length) quizEnd(); render(); window.scrollTo(0, 0); break; }
-    case 'mem': memStart(); G.game = 'mem'; S.view = 'play'; render(); window.scrollTo(0, 0); break;
+    case 'mem': memStart(+b.dataset.n); G.game = 'mem'; S.view = 'play'; render(); window.scrollTo(0, 0); break;
     case 'mc': memFlip(+b.dataset.i); break;
+    case 'diff': diffStart(); break;
+    case 'dt': diffTap(b, e); break;
     case 'guess': openGuess(); break;
     case 'shop': S.view = 'medals'; G.hub = 'deco'; render(); window.scrollTo(0, 0); break;
     case 'gstep': { const el = document.getElementById('gs-v'); if (!el) break; const v = parseFloat(String(el.value).replace(',', '.')) || 0; el.value = (Math.round((v + +b.dataset.v) * 200) / 200).toFixed(3); if (window.__app) __app.sheetDirty(); break; }
@@ -667,6 +724,9 @@ button.gchip{min-height:30px}
 .gbig{font-family:var(--display);font-size:64px;color:var(--red);line-height:1}.gbig small{font-size:24px;color:var(--muted)}
 .gq.end .stamp{position:absolute;right:16px;top:14px;margin:0}
 .gmem{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px!important}
+.dwrap{position:relative;border-radius:10px;overflow:hidden;border:2px solid var(--line);line-height:0;touch-action:manipulation}.dwrap canvas{width:100%;height:auto;display:block}.dwrap.dbad{box-shadow:inset 0 0 0 4px var(--red)}
+.dring{position:absolute;transform:translate(-50%,-50%);border:3px solid var(--red);border-radius:50%;pointer-events:none;box-shadow:0 0 0 2px #fff8}
+.gmem.g10{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:8px!important}.g10 .gc .back{font-size:18px;box-shadow:inset 0 0 0 2px #FFFDF7,0 2px 0 #121a2e}.g10 .gc .face b{font-size:24px}.g10 .gc span{border-radius:9px}
 .gc{position:relative;aspect-ratio:3/4;border:0;padding:0;background:none;perspective:600px}
 .gc span{position:absolute;inset:0;border-radius:14px;display:grid;place-items:center;backface-visibility:hidden;transition:transform .35s;overflow:hidden}
 .gc .back{background:var(--navy);font-size:30px;box-shadow:inset 0 0 0 3px #FFFDF7,0 3px 0 #121a2e}
@@ -702,7 +762,7 @@ function audit() {
   let rankSum = 0; for (const r of ['엄마', '아빠']) for (let lv = 2; lv <= ((pd.rank || {})[r] || 1); lv++) rankSum += rankReward(lv);
   return { balance: s.acorn, spent, n, rows, medals, medalN: (pd.medals || []).length, rankSum, stickers: (s.stickers || []).length };
 }
-window.GAME = { audit, roomSvg, rankHtml, rank, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
+window.GAME = { __G: () => G, audit, roomSvg, rankHtml, rank, card, check, mark, played, skin, medals: medalsView, play: playView, guessHtml, xp, confetti, store: { get: st, set: save }, wear, hatOf, propOf, confirmBuy, hub: v => { G.hub = v; }, idCard,
   // 방에서 식구를 누르면: 그 식구 꾸미기 칸으로 (접힌 칸은 펼쳐서)
   kitFor: who => { G.wearWho = who; G.hub = 'deco'; KINDS.forEach(([k]) => setFold(`k-${k}`, false)); render(); const el = document.getElementById('gkit'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
 })();
