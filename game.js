@@ -534,6 +534,48 @@ function recLine(k) {
 }
 // 틀린그림찾기 — 앨범 사진 한 장을 캔버스로 복사해서 5군데를 바꿔 놓고, 위·아래 어디든 다른 곳을 누르면 찾기
 const DW = 640, DH = 480;
+// 다른 곳 고르기: 무늬·윤곽이 많은 곳(바뀌어도 티 나는 곳)을 골라요. 밋밋한 하늘·벽은 피함
+function diffPick(a) {
+  let px = null; try { px = a.getImageData(0, 0, DW, DH).data; } catch (e) {}
+  const at = (x, y) => { const i = ((y | 0) * DW + (x | 0)) * 4, r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b); return [(r * .3 + g * .59 + b * .11), mx ? (mx - mn) / mx : 0]; };
+  const cand = [];
+  for (let n = 0; n < 90; n++) {
+    const r = 38 + Math.random() * 14, x = r + 6 + Math.random() * (DW - 2 * r - 12), y = r + 6 + Math.random() * (DH - 2 * r - 12);
+    let sc = Math.random(), sat = 0, lum = .5;
+    if (px) { const v = []; let ss = 0; for (let dy = -r; dy <= r; dy += 7) for (let dx = -r; dx <= r; dx += 7) { if (dx * dx + dy * dy > r * r) continue; const [l, s] = at(x + dx, y + dy); v.push(l); ss += s; }
+      lum = v.reduce((p, c) => p + c, 0) / v.length; sc = Math.sqrt(v.reduce((p, c) => p + (c - lum) ** 2, 0) / v.length); sat = ss / v.length; }
+    cand.push({ x, y, r, sc, sat, lum, f: false });
+  }
+  cand.sort((p, q) => q.sc - p.sc);
+  const out = [];
+  for (const c of cand) { if (out.length >= 5) break; if (out.every(o => Math.hypot(o.x - c.x, o.y - c.y) > (o.r + c.r) * 1.25)) out.push(c); }
+  return out;
+}
+// 고친 조각을 가장자리가 흐려지게 얹어서 원래 사진에 자연스럽게 녹아들게
+function diffPatch(ca, b, q, kind) {
+  const R = q.r, S = Math.ceil(R * 2), t = document.createElement('canvas'); t.width = t.height = S; const c = t.getContext('2d');
+  q.k0 = kind; const x0 = q.x - R, y0 = q.y - R, plain = () => c.drawImage(ca, x0, y0, S, S, 0, 0, S, S);
+  if (kind === 'clone') {   // 옆 조각을 옮겨 와서 무언가 사라지거나 생긴 것처럼
+    let best = null; for (let k = 0; k < 12; k++) { const an = Math.random() * 6.283, d = R * (1.6 + Math.random() * .6), sx = q.x + Math.cos(an) * d, sy = q.y + Math.sin(an) * d; if (sx > R && sy > R && sx < DW - R && sy < DH - R) { best = [sx, sy]; break; } }
+    if (best) c.drawImage(ca, best[0] - R, best[1] - R, S, S, 0, 0, S, S); else kind = 'flip';
+  }
+  if (kind === 'flip') { c.save(); c.translate(S, 0); c.scale(-1, 1); plain(); c.restore(); }
+  if (kind === 'grow') { const k = 1.3; c.drawImage(ca, q.x - R / k, q.y - R / k, S / k, S / k, 0, 0, S, S); }
+  if (kind === 'hue') {
+    plain();
+    try { const im = c.getImageData(0, 0, S, S), d = im.data, th = (110 + Math.random() * 100) * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
+      const M = [.213 + .787 * co - .213 * si, .715 - .715 * co - .715 * si, .072 - .072 * co + .928 * si, .213 - .213 * co + .143 * si, .715 + .285 * co + .140 * si, .072 - .072 * co - .283 * si, .213 - .213 * co - .787 * si, .715 - .715 * co + .715 * si, .072 + .928 * co + .072 * si];
+      for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], bb = d[i + 2]; d[i] = M[0] * r + M[1] * g + M[2] * bb; d[i + 1] = M[3] * r + M[4] * g + M[5] * bb; d[i + 2] = M[6] * r + M[7] * g + M[8] * bb; }
+      c.putImageData(im, 0, 0);
+      if (q.sat < .18) kind = 'shade';   // 색이 거의 없는 곳은 색을 바꿔도 티가 안 나서 밝기도 같이
+    } catch (e) { kind = 'shade'; }
+  }
+  if (kind === 'shade') { if (q.k0 !== 'hue') plain(); c.globalCompositeOperation = 'source-atop'; c.fillStyle = q.lum > .5 ? 'rgba(40,30,20,.24)' : 'rgba(255,248,235,.22)'; c.fillRect(0, 0, S, S); c.globalCompositeOperation = 'source-over'; }
+  c.globalCompositeOperation = 'destination-in';
+  const g = c.createRadialGradient(R, R, R * .62, R, R, R); g.addColorStop(0, '#000'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = g; c.fillRect(0, 0, S, S);
+  b.drawImage(t, x0, y0);
+}
 async function diffStart() {
   const pool = photoPool(); if (!pool.length) { toast('앨범에 사진이 있어야 해요'); return; }
   const p = pool[Math.floor(Math.random() * pool.length)], src = safeImg(PHOTOS[p.key]);
@@ -543,19 +585,9 @@ async function diffStart() {
     const ca = mk(), cb = mk(), a = ca.getContext('2d'), b = cb.getContext('2d');
     const sc = Math.max(DW / im.width, DH / im.height), w = im.width * sc, h = im.height * sc;
     a.drawImage(im, (DW - w) / 2, (DH - h) / 2, w, h); b.drawImage(ca, 0, 0);
-    const R = 46, pts = []; let guard = 0;
-    while (pts.length < 5 && guard++ < 400) { const x = R + 8 + Math.random() * (DW - 2 * R - 16), y = R + 8 + Math.random() * (DH - 2 * R - 16); if (pts.every(q => Math.hypot(q.x - x, q.y - y) > R * 2.6)) pts.push({ x, y, r: R, f: false }); }
-    const emo = shuffle(['🎈', '⭐', '🍓', '🐥', '🧸', '❤️']), kinds = shuffle([0, 1, 2, 3, 4]);
-    pts.forEach((q, i) => {
-      b.save(); b.beginPath(); b.arc(q.x, q.y, q.r, 0, 7); b.clip();
-      const k = kinds[i % 5];
-      if (k === 0) { b.fillStyle = 'rgba(220,40,60,.5)'; b.fillRect(q.x - q.r, q.y - q.r, 2 * q.r, 2 * q.r); }
-      else if (k === 1) { b.translate(2 * q.x, 0); b.scale(-1, 1); b.drawImage(ca, 0, 0); }
-      else if (k === 2) { b.font = `${q.r * 1.7}px serif`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText(emo[i % 6], q.x, q.y + 3); }
-      else if (k === 3) { const t0 = document.createElement('canvas'); t0.width = t0.height = 5; t0.getContext('2d').drawImage(ca, q.x - q.r, q.y - q.r, 2 * q.r, 2 * q.r, 0, 0, 5, 5); b.imageSmoothingEnabled = false; b.drawImage(t0, 0, 0, 5, 5, q.x - q.r, q.y - q.r, 2 * q.r, 2 * q.r); }
-      else { const dx = q.x + q.r * 2.4 < DW ? q.r * 2.4 : -q.r * 2.4; b.drawImage(ca, dx, 0); }
-      b.restore();
-    });
+    const pts = diffPick(a), kinds = ['hue', 'clone', 'flip', 'grow', 'clone'];
+    pts.sort((p1, p2) => p2.sat - p1.sat);   // 색이 가장 진한 곳이 색 바꾸기
+    pts.forEach((q, i) => diffPatch(ca, b, q, kinds[i]));
     G.d = { ca, cb, pts, miss: 0, left: 5, done: false };
   } catch (e) { G.d = null; G.game = ''; toast('사진을 불러오지 못했어요'); }
   if (G.game === 'diff') render();
