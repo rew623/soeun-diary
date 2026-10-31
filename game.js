@@ -579,7 +579,7 @@ function pzTiles() {
 function pzView() {
   const p = G.p; if (!p) return '';
   return `<header class="vhead"><span class="no">놀이터 · <span id="pzm">${p.moves}</span>번 움직임</span><h1>사진 퍼즐</h1></header>
-    ${sizeSeg('pz', [[3, '3×3 쉬움'], [4, '4×4 어려움']], p.n)}<p class="foot grecs">${recLine(p.n === 4 ? 'pz4' : 'pz3').replace('<br>', '') || '빈칸 옆 조각을 누르면 밀려요. 엄마·아빠 기록 대결!'}</p>
+    ${sizeSeg('pz', [[3, '3×3 쉬움'], [4, '4×4 어려움']], p.n)}<div class="pzref"><img src="${p.src}" alt="원래 사진"><p class="foot grecs">원래 사진을 보고 맞춰 보세요.<br>빈칸 옆 조각을 누르면 밀려요.${recLine(p.n === 4 ? 'pz4' : 'pz3')}</p></div>
     <section class="pzb${p.done ? ' done' : ''}" id="pzb" style="grid-template-columns:repeat(${p.n},1fr)">${pzTiles()}</section>
     ${p.done ? `<section class="gq end"><b>${p.moves}번 만에 완성! (${p.sec}초)</b><button class="primary" data-game="pz" data-n="${p.n}" style="margin-top:10px;width:100%">한 판 더</button></section>` : `<button class="secondary" data-game="pz" data-n="${p.n}" style="width:100%;margin-top:10px">다른 사진으로</button>`}`;
 }
@@ -802,6 +802,7 @@ button.gchip{min-height:30px}
 .gmem{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px!important}
 .grows{display:block;margin-top:6px}.grows>span{display:block;font-size:11.5px;line-height:1.6;letter-spacing:-.4px;white-space:nowrap}.grows b{font-family:var(--display);font-weight:400;font-size:14px}.grows em{font-style:normal;display:inline-block;min-width:28px;margin-right:3px;padding:0 4px;border-radius:6px;background:#FFFFFF2E;text-align:center}
 .gsize{margin:0 0 6px;background:#FFFDF7}.grecs{margin:0 0 10px;text-align:center}.grecs .grec{font-size:13px}
+.pzref{display:flex;align-items:center;gap:10px;margin:0 0 10px}.pzref img{width:78px;height:78px;object-fit:cover;border-radius:8px;border:2px solid var(--line);background:#FFFDF7;flex:none}.pzref .grecs{margin:0;text-align:left;flex:1}
 .pzb{display:grid;gap:3px;padding:3px;background:var(--navy);border-radius:12px;aspect-ratio:1}.pzb.done{gap:0}
 .pzt{position:relative;overflow:hidden;border:0;padding:0;border-radius:6px;background:#FFFDF7;aspect-ratio:1;transition:transform .1s}.pzt:active{transform:scale(.95)}.pzb.done .pzt{border-radius:0}
 .pzt img{position:absolute;max-width:none;pointer-events:none}.pzt.empty{background:transparent}
