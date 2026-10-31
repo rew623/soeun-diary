@@ -346,11 +346,12 @@ function medalsView() {
     <div class="seg ghub">${HUB.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-game="hub" data-v="${k}">${l}</button>`).join('')}</div>`;
   let body = '';
   if (tab === 'play') {
+    recSeed(s);
     body = `<section><h2 class="sh"><span>사진 놀이</span><span>하루 첫 판은 도토리 🌰 +1</span></h2>
-      <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기${s.quizBest ? ` · 최고 ${s.quizBest}점` : ''}${recLine('quiz')}</small></button>
-      <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>카드 짝 찾기 · 3×4 / 5×4${s.memBest ? ` · 최고 ${s.memBest}번` : ''}${s.memBest10 ? ` / ${s.memBest10}번` : ''}</small></button>
-      <button data-game="pz"><span>🧩</span><b>사진 퍼즐</b><small>조각 밀어서 사진 맞추기 · 3×3 / 4×4</small></button>
-      <button data-game="ord"><span>📅</span><b>순서 맞추기</b><small>사진 4장을 찍은 순서대로 누르기</small></button></div></section>
+      <div class="gplay"><button data-game="quiz"><span>🧠</span><b>생후 며칠 퀴즈</b><small>사진 보고 언제쯤인지 맞히기</small>${recRows([['', 'quiz']])}</button>
+      <button data-game="mem"><span>🃏</span><b>사진 짝맞추기</b><small>카드 짝 찾기</small>${recRows([['3×4', 'mem6'], ['5×4', 'mem10']])}</button>
+      <button data-game="pz"><span>🧩</span><b>사진 퍼즐</b><small>조각 밀어서 사진 맞추기</small>${recRows([['3×3', 'pz3'], ['4×4', 'pz4']])}</button>
+      <button data-game="ord"><span>📅</span><b>순서 맞추기</b><small>사진 4장을 찍은 순서대로 누르기</small>${recRows([['', 'ord']])}</button></div></section>
       ${window.FUN ? FUN.playSection() : ''}
       <p class="foot">도토리 모으는 법: 오늘의 지령 완수 +3 · 사진 놀이 하루 첫 판 +1 · 운세 쿠키 +1 · 숨은 도토리 +1 · 몸무게 예측 승리 +2</p>`;
   } else if (tab === 'deco') {
@@ -532,6 +533,21 @@ function recLine(k) {
   const win = a !== undefined && d !== undefined && a !== d ? ((low ? a < d : a > d) ? '엄마' : '아빠') : '';
   const one = (n, ic, v) => v === undefined ? '' : `${ic} ${n} ${v}${u}${win === n ? ' 👑' : ''}`;
   return `<br><span class="grec">${[one('엄마', '👩', a), one('아빠', '👨', d)].filter(Boolean).join(' · ')}</span>`;
+}
+// 놀이 버튼 안 기록표: 크기별 한 줄씩 👩 엄마 · 👨 아빠 최고 기록, 앞선 쪽 👑
+function recRows(rows) {
+  const r = st().rec || {};
+  return `<span class="grows">${rows.map(([lab, k]) => { const o = r[k] || {}, low = RECS[k][1], u = RECS[k][2], a = o['엄마'], d = o['아빠'];
+    const win = a !== undefined && d !== undefined && a !== d ? ((low ? a < d : a > d) ? 'a' : 'd') : '';
+    const v = (x, w) => x === undefined ? '–' : `<b>${x}</b>${u}${win === w ? '👑' : ''}`;
+    return `<span>${lab ? `<em>${lab}</em>` : '<em>최고</em>'}👩${v(a, 'a')} 👨${v(d, 'd')}</span>`; }).join('')}</span>`;
+}
+// 예전에 이 폰에만 있던 최고 기록을 내 역할(엄마/아빠) 기록으로 한 번 옮김
+function recSeed(s) {
+  const me = myRole(); if (!me || s.recSeeded === me) return;
+  const before = JSON.stringify(s.rec || {});
+  if (s.quizBest) recSet(s, 'quiz', s.quizBest); if (s.memBest) recSet(s, 'mem6', s.memBest); if (s.memBest10) recSet(s, 'mem10', s.memBest10);
+  s.recSeeded = me; save(s, JSON.stringify(s.rec || {}) !== before ? '놀이 기록 옮김' : undefined);
 }
 // 크기 고르기 (게임 안에서) — 누르면 그 크기로 새 판
 const sizeSeg = (g, opts, cur) => `<div class="seg gsize">${opts.map(([n, l]) => `<button class="${n === cur ? 'on' : ''}" data-game="${g}" data-n="${n}">${l}</button>`).join('')}</div>`;
@@ -764,6 +780,7 @@ button.gchip{min-height:30px}
 .gbig{font-family:var(--display);font-size:64px;color:var(--red);line-height:1}.gbig small{font-size:24px;color:var(--muted)}
 .gq.end .stamp{position:absolute;right:16px;top:14px;margin:0}
 .gmem{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px!important}
+.grows{display:block;margin-top:6px}.grows>span{display:block;font-size:11.5px;line-height:1.6;letter-spacing:-.4px;white-space:nowrap}.grows b{font-family:var(--display);font-weight:400;font-size:14px}.grows em{font-style:normal;display:inline-block;min-width:28px;margin-right:3px;padding:0 4px;border-radius:6px;background:#FFFFFF2E;text-align:center}
 .gsize{margin:0 0 6px;background:#FFFDF7}.grecs{margin:0 0 10px;text-align:center}.grecs .grec{font-size:13px}
 .pzb{display:grid;gap:3px;padding:3px;background:var(--navy);border-radius:12px;aspect-ratio:1}.pzb.done{gap:0}
 .pzt{position:relative;overflow:hidden;border:0;padding:0;border-radius:6px;background:#FFFDF7;aspect-ratio:1;transition:transform .1s}.pzt:active{transform:scale(.95)}.pzb.done .pzt{border-radius:0}
