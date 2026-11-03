@@ -23,21 +23,56 @@ const hasUntil=l=>l.kind==='sym'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(l.until||'')
 function untilTxt(l){if(!hasUntil(l))return '';const m=Math.round((new Date(l.until)-new Date(l.at))/60000);if(!(m>0))return '';return ` <small>(${m>=60?Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':''):m+'분'})</small>`}   // 증상 걸린 시간 (2026.10.17)
 function untilLt(l){if(!hasUntil(l))return '';const[d,t]=l.until.split('T');return `<br><small class="lu">→ ${d===l.at.slice(0,10)?'':fmtMD(d)+' '}${t.slice(0,5)}</small>`}   // 왼쪽 날짜 칸 아래에 끝난 때
 function logMain(l){return l.kind==='temp'?`${l.value}℃`:l.kind==='med'?`${esc(l.value)}${l.dose?' '+esc(l.dose):''}`:esc(l.value)+untilTxt(l)}
+// 해열제 성분 (열나요 앱 참고, 2026.11.03): 약 이름 글자로 성분을 알아봐요 — 새 칸 없이 '챔프(아세트아미노펜)'처럼 이름에 적어요
+const ANTI={apap:{n:'아세트아미노펜',s:'아세트',min:4,max:5,c:'#d45a0c',b:['챔프(빨강)','세토펜','타이레놀','콜대원키즈펜']},
+  ibu:{n:'이부프로펜',s:'이부',min:6,max:4,c:'#2a78d6',b:['부루펜','챔프이부펜(파랑)','콜대원키즈이부펜']},
+  dex:{n:'덱시부프로펜',s:'덱시부',min:6,max:3,c:'#7b52d6',b:['맥시부펜','애니펜']}};
+const antiOf=v=>{v=String(v||'');return /덱시|맥시부펜|애니펜/.test(v)?'dex':/이부|부루펜/.test(v)?'ibu':/아세트|타이레놀|세토펜|챔프|콜대원키즈펜/.test(v)?'apap':''};
+function medHint(){
+  const el=document.getElementById('l-medhint');if(!el)return;
+  const v=(document.getElementById('l-val')||{}).value||'',k=antiOf(v);
+  if(!k){el.innerHTML='해열제 이름(성분)을 고르면 복용 간격을 같이 확인해 줘요.';return}
+  const A=ANTI[k],d=(document.getElementById('l-date')||{}).value||today(),tm=(document.getElementById('l-time')||{}).value||'00:00',at=tsOf(d+'T'+(tm||'00:00')),self=(document.querySelector('[data-act="savelog"]')||{dataset:{}}).dataset.id;
+  const L=S.logs.filter(l=>l.kind==='med'&&antiOf(l.value)===k&&l.id!==self&&tsOf(l.at)<=at&&at-tsOf(l.at)<24*36e5).sort((a,b)=>a.at<b.at?1:-1),days=daysBetween(S.profile.birth,today())+1,out=[];
+  if(k!=='apap'&&days<180)out.push(`<b style="color:var(--red)">🚫 생후 180일 미만은 ${A.n} 계열을 권장하지 않아요. 의사 처방이 있을 때만 쓰세요.</b>`);
+  if(L.length){const gap=at-tsOf(L[0].at),h=Math.floor(gap/36e5),m=Math.round(gap%36e5/6e4),nx=new Date(tsOf(L[0].at)+A.min*36e5),nxt=pad(nx.getHours())+':'+pad(nx.getMinutes());
+    out.push(gap<A.min*36e5?`<b style="color:var(--red)">⚠️ 직전 ${A.n}(${L[0].at.slice(11,16)})에서 ${h?h+'시간 ':''}${m}분밖에 안 지났어요. ${nxt} 이후에 먹일 수 있어요 (최소 ${A.min}시간 간격).</b>`:`✅ 직전 ${A.n}은 ${h}시간 ${m}분 전(${L[0].at.slice(11,16)})이에요. 간격은 괜찮아요 (최소 ${A.min}시간).`)}
+  else out.push(`✅ 최근 24시간에 먹인 ${A.n} 기록이 없어요.`);
+  out.push(`24시간 안에 ${A.n} ${L.length}회 먹였어요 (하루 보통 ${A.max}회까지).`);
+  out.push('<small>일반 안내예요. 용량·간격은 처방이나 약 설명서가 먼저예요. 다른 성분과 번갈아 먹일 땐 의사·약사와 상의하세요.</small>');
+  el.innerHTML=out.join('<br>');
+}
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#sheet,.sheet,[role=dialog]')||document.getElementById('l-medhint'))setTimeout(medHint,0)});
+document.addEventListener('click',e=>{if(document.getElementById('l-medhint')&&e.target.closest('[data-act="fill"],[data-act="pick1"]'))setTimeout(medHint,30)});
+const rptCss=document.createElement('style');rptCss.textContent='.rptg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rptc{background:var(--card2,#FFFDF7);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}.rptc b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}.rptc p{margin:4px 0 0;line-height:1.5}.rptc u{text-decoration:none;font-family:var(--display);font-size:16px;color:var(--red)}';document.head.appendChild(rptCss);
 function tempChart(logs){
   const ts=logs.filter(l=>l.kind==='temp'&&!isNaN(+l.value)).map(l=>({t:tsOf(l.at),v:+l.value})).sort((a,b)=>a.t-b.t);
   if(ts.length<2)return '<p class="vempty">체온을 두 번 이상 기록하면 그래프가 나와요.</p>';
-  const meds=logs.filter(l=>l.kind==='med').map(l=>tsOf(l.at));
+  const meds=logs.filter(l=>l.kind==='med').map(l=>({t:tsOf(l.at),k:antiOf(l.value)}));
   const t0=ts[0].t,t1=Math.max(ts[ts.length-1].t,t0+3600e3),W=340,H=160,pl=32,pr=10,pt=18,pb=24;
   let lo=Math.min(36.5,...ts.map(x=>x.v))-0.2,hi=Math.max(39,...ts.map(x=>x.v))+0.2;
   const X=t=>pl+(t-t0)/(t1-t0)*(W-pl-pr),Y=v=>pt+(1-(v-lo)/(hi-lo))*(H-pt-pb);
   let g=`<rect x="${pl}" y="${pt}" width="${W-pl-pr}" height="${Math.max(0,Y(38)-pt)}" fill="#B3261E" fill-opacity=".07"/>`;
   for(let v=Math.ceil(lo);v<=hi;v++)g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#B9A889" ${v===38?'stroke-dasharray="5 3"':''}/><text x="${pl-5}" y="${Y(v)+4}" text-anchor="end" font-size="10" fill="#6B5F52">${v}</text>`;
-  meds.filter(t=>t>=t0&&t<=t1).forEach(t=>{g+=`<line x1="${X(t)}" x2="${X(t)}" y1="${pt}" y2="${H-pb}" stroke="#1F2A44" stroke-dasharray="2 3"/><rect x="${X(t)-12}" y="2" width="24" height="14" rx="7" fill="#1F2A44"/><text x="${X(t)}" y="12.5" text-anchor="middle" font-size="9" fill="#E9DCC3">약</text>`});
+  meds.filter(m=>m.t>=t0&&m.t<=t1).forEach(m=>{const t=m.t,c=m.k?ANTI[m.k].c:'#1F2A44',lb=m.k?ANTI[m.k].s:'약',w=Math.max(24,lb.length*9+10);g+=`<line x1="${X(t)}" x2="${X(t)}" y1="${pt}" y2="${H-pb}" stroke="${c}" stroke-dasharray="2 3"/><rect x="${X(t)-w/2}" y="2" width="${w}" height="14" rx="7" fill="${c}"/><text x="${X(t)}" y="12.5" text-anchor="middle" font-size="9" fill="#fff">${lb}</text>`});
   g+=`<polyline points="${ts.map(x=>X(x.t).toFixed(1)+','+Y(x.v).toFixed(1)).join(' ')}" fill="none" stroke="#B3261E" stroke-width="2.4" stroke-linejoin="round"/>`;
   ts.forEach((x,i)=>{g+=`<circle cx="${X(x.t)}" cy="${Y(x.v)}" r="${i===ts.length-1?5:3.2}" fill="#B3261E" stroke="#F5EDDC" stroke-width="1.5"/>`});
   const lab=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}시`};
   g+=`<text x="${pl}" y="${H-6}" font-size="10" fill="#6B5F52">${lab(t0)}</text><text x="${W-pr}" y="${H-6}" text-anchor="end" font-size="10" fill="#6B5F52">${lab(t1)}</text>`;
   return `<div class="chartbox"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="체온 그래프">${g}</svg></div>`;
+}
+// 월간 건강 리포트 (열나요 '건강 분석 리포트' 참고, 이 앱 기록으로만 — 또래 비교는 없어요)
+function sickReport(){
+  const ym=m=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-m);return d.getFullYear()+'-'+pad(d.getMonth()+1)};
+  const mk=y=>{const L=S.logs.filter(l=>l.at.slice(0,7)===y),T=L.filter(l=>l.kind==='temp'&&!isNaN(+l.value)),tv=T.map(l=>+l.value),fd=new Set(T.filter(l=>+l.value>=38).map(l=>l.at.slice(0,10))).size;
+    const am={apap:0,ibu:0,dex:0};L.filter(l=>l.kind==='med').forEach(l=>{const k=antiOf(l.value);if(k)am[k]++});
+    const sy={};L.filter(l=>l.kind==='sym').forEach(l=>String(l.value).split(/[,·/]\s*/).filter(Boolean).forEach(s=>{sy[s.trim()]=(sy[s.trim()]||0)+1}));
+    const top=Object.entries(sy).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return {y,n:L.length,fd,hi:tv.length?Math.max(...tv):null,lo:tv.length?Math.min(...tv):null,am,top,meds:L.filter(l=>l.kind==='med').length}};
+  const A=mk(ym(0)),B=mk(ym(1));if(!A.n&&!B.n)return '';
+  const col=r=>{const mo=+r.y.slice(5);return `<div class="rptc"><b>${mo}월</b>${r.n?`<p>열난 날 <u>${r.fd}일</u></p><p>최고 ${r.hi!=null?`<u>${r.hi}℃</u>`:'-'} · 최저 ${r.lo!=null?r.lo+'℃':'-'}</p><p>해열제 ${Object.entries(r.am).filter(([,v])=>v).map(([k,v])=>`<span style="color:${ANTI[k].c}">${ANTI[k].s} ${v}회</span>`).join(' · ')||'없음'}</p>${r.top.length?`<p>증상 ${r.top.map(([s,c])=>esc(s)+' '+c).join(' · ')}</p>`:''}`:'<p class="vempty" style="margin:4px 0">기록 없음</p>'}</div>`};
+  const dd=A.fd-B.fd;
+  return `<section><h2 class="sh"><span>월간 건강 리포트</span><span>${A.n?(dd>0?`지난달보다 열난 날 ${dd}일 많아요`:dd<0?`지난달보다 열난 날 ${-dd}일 적어요`:'열난 날 지난달과 같아요'):''}</span></h2><div class="rptg">${col(B)}${col(A)}</div></section>`;
 }
 // 긴급 출동 소탭: 기록 / 병원(안에 응급실·야간 진료 바로 보기) / 약국 — 병원·약국은 탭 안에서 바로 (hospitals.js HOSP.render(true))
 const sickSeg=()=>{const v=S.sickView||'';return `<div class="seg sseg">${[['','🌡️','기록'],['hosp','🏥','병원'],['ph','💊','약국']].map(([k,i,l])=>`<button class="${v===k?'on':''}" data-act="sickv" data-v="${k}"><i>${i}</i>${l}</button>`).join('')}</div>`};
@@ -71,6 +106,7 @@ function renderSick(){
     return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><b>${esc(e.title)}</b><small>${fmtK(e.start,true)}${e.end?' ~ '+fmtK(e.end,true):''}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1>${sickSeg()}<p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
+  ${sickReport()}
   ${window.CLAIM?CLAIM.entryHtml():''}
   <section><h2 class="sh" style="align-items:center"><span>진료 기록</span><button class="ghost" data-act="editvisit" data-id="">+ 진료 추가</button></h2>${visits}</section>
   ${closedHtml}`;
@@ -87,9 +123,10 @@ function openLog(kind,id){
   let body='';
   if(kind==='temp'){const v=l?l.value:(lastT?lastT.value:'37.0');
     body=`<div class="stepper"><button data-act="tstep" data-v="-0.1" aria-label="0.1도 내리기">−</button><div><input id="l-val" inputmode="decimal" value="${esc(v)}" aria-label="체온"><small>℃</small></div><button data-act="tstep" data-v="0.1" aria-label="0.1도 올리기">+</button></div>
-      <div class="field"><span>측정 부위</span><div class="quick" id="l-site">${SITES.map(s=>`<button data-act="pick1" class="${(l?l.site:'귀')===s?'on':''}">${s}</button>`).join('')}</div></div>`}
-  else if(kind==='med')body=`<label class="field"><span>약 이름</span><input id="l-val" maxlength="40" value="${esc(l?l.value:(lastMed?lastMed.value:''))}" placeholder="예: 해열제 시럽">${meds.length?`<div class="quick">${meds.map(m=>`<button data-act="fill" data-t="l-val" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div>`:''}</label>
-      <label class="field"><span>용량 (처방, 설명서대로)</span><input id="l-dose" maxlength="20" value="${esc(l?l.dose:(lastMed?lastMed.dose||'':''))}" placeholder="예: 2.5ml"></label>`;
+      ${(()=>{const vv=(S.vaccines||[]).filter(v=>v.done&&(v.done===today()||v.done===addDays(today(),-1)));return vv.length?`<p class="notice" style="margin:0 0 8px">💉 어제·오늘 접종: ${vv.map(v=>esc(v.name)).join(', ')} — 접종 뒤 미열이 날 수 있어요. 열 패턴을 볼 때 참고하세요.</p>`:''})()}<div class="field"><span>측정 부위</span><div class="quick" id="l-site">${SITES.map(s=>`<button data-act="pick1" class="${(l?l.site:'귀')===s?'on':''}">${s}</button>`).join('')}</div></div>`}
+  else if(kind==='med')body=`<div class="field"><span>해열제 성분 <small>(눌러서 고르고, 아래 제품도 골라요)</small></span>${Object.values(ANTI).map(a=>`<div class="quick"><button data-act="fill" data-t="l-val" data-v="${a.n}" style="font-weight:700">${a.n}</button>${a.b.map(b=>`<button data-act="fill" data-t="l-val" data-v="${esc(b.replace(/\(.*\)/,m=>/이부|아세트/.test(m)?m:'')+'('+a.n+')')}">${esc(b)}</button>`).join('')}</div>`).join('')}</div>
+      <label class="field"><span>약 이름</span><input id="l-val" maxlength="40" value="${esc(l?l.value:(lastMed?lastMed.value:''))}" placeholder="예: 챔프(아세트아미노펜)">${meds.length?`<div class="quick">${meds.map(m=>`<button data-act="fill" data-t="l-val" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div>`:''}</label>
+      <label class="field"><span>용량 (처방, 설명서대로)</span><input id="l-dose" maxlength="20" value="${esc(l?l.dose:(lastMed?lastMed.dose||'':''))}" placeholder="예: 2.5ml"></label><p class="notice" id="l-medhint" style="margin:0 0 8px"></p>`;
   else body=`<label class="field"><span>증상</span><input id="l-val" maxlength="60" value="${esc(l?l.value:'')}" placeholder="예: 콧물"><div class="quick">${SYMS.map(s=>`<button data-act="addsym" data-v="${s}">${s}</button>`).join('')}</div></label>`;
   openSheet(`<h3>${KIND[kind]} ${l?'수정':'기록'}</h3>
     ${!ep?`<label class="field"><span>사건 이름 (새 사건 파일이 열려요)</span><input id="l-ep" maxlength="20" value="${esc(kind==='temp'?'발열':(kind==='med'&&lastMed&&(S.eps.find(e=>e.id===lastMed.ep)||{}).title)||'건강 관리')}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`:`<label class="field"><span>사건 이름 <small>(바꾸면 이 사건 전체 이름이 바뀌어요)</small></span><input id="l-ep" maxlength="20" value="${esc(ep.title)}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`}
@@ -103,6 +140,7 @@ function openLog(kind,id){
     ${window.CLAIM?CLAIM.field(l?'log:'+l.id:'',kind==='med'?'약봉지':kind==='sym'?'증상사진':'기타',d0):''}
     <p class="err" id="l-err"></p>
     <div class="actions">${l?`<button class="danger" data-act="dellog" data-id="${l.id}">삭제</button>`:''}<button class="secondary" data-act="close">취소</button><button class="primary" data-act="savelog" data-k="${kind}" data-id="${l?l.id:''}" data-ep="${ep?ep.id:''}">저장</button></div>`);
+  medHint();
 }
 function openVisit(id){
   const v=id?S.visits.find(x=>x.id===id):{date:today(),hospital:(S.visits.slice(-1)[0]||{}).hospital||'',diag:'',rx:'',next:'',ask:''};
