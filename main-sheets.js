@@ -144,7 +144,7 @@ document.addEventListener('click',async e=>{
     if(!ep){const r0=await write('saveItem','ep',{title:val('l-ep')||'건강 관리',start:d,end:'',memo:''});if(!r0)return;ep=r0.id}
     const site=$sheet.querySelector('#l-site .on');
     let until='';if(k==='sym'){const ut=val('l-until'),ud=val('l-until-d')||d;if(/^\d\d:\d\d$/.test(ut)){until=ud+'T'+ut;if(until<d+'T'+t)return err('l-err','완료가 시작보다 빨라요. 완료 날짜·시각을 확인해 주세요')}}   // 완료 날짜를 따로 고를 수 있어요 (2026.10.18)
-    const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:val('l-memo'),by:myRole(),until};
+    const o={id:a.dataset.id,ep,kind:k,at:d+'T'+t,value:k==='temp'?parseFloat(v).toFixed(1):v,dose:val('l-dose'),site:site?site.textContent:'',memo:(k==='med'&&typeof ABX!=='undefined'&&ABX.test(v)&&val('l-abd')?`[항생제 ${val('l-abd')}일·하루 ${val('l-abn')}회] `:'')+val('l-memo'),by:myRole(),until};
     const rl=await write('saveItem','log',o);
     if(rl){closeSheet();toast(KIND[k]+' 기록을 남겼어요');if(window.CLAIM)await CLAIM.flush('log:'+(o.id||rl.id))}break}
   case 'untilnow':{const el=document.getElementById('l-until-d');if(el)el.value=today();break}

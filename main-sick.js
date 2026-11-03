@@ -28,10 +28,24 @@ const ANTI={apap:{n:'아세트아미노펜',s:'아세트',min:4,max:5,c:'#d45a0c
   ibu:{n:'이부프로펜',s:'이부',min:6,max:4,c:'#2a78d6',b:['부루펜','챔프이부펜(파랑)','콜대원키즈이부펜']},
   dex:{n:'덱시부프로펜',s:'덱시부',min:6,max:3,c:'#7b52d6',b:['맥시부펜','애니펜']}};
 const antiOf=v=>{v=String(v||'');return /덱시|맥시부펜|애니펜/.test(v)?'dex':/이부|부루펜/.test(v)?'ibu':/아세트|타이레놀|세토펜|챔프|콜대원키즈펜/.test(v)?'apap':''};
+// 항생제·감기약·영양제 (2026.11.03) — 새 칸 없이 약 이름 글자와 메모 앞 [항생제 5일·하루 3회] 표시로 알아봐요
+const ABX=/항생제|아목시|오구멘틴|클라리|세프|지스로맥스|아지트로|에리트로|페니실린/,COLDMED=/감기약|콧물약|기침약|코감기|종합감기|진해|거담/,DAILY=/비타민|유산균|철분|프로바이오/;
+const abxTag=m=>{const r=/^\[항생제 (\d+)일·하루 (\d)회\]\s?/.exec(m||'');return r?{days:+r[1],per:+r[2],rest:(m||'').slice(r[0].length)}:null};
+function abxHint(v,at,self){
+  const nm=String(v||'').trim();if(!ABX.test(nm))return '';
+  const L=S.logs.filter(l=>l.kind==='med'&&l.value===nm&&abxTag(l.memo)&&l.id!==self&&tsOf(l.at)<=at).sort((a,b)=>a.at<b.at?1:-1);
+  if(!L.length)return '💊 항생제는 처방받은 일수를 끝까지 먹이는 게 원칙이에요. 아래에서 처방 일수와 하루 횟수를 고르면 진행 상황을 알려 줘요.';
+  const dstr=new Date(at-new Date(at).getTimezoneOffset()*6e4).toISOString().slice(0,10),c=abxTag(L[0].memo),first=L.filter(l=>{const x=abxTag(l.memo);return x&&x.days===c.days&&x.per===c.per}).sort((a,b)=>a.at>b.at?1:-1)[0],day=daysBetween(first.at.slice(0,10),dstr)+1,n=S.logs.filter(l=>l.kind==='med'&&l.value===nm&&l.at.slice(0,10)===dstr&&l.id!==self).length+1;
+  return `💊 항생제 ${day}일째 / 처방 ${c.days}일 · 오늘 ${n}번째 (하루 ${c.per}회)${n>c.per?' — <b style="color:var(--red)">오늘 처방 횟수를 넘어요</b>':''}${day>=c.days&&n>=c.per?' — 오늘이 마지막이에요. 증상이 나아도 임의로 끊지 말고 처방대로 마무리하세요.':''}`;
+}
 function medHint(){
   const el=document.getElementById('l-medhint');if(!el)return;
   const v=(document.getElementById('l-val')||{}).value||'',k=antiOf(v);
-  if(!k){el.innerHTML='해열제 이름(성분)을 고르면 복용 간격을 같이 확인해 줘요.';return}
+  const d0=(document.getElementById('l-date')||{}).value||today(),tm0=(document.getElementById('l-time')||{}).value||'00:00',at0=tsOf(d0+'T'+(tm0||'00:00')),self0=(document.querySelector('[data-act="savelog"]')||{dataset:{}}).dataset.id,ds=S.profile&&S.profile.birth?daysBetween(S.profile.birth,today())+1:999;
+  const abx=document.getElementById('l-abx');if(abx)abx.style.display=ABX.test(v)?'':'none';
+  if(ABX.test(v)){el.innerHTML=abxHint(v,at0,self0)+'<br><small>일반 안내예요. 용량·횟수는 처방이 먼저예요.</small>';return}
+  if(COLDMED.test(v)&&!k){el.innerHTML=(ds<730?'<b style="color:var(--red)">⚠️ 생후 24개월 미만은 시판 감기약(콧물약·기침약 등)을 임의로 먹이지 않는 게 일반 권고예요. 처방받은 약이 아니면 먼저 소아과나 약사와 상의하세요.</b>':'감기약은 처방이나 설명서의 용량을 지켜 주세요.')+'<br><small>일반 안내예요.</small>';return}
+  if(DAILY.test(v)&&!k){const dd=S.logs.filter(l=>l.kind==='med'&&l.value===v.trim()&&l.at.slice(0,10)===d0&&l.id!==self0).sort((a,b)=>a.at<b.at?1:-1)[0];el.innerHTML=dd?`<b style="color:var(--red)">⚠️ 오늘(${fmtMD(d0)}) ${esc(v.trim())}은 이미 ${dd.at.slice(11,16)}에 ${esc(dd.by||'')}${dd.by?' 수사관이 ':''}먹였어요.</b>`:`✅ 오늘은 아직 ${esc(v.trim())} 기록이 없어요.`;return}
   const A=ANTI[k],d=(document.getElementById('l-date')||{}).value||today(),tm=(document.getElementById('l-time')||{}).value||'00:00',at=tsOf(d+'T'+(tm||'00:00')),self=(document.querySelector('[data-act="savelog"]')||{dataset:{}}).dataset.id;
   const L=S.logs.filter(l=>l.kind==='med'&&antiOf(l.value)===k&&l.id!==self&&tsOf(l.at)<=at&&at-tsOf(l.at)<24*36e5).sort((a,b)=>a.at<b.at?1:-1),days=daysBetween(S.profile.birth,today())+1,out=[];
   if(k!=='apap'&&days<180)out.push(`<b style="color:var(--red)">🚫 생후 180일 미만은 ${A.n} 계열을 권장하지 않아요. 의사 처방이 있을 때만 쓰세요.</b>`);
@@ -44,7 +58,7 @@ function medHint(){
 }
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#sheet,.sheet,[role=dialog]')||document.getElementById('l-medhint'))setTimeout(medHint,0)});
 document.addEventListener('click',e=>{if(document.getElementById('l-medhint')&&e.target.closest('[data-act="fill"],[data-act="pick1"]'))setTimeout(medHint,30)});
-const rptCss=document.createElement('style');rptCss.textContent='.rptg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rptc{background:var(--card2,#FFFDF7);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}.rptc b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}.rptc p{margin:4px 0 0;line-height:1.5}.rptc u{text-decoration:none;font-family:var(--display);font-size:16px;color:var(--red)}';document.head.appendChild(rptCss);
+const rptCss=document.createElement('style');rptCss.textContent='.sosc{border:2px solid var(--red);border-radius:12px;background:#FFF1EE;padding:10px 12px;margin:10px 0}.sosc summary{font-family:var(--display);font-size:17px;color:var(--red);cursor:pointer}.sosc ul{margin:8px 0 6px;padding-left:20px;line-height:1.7}.sosc p{margin:4px 0 0;font-size:12.5px}.rptg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rptc{background:var(--card2,#FFFDF7);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}.rptc b{font-family:var(--display);font-weight:400;font-size:17px;color:var(--navy)}.rptc p{margin:4px 0 0;line-height:1.5}.rptc u{text-decoration:none;font-family:var(--display);font-size:16px;color:var(--red)}';document.head.appendChild(rptCss);
 function tempChart(logs){
   const ts=logs.filter(l=>l.kind==='temp'&&!isNaN(+l.value)).map(l=>({t:tsOf(l.at),v:+l.value})).sort((a,b)=>a.t-b.t);
   if(ts.length<2)return '<p class="vempty">체온을 두 번 이상 기록하면 그래프가 나와요.</p>';
@@ -106,6 +120,7 @@ function renderSick(){
     return `<button class="case solved closedep" data-act="viewep" data-id="${e.id}"><b>${esc(e.title)}</b><small>${fmtK(e.start,true)}${e.end?' ~ '+fmtK(e.end,true):''}${tm.length?`, 최고 ${Math.max(...tm)}℃`:''}, 투약 ${mc}회</small></button>`}).join(''):'';
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>긴급 출동</h1>${sickSeg()}<p>체온, 투약, 증상을 시간순으로 남겨 두면 교대할 때나 병원에서 바로 보여줄 수 있어요.</p></header>${CHARS.guide('sick')}
   ${top}
+  <details class="sosc"><summary>🚨 바로 병원·응급실에 가야 할 때</summary><ul><li>생후 3개월 미만인데 38℃ 이상 열이 나요</li><li>경련(열성경련 포함)이 있거나, 깨워도 잘 안 깨고 축 처져요</li><li>숨쉬기 힘들어하거나 입술·얼굴이 푸르스름해요</li><li>토를 계속 하거나, 초록색·피 섞인 토 · 피 섞인 변이 나와요</li><li>소변이 8시간 이상 없고, 눈물 없이 울고 입이 말라요 (탈수)</li><li>목이 뻣뻣하거나 숫구멍(정수리)이 불룩해요</li><li>눌러도 사라지지 않는 붉은 반점이 생겨요</li><li>40℃ 이상 고열이거나, 열이 3일 넘게 계속돼요</li></ul><p>일반 안내예요. 급하다 싶으면 망설이지 말고 119나 가까운 응급실에 연락하세요. <button class="ghost" data-act="sickv" data-v="hosp" style="min-height:32px;padding:0 12px">🏥 가까운 병원 보기</button></p></details>
   ${sickReport()}
   ${window.CLAIM?CLAIM.entryHtml():''}
   <section><h2 class="sh" style="align-items:center"><span>진료 기록</span><button class="ghost" data-act="editvisit" data-id="">+ 진료 추가</button></h2>${visits}</section>
@@ -116,7 +131,7 @@ function openLog(kind,id){
   const ep=l?S.eps.find(e=>e.id===l.ep):activeEp();
   const lastT=S.logs.filter(x=>x.kind==='temp').sort((a,b)=>a.at<b.at?1:-1)[0];
   const at=l?l.at:nowLocal(),[d0,t0]=at.split('T');
-  const lastMed=S.logs.filter(x=>x.kind==='med').sort((a,b)=>a.at<b.at?1:-1)[0];   // 새 투약 기록은 지난 투약(약 이름·용량)과 같게 미리 채워요
+  const lastMed=S.logs.filter(x=>x.kind==='med').sort((a,b)=>a.at<b.at?1:-1)[0],lastAbx=(S.logs.filter(x=>x.kind==='med'&&abxTag(x.memo)).sort((a,b)=>a.at<b.at?1:-1)[0]||{}).memo?abxTag((S.logs.filter(x=>x.kind==='med'&&abxTag(x.memo)).sort((a,b)=>a.at<b.at?1:-1)[0]).memo):null;   // 새 투약 기록은 지난 투약(약 이름·용량)과 같게 미리 채워요
   const medH=[...new Set(S.logs.filter(x=>x.kind==='med').sort((a,b)=>a.at<b.at?1:-1).map(x=>x.value))].slice(0,5);
   const meds=medH.concat(['해열제','감기약','콧물약','비타민D','유산균'].filter(m=>!medH.includes(m))).slice(0,8);   // 쓴 약 + 흔한 예시
   const epH=[...new Set(S.eps.map(e=>e.title).filter(Boolean))].slice(-4).reverse(),epNames=epH.concat(['감기','해열','비타민','건강 관리','장염','예방접종 후'].filter(m=>!epH.includes(m))).slice(0,8);   // 사건 이름 예시
@@ -126,7 +141,8 @@ function openLog(kind,id){
       ${(()=>{const vv=(S.vaccines||[]).filter(v=>v.done&&(v.done===today()||v.done===addDays(today(),-1)));return vv.length?`<p class="notice" style="margin:0 0 8px">💉 어제·오늘 접종: ${vv.map(v=>esc(v.name)).join(', ')} — 접종 뒤 미열이 날 수 있어요. 열 패턴을 볼 때 참고하세요.</p>`:''})()}<div class="field"><span>측정 부위</span><div class="quick" id="l-site">${SITES.map(s=>`<button data-act="pick1" class="${(l?l.site:'귀')===s?'on':''}">${s}</button>`).join('')}</div></div>`}
   else if(kind==='med')body=`<div class="field"><span>해열제 성분 <small>(눌러서 고르고, 아래 제품도 골라요)</small></span>${Object.values(ANTI).map(a=>`<div class="quick"><button data-act="fill" data-t="l-val" data-v="${a.n}" style="font-weight:700">${a.n}</button>${a.b.map(b=>`<button data-act="fill" data-t="l-val" data-v="${esc(b.replace(/\(.*\)/,m=>/이부|아세트/.test(m)?m:'')+'('+a.n+')')}">${esc(b)}</button>`).join('')}</div>`).join('')}</div>
       <label class="field"><span>약 이름</span><input id="l-val" maxlength="40" value="${esc(l?l.value:(lastMed?lastMed.value:''))}" placeholder="예: 챔프(아세트아미노펜)">${meds.length?`<div class="quick">${meds.map(m=>`<button data-act="fill" data-t="l-val" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div>`:''}</label>
-      <label class="field"><span>용량 (처방, 설명서대로)</span><input id="l-dose" maxlength="20" value="${esc(l?l.dose:(lastMed?lastMed.dose||'':''))}" placeholder="예: 2.5ml"></label><p class="notice" id="l-medhint" style="margin:0 0 8px"></p>`;
+      <label class="field"><span>용량 (처방, 설명서대로)</span><input id="l-dose" maxlength="20" value="${esc(l?l.dose:(lastMed?lastMed.dose||'':''))}" placeholder="예: 2.5ml"></label><div class="field" id="l-abx" style="display:none"><span>항생제 처방 <small>(진행 상황 계산용)</small></span><div class="dytpr"><label class="field"><span>처방 일수</span><select id="l-abd">${[3,5,7,10,14].map(n=>`<option value="${n}"${(abxTag(l&&l.memo)||lastAbx||{days:7}).days===n?' selected':''}>${n}일</option>`).join('')}</select></label><label class="field"><span>하루 횟수</span><select id="l-abn">${[1,2,3,4].map(n=>`<option value="${n}"${(abxTag(l&&l.memo)||lastAbx||{per:3}).per===n?' selected':''}>${n}회</option>`).join('')}</select></label></div></div>
+      <p class="notice" id="l-medhint" style="margin:0 0 8px"></p>`;
   else body=`<label class="field"><span>증상</span><input id="l-val" maxlength="60" value="${esc(l?l.value:'')}" placeholder="예: 콧물"><div class="quick">${SYMS.map(s=>`<button data-act="addsym" data-v="${s}">${s}</button>`).join('')}</div></label>`;
   openSheet(`<h3>${KIND[kind]} ${l?'수정':'기록'}</h3>
     ${!ep?`<label class="field"><span>사건 이름 (새 사건 파일이 열려요)</span><input id="l-ep" maxlength="20" value="${esc(kind==='temp'?'발열':(kind==='med'&&lastMed&&(S.eps.find(e=>e.id===lastMed.ep)||{}).title)||'건강 관리')}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`:`<label class="field"><span>사건 이름 <small>(바꾸면 이 사건 전체 이름이 바뀌어요)</small></span><input id="l-ep" maxlength="20" value="${esc(ep.title)}" placeholder="예: 감기, 해열, 비타민, 건강 관리"><div class="quick">${epNames.map(m=>`<button data-act="fill" data-t="l-ep" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></label>`}
@@ -136,7 +152,7 @@ function openLog(kind,id){
     <div class="dytpr"><span></span><div class="dytpq" style="margin-top:0"><button type="button" class="ghost" data-dy="now" data-act="untilnow" data-t="l-until">지금 나았어요</button><button type="button" class="ghost" data-dy="tpx" data-t="l-until">비우기</button></div></div>`
     :`<label class="field"><span>날짜</span><input id="l-date" type="date" value="${d0}"></label>
     <div class="dytpr one"><div class="field"><span>시각</span>${window.DAY&&DAY.tpick?DAY.tpick('l-time',t0||''):`<input id="l-time" type="time" value="${t0||''}">`}</div></div>`}
-    <label class="field"><span>메모 (선택)</span><input id="l-memo" maxlength="100" value="${esc(l?l.memo:'')}" placeholder="예: 보채고 수유량 줄어듦"></label>
+    <label class="field"><span>메모 (선택)</span><input id="l-memo" maxlength="100" value="${esc(l?(abxTag(l.memo)?abxTag(l.memo).rest:l.memo):'')}" placeholder="예: 보채고 수유량 줄어듦"></label>
     ${window.CLAIM?CLAIM.field(l?'log:'+l.id:'',kind==='med'?'약봉지':kind==='sym'?'증상사진':'기타',d0):''}
     <p class="err" id="l-err"></p>
     <div class="actions">${l?`<button class="danger" data-act="dellog" data-id="${l.id}">삭제</button>`:''}<button class="secondary" data-act="close">취소</button><button class="primary" data-act="savelog" data-k="${kind}" data-id="${l?l.id:''}" data-ep="${ep?ep.id:''}">저장</button></div>`);
