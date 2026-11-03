@@ -1,0 +1,18 @@
+# 임시: 감염병포털(dportal.kdca.go.kr) 통계 화면이 데이터를 어디서 받아 오는지 알아보는 작업 (확인 뒤 지움)
+name: 감염병포털 알아보기
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/probe-dportal.mjs
