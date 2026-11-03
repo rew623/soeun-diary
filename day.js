@@ -20,7 +20,7 @@ const K = {
   walk: { n: '탐문', i: '🐾', c: '#3d8a4f' },
   temp: { n: '체온', i: '🌡️', c: '#B3261E' }, med: { n: '투약', i: '💊', c: '#B3261E' }, sym: { n: '증상', i: '🤒', c: '#B3261E' }
 };
-const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath'];
+const CHART = ['formula', 'breast', 'pump', 'solid', 'pee', 'poo', 'sleep', 'bath', 'play', 'walk'];   // 놀아주기·산책 필터 (2026.11.03)
 // 5칸 × 2줄 (자주 쓰는 것 첫 줄, 옆으로 밀지 않아도 다 보여요)
 // 귀여운 그림 아이콘 (하루 수사): 이모지 대신 직접 그린 SVG — 사용자 요청 2026.10.13 '이모지 더 귀엽게'. 알림 띠(toast) 글자엔 K[k].i 이모지를 그대로 써요
 const IK = '#1F2A44', FACE = (x, y, o) => `<g fill="${IK}"><circle cx="${x - 2.6}" cy="${y}" r="1.15"/><circle cx="${x + 2.6}" cy="${y}" r="1.15"/></g><path d="M${x - 1.5} ${y + 1.9}q1.5 1.3 3 0" fill="none" stroke="${IK}" stroke-width="1.2" stroke-linecap="round"/>${o === 0 ? '' : `<g fill="#FF8FA3" opacity=".55"><circle cx="${x - 4.6}" cy="${y + 1.7}" r="1.3"/><circle cx="${x + 4.6}" cy="${y + 1.7}" r="1.3"/></g>`}`;
@@ -142,7 +142,7 @@ function feedSave() {
 // ---------- 하루 숫자 ----------
 function stats(date) {
   const L = ofDay(date), care = k => L.filter(e => e.src === 'care' && e.k === k);
-  const PL = care('play'), F = care('formula'), P = care('pump'), B = care('breast'), dia = care('diaper'), sl = care('sleep'), ba = care('bath'), so = L.filter(e => e.k === 'solid');
+  const PL = care('play'), F = care('formula'), P = care('pump'), B = care('breast'), dia = care('diaper'), sl = care('sleep'), ba = care('bath'), WK = L.filter(e => e.src === 'walk'), so = L.filter(e => e.k === 'solid');
   const iv = A => { if (A.length < 2) return null; const t = A.map(e => e.s).sort((a, b) => a - b); let g = 0; for (let i = 1; i < t.length; i++) g += t[i] - t[i - 1]; return g / (t.length - 1) / 36e5; };
   const sleeps = evs().filter(e => e.src === 'care' && e.k === 'sleep' && (e.date === date || e.date === addDays(date, -1)));
   const sleepMin = sleptMin(sleeps, date);
@@ -154,7 +154,7 @@ function stats(date) {
     solid: { n: so.length, amt: so.reduce((a, e) => a + num(e.raw.amount), 0), unit },
     pee: { n: dia.filter(e => e.raw.pee).length }, poo: { n: dia.filter(e => e.raw.poo).length },
     sleep: { min: sleepMin, n: sl.length, long: sleeps.reduce((a, e) => Math.max(a, e.e ? (e.e - e.s) / 60000 : 0), 0) },
-    play: { n: PL.length, min: PL.reduce((a, e) => a + (e.e ? (e.e - e.s) / 60000 : 0), 0) }, bath: { n: ba.length }, any: L.some(e => e.src === 'care' || e.k === 'solid')
+    play: { n: PL.length, min: PL.reduce((a, e) => a + (e.e ? (e.e - e.s) / 60000 : 0), 0) }, walk: { n: WK.length, min: WK.reduce((a, e) => a + (e.e ? (e.e - e.s) / 60000 : 0), 0), km: WK.reduce((a, e) => a + (window.WALK ? WALK.km(e.raw) / 1000 : 0), 0) }, bath: { n: ba.length }, any: L.some(e => e.src === 'care' || e.k === 'solid')
   };
 }
 
@@ -250,7 +250,7 @@ function dayLog() {
 // ---------- 일간 패턴: 24시간 시계 ----------
 function chips(single) {
   return `<div class="dyfl">${CHART.filter(k => !single || !['poo'].includes(k)).map(k => {
-    const on = single ? D.stat === (k === 'pee' ? 'diaper' : k) : !D.off.has(k), lab = single && k === 'pee' ? '소변/대변' : K[k].n;
+    const on = single ? D.stat === (k === 'pee' ? 'diaper' : k) : !D.off.has(k), lab = single && k === 'pee' ? '소변/대변' : k === 'walk' ? '산책' : K[k].n;
     return `<button class="${on ? 'on' : ''}" data-dy="${single ? 'stat' : 'flt'}" data-v="${single && k === 'pee' ? 'diaper' : k}" style="--c:${K[k].c}" aria-pressed="${on}"><i></i>${lab}</button>`;
   }).join('')}</div>`;
 }
@@ -285,12 +285,12 @@ function dayPat() {
   const st = stats(date), row = (l, v) => `<tr><th>${l}</th><td>${v}</td></tr>`;
   const t1 = [st.formula.n ? row('🍼 분유', `${st.formula.ml}ml · ${st.formula.n}회`) : '', st.pump.n ? row('🍶 유축수유', `${st.pump.ml}ml · ${st.pump.n}회`) : '', st.breast.n ? row('🤱 모유수유', `${st.breast.n}회${st.breast.min ? ` · ${durTxt(st.breast.min)}` : ''}`) : '', st.solid.n ? row('🥣 이유식', `${st.solid.n}회${st.solid.amt ? ` · ${st.solid.amt}${st.solid.unit}` : ''}`) : ''].join('');
   const t2 = [row('💧 소변', `${st.pee.n}회`), row('💩 대변', `${st.poo.n}회`)].join('');
-  const t3 = [row('😴 수면', st.sleep.min ? `${durTxt(st.sleep.min)}${st.sleep.n ? ` · ${st.sleep.n}번` : ''}` : '-'), row('🛁 목욕', `${st.bath.n}회`)].join('');
+  const t3 = [row('😴 수면', st.sleep.min ? `${durTxt(st.sleep.min)}${st.sleep.n ? ` · ${st.sleep.n}번` : ''}` : '-'), row('🛁 목욕', `${st.bath.n}회`), row('🧸 놀아주기', st.play.n ? `${st.play.n}회 · ${durTxt(st.play.min)}` : '-'), row('🐾 산책', st.walk.n ? `${st.walk.n}회 · ${durTxt(st.walk.min)}${st.walk.km ? ` · ${st.walk.km.toFixed(1)}km` : ''}` : '-')].join('');
   return `${chips(false)}
     <div class="dyclock"><svg viewBox="-12 -12 ${W + 24} ${W + 24}" role="img" aria-label="${dLabel(date)} 24시간 기록 시계">${g}</svg><p class="dytip" id="dy-tip">${list.length ? '조각을 누르면 무슨 기록인지 보여요' : '이날 기록이 없어요'}</p></div>
     <table class="dytbl f"><thead><tr><th>수유·이유식</th><th>합계</th></tr></thead><tbody>${t1 || row('-', '기록 없음')}</tbody></table>
     <table class="dytbl d"><thead><tr><th>소변/대변</th><th>횟수</th></tr></thead><tbody>${t2}</tbody></table>
-    <table class="dytbl s"><thead><tr><th>수면·목욕</th><th>합계</th></tr></thead><tbody>${t3}</tbody></table>`;
+    <table class="dytbl s"><thead><tr><th>수면·목욕·놀이</th><th>합계</th></tr></thead><tbody>${t3}</tbody></table>`;
 }
 
 // ---------- 주간 통계: 날마다 막대 + 패턴 변화 ----------
@@ -301,9 +301,11 @@ const METRICS = {
   solid: [['n', '이유식 횟수', '회', s => s.solid.n], ['amt', '이유식 먹은 양', '', s => s.solid.amt]],
   diaper: [['pee', '소변 횟수', '회', s => s.pee.n], ['poo', '대변 횟수', '회', s => s.poo.n]],
   sleep: [['min', '하루 수면 시간', '시간', s => s.sleep.min ? Math.round(s.sleep.min / 6) / 10 : 0], ['long', '가장 오래 잔 시간', '시간', s => s.sleep.long ? Math.round(s.sleep.long / 6) / 10 : 0], ['n', '잠든 횟수', '회', s => s.sleep.n]],
-  bath: [['n', '목욕 횟수', '회', s => s.bath.n]]
+  bath: [['n', '목욕 횟수', '회', s => s.bath.n]],
+  play: [['n', '놀아주기 횟수', '회', s => s.play.n], ['min', '놀아주기 시간', '분', s => Math.round(s.play.min)]],
+  walk: [['n', '산책 횟수', '회', s => s.walk.n], ['min', '산책 시간', '분', s => Math.round(s.walk.min)], ['km', '산책 거리', 'km', s => Math.round(s.walk.km * 10) / 10]]
 };
-const fmtV = (v, u) => v == null ? '-' : u === '시간' ? `${(Math.round(v * 10) / 10)}${u}` : `${Math.round(v)}${u}`;
+const fmtV = (v, u) => v == null ? '-' : u === '시간' ? `${(Math.round(v * 10) / 10)}${u}` : u === 'km' ? `${(Math.round(v * 10) / 10)}${u}` : `${Math.round(v)}${u}`;
 function bars(key, days, vals, unit, color) {
   const W = 320, H = 150, top = 26, base = 120, bw = 16, step = W / 7, max = Math.max(1, ...vals.filter(v => v != null));
   const fut = days.map(d => d > today()), has = vals.some((v, i) => v && !fut[i]);
