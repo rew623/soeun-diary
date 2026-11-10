@@ -79,14 +79,20 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 (()=>{
   const b=document.createElement('button');b.className='totop';b.type='button';b.setAttribute('aria-label','맨 위로');b.hidden=true;b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 19V6M6 11.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   document.body.appendChild(b);
+  const d=document.createElement('button');d.className='totop tobot';d.type='button';d.setAttribute('aria-label','맨 아래로');d.hidden=true;d.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v13M6 12.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(d);   // 맨 아래로 (2026.11.10 사용자 요청): 긴 화면에서 아래가 아직 많이 남았을 때, 맨 위로 단추 위에
   const st=document.createElement('style');
-  st.textContent=`.totop{position:fixed;right:max(20px,calc(50% - 260px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:7;width:44px;height:44px;border-radius:50%;border:2px solid var(--navy);background:var(--card);color:var(--navy);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(31,42,68,.25)}.totop[hidden]{display:none}.totop:active{transform:translateY(2px);box-shadow:none}html.shopen .totop,html.wk-open .totop,html.lb-open .totop,html.pk-open .totop,html.fpk-open .totop{display:none}`;
+  st.textContent=`.totop{position:fixed;right:max(20px,calc(50% - 260px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:7;width:44px;height:44px;border-radius:50%;border:2px solid var(--navy);background:var(--card);color:var(--navy);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(31,42,68,.25)}.totop[hidden]{display:none}.totop:active{transform:translateY(2px);box-shadow:none}html.shopen .totop,html.wk-open .totop,html.lb-open .totop,html.pk-open .totop,html.fpk-open .totop{display:none}.tobot{opacity:.92}`;
   document.head.appendChild(st);
   let raf=0;
-  const upd=()=>{raf=0;const show=window.scrollY>500&&S.mode==='ok';b.hidden=!show;if(!show)return;
+  const upd=()=>{raf=0;const ok=S.mode==='ok',H=document.documentElement.scrollHeight,show=window.scrollY>500&&ok,down=ok&&H>innerHeight*2&&window.scrollY+innerHeight<H-600;
+    b.hidden=!show;d.hidden=!down;if(!show&&!down)return;
     const f=document.querySelector('.fab:not([hidden])');   // 떠 있는 빨간 단추가 있으면 그 바로 위로 (겹치지 않게)
-    b.style.bottom=f&&f.getClientRects().length?`${Math.round(innerHeight-f.getBoundingClientRect().top+10)}px`:''};
+    const base=f&&f.getClientRects().length?Math.round(innerHeight-f.getBoundingClientRect().top+10):null;
+    b.style.bottom=base!=null?base+'px':'';
+    d.style.bottom=show?`${base!=null?base+52:'calc(144px + env(safe-area-inset-bottom,0px))'}${base!=null?'px':''}`:(base!=null?base+'px':'')};
   window.addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(upd)},{passive:true});
   new MutationObserver(()=>{if(!raf)raf=requestAnimationFrame(upd)}).observe(document.getElementById('app'),{childList:true});
   b.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+  d.addEventListener('click',()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'}));
 })();

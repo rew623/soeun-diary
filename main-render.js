@@ -113,17 +113,17 @@ function renderGrow(){
 function caseHtml(p,hot,solved){
   const vs=vacsOf(p.id),dt=pDate(p),rd=recDate(p),n=daysBetween(today(),dt);
   let dline;
-  if(solved){const last=vs.map(v=>v.done).sort().pop();dline=`<div class="dline"><small>${last?fmtK(last)+' 해결':''}${p.hospital?', '+esc(p.hospital):''}</small><button class="ghost" data-act="editp" data-id="${p.id}">편집</button></div>`}
-  else if(p.confirmed)dline=`<div class="dline"><div><b>${fmtK(p.confirmed)}</b><span class="badge">예약 확정</span><small>${rd?'권장 '+fmtK(rd,true):''}${rd&&p.hospital?', ':''}${esc(p.hospital||'')}</small></div><button class="ghost" data-act="editp" data-id="${p.id}">편집</button></div>`;
+  if(solved){const last=vs.map(v=>v.done).sort().pop();dline=`<div class="dline"><small>${last?fmtK(last)+' 해결':''}${p.hospital?', '+esc(p.hospital):''}</small></div>`}
+  else if(p.confirmed)dline=`<div class="dline"><div><b>${fmtK(p.confirmed)}</b><span class="badge">예약 확정</span><small>${rd?'권장 '+fmtK(rd,true):''}${rd&&p.hospital?', ':''}${esc(p.hospital||'')}</small></div></div>`;
   else dline=`<div class="dline"><span class="recd">${rd?fmtK(rd)+'경 (권장)':'날짜 미정'}</span><button class="ghost" data-act="editp" data-id="${p.id}">예약일 입력</button></div>`;
   const rows=vs.length?vs.map(v=>`<button class="vrow" data-act="editv" data-id="${v.id}"><span class="box">${v.done?CHECK:''}</span><span class="vn"><span>${esc(v.name)}</span>${v.sub?`<small>${esc(v.sub)}</small>`:''}</span>${v.done?`<span class="vd">${fmtMD(v.done)}${v.by?', '+v.by:''}</span>`:''}</button>`).join('')
     :'<p class="vempty">이 시기에 등록된 백신이 없어요.</p>';
   const dd=solved?'':`<span class="dd ${hot||n<=31?'':'far'}">${ddayText(dt)}</span>`;
   return `<article class="case ${hot?'hot':''} ${solved?'solved':''}">
     ${solved?'<span class="stamp">해결</span>':''}
-    <span class="no">CASE ${caseNo(p)}</span>
-    <div class="top"><h3>${esc(p.name)}</h3>${dd}</div>
-    ${dline}${rows}
+    <div class="ctap" data-act="editp" data-id="${p.id}" role="button" aria-label="${esc(p.name)} 시기 편집"><span class="no">CASE ${caseNo(p)}</span>
+    <div class="top"><h3>${esc(p.name)} <i class="ced">✎</i></h3>${dd}</div>
+    ${dline}</div>${rows}
     <div class="cacts"><button class="addv" data-act="addv" data-id="${p.id}">+ 백신 추가</button>${!solved&&vs.some(v=>!v.done)?`<button class="solve" data-act="solve" data-id="${p.id}">사건 해결 처리</button>`:''}</div>
   </article>`;
 }

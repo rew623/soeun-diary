@@ -258,6 +258,7 @@ window.addEventListener('popstate', () => {
   if (window.__askClose && __askClose()) { guard(); return; }            // 앱 확인창
   if (window.FOCUS && FOCUS.close()) { guard(); return; }                // 🎯 보여 줄 곳 정하기
   if (window.ALBUM && ALBUM.pkClose && ALBUM.pkClose()) { guard(); return; }   // 현장 사진에서 고르기 창
+  if (window.CLAIM && CLAIM.closeBig && CLAIM.closeBig()) { guard(); return; }   // 서류 사진 크게 보기 (편집창 위)
   if (isOpen()) { close(); guard(); return; }                          // 1) 사진 크게 보기
   if (sheetOpen()) { if (window.__app && __app.softClose) __app.softClose(); else closeSheet(); guard(); return; }   // 2) 편집창 같은 아래 창 (적던 중이면 한 번 더 눌러야 닫혀요)
   if (window.SLIDE && SLIDE.close()) { guard(); return; }                            // 성장 스토리

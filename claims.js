@@ -224,5 +224,5 @@ css.textContent = `
 .clentry small{display:block;font-size:12px;opacity:.85;font-family:var(--body)}
 `;
 document.head.appendChild(css);
-window.CLAIM = { field, flush, render: view, openEdit, entryHtml, show, KINDS };
+window.CLAIM = { closeBig: () => { if (lb.hidden) return false; lb.hidden = true; return true; }, field, flush, render: view, openEdit, entryHtml, show, KINDS };
 })();

@@ -20,6 +20,7 @@ function render_() {
       <span class="fface">${face('profile', 'baby')}<b>${esc((P.name || '아기').replace(/^[가-힣](?=[가-힣]{2}$)/, ''))}</b></span>
       <span class="fcount"><b>${L.length}</b><small>장</small></span></div>
     </section>
+    <section${isFold('a-fmonth') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-fmonth"><span>가족 월별 증거 사진</span><span>매달 ${+String(P.birth || '').slice(8) || ''}일</span></h2><div class="mgrid">${typeof monthGrid === 'function' ? monthGrid('fmonth') : ''}</div></section>
     <section${isFold('a-fam') ? ' class="folded"' : ''}><h2 class="sh" data-fold="a-fam" style="align-items:baseline"><span style="font-family:var(--display);font-size:21px;color:var(--navy);letter-spacing:0">가족 사진</span><span>${L.length}장</span></h2>
       <button class="solve" data-fa="up" style="width:100%;min-height:50px">+ 가족 사진 올리기 (여러 장 가능)</button>
       ${groups.map((g, gi) => { const [y, mo] = g.ym.split('-').map(Number); return `<div class="amon${isFold('fm-' + g.ym, gi >= 2) ? ' folded' : ''}"><h3 class="agh" data-fold="fm-${g.ym}">${y}.${mo} · ${g.items.length}장</h3><div class="agrid">${g.items.map(cell).join('')}</div><button class="afold" data-al="foldm" data-k="fm-${g.ym}">▴ ${mo}월 가족 사진 접기</button></div>`; }).join('') || '<p class="vempty" style="margin-top:12px">셋이 함께 찍은 사진, 엄마·아빠가 안고 있는 사진을 올려 보세요. 찍은 날짜로 알아서 정리돼요.</p>'}

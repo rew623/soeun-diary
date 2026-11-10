@@ -4,7 +4,7 @@
 const MILEK={'첫 사회적 미소':/사회적\s*미소|첫\s*미소|웃어\s*줬/,'소리 내어 웃기':/소리\s*(내어|내서|내며)?\s*웃|까르르|깔깔/,'목 가누기':/목\s*(을\s*)?가누/,'뒤집기':/뒤집/,'혼자 앉기':/혼자\s*앉|앉기|앉았/,'첫 이':/첫\s*이(\s|$)|이가?\s*(났|나왔|올라)|첫\s*치아/,'기기':/^기기|배밀이|기어(가|다)|네발\s*기기|기기\s*성공/,'잡고 서기':/잡고\s*(일어)?서/,'첫 걸음':/걸음|걸었|걷기|걸음마/,'첫 단어':/첫\s*(단어|말)|말(을)?\s*했/};
 const mileSeen=(t,F)=>F.some(m=>m.title===t||(MILEK[t]&&MILEK[t].test(m.title||'')));
 const MILES=[['첫 사회적 미소','1~2개월'],['소리 내어 웃기','3~4개월'],['목 가누기','3~4개월'],['뒤집기','4~6개월'],['혼자 앉기','6~8개월'],['첫 이','6~10개월'],['기기','7~10개월'],['잡고 서기','9~12개월'],['첫 걸음','12개월 전후'],['첫 단어','12개월 전후']];
-const firsts=()=>S.moments.filter(m=>m.type!=='month'&&m.type!=='free'&&m.type!=='report'&&m.type!=='extra'&&m.type!=='fam').sort((a,b)=>a.date<b.date?1:-1);
+const firsts=()=>S.moments.filter(m=>m.type!=='month'&&m.type!=='free'&&m.type!=='report'&&m.type!=='extra'&&m.type!=='fam'&&m.type!=='fmonth').sort((a,b)=>a.date<b.date?1:-1);
 const dayNo=d=>daysBetween(S.profile.birth,d)+1;
 function polaroid(m,big,rot){const ph=safeImg(PHOTOS[m.id]);
   return `<button class="pola ${big?'big':''}" style="transform:rotate(${rot}deg)" ${ph?`data-view="${m.id}"`:`data-act="editmom" data-id="${m.id}"`}>${m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${esc(m.title)} 사진" loading="lazy" decoding="async">`:m.photo?'<span class="noph">사진 불러오는 중</span>':'<span class="noph">사진 없음</span>'}<span class="pt"><b>${esc(m.title)}</b><small>생후 ${dayNo(m.date)}일</small></span><small class="pw">${fmtK(m.date,true)}${m.by?`, ${m.by} 수사관 최초 목격`:''}</small>${ALBUM.exStrip(m)}</button>`}
@@ -13,6 +13,9 @@ const FOLDK='soeun-fold';let FOLD={};try{FOLD=JSON.parse(localStorage.getItem(FO
 function isFold(k,def){return k in FOLD?FOLD[k]:!!def}
 function setFold(k,v){FOLD[k]=v;try{localStorage.setItem(FOLDK,JSON.stringify(FOLD))}catch(e){}}
 const fsec=k=>isFold(k)?' class="folded"':'';
+// 월별 증거 사진 칸 (type 'month' = 아기, 'fmonth' = 가족 앨범, 2026.11.10 사용자 요청: 가족도 매달)
+function monthGrid(type){const p=S.profile,[mo]=monthsDays(p.birth,today()),out=[];for(let i=1;i<=Math.min(mo+1,24);i++){const m=S.moments.find(x=>x.type===type&&x.title===i+'개월'),ph=m&&safeImg(PHOTOS[m.id]);
+  out.push(`<button class="mcell" ${ph?`data-view="${m.id}"`:`data-act="${m?'editmom':'addmonth'}" data-id="${m?m.id:''}" data-v="${i}" data-k="${type}"`}>${m&&m.board?'<span class="onboard">보드</span>':''}${ph?`<img src="${ph}" alt="${i}개월 사진" loading="lazy" decoding="async">`:`<span class="mph">+ ${i}개월</span>`}<small>${m?i+'개월':fmtK(addMonths(p.birth,i),true)}</small></button>`)}return out.join('')}
 function renderAlbum(){
   const p=S.profile,d=daysBetween(p.birth,today())+1,d100=addDays(p.birth,99);
   const F=firsts(),seen={has:t=>mileSeen(t,F)};
@@ -44,8 +47,8 @@ function renderAlbum(){
 function addDays(s,n){return new Date(pd(s)+n*864e5).toISOString().slice(0,10)}
 function openMoment(id,preset){
   const m=id?S.moments.find(x=>x.id===id):{type:preset&&preset.type||'first',title:preset&&preset.title||'',date:preset&&preset.date||today(),memo:''};
-  pending=undefined;const month=m.type==='month';
-  openSheet(`<h3>${month?esc(m.title)+' 증거 사진':id?'최초 목격 수정':'최초 목격 기록'}</h3>
+  pending=undefined;const month=m.type==='month'||m.type==='fmonth';
+  openSheet(`<h3>${month?(m.type==='fmonth'?'가족 ':'')+esc(m.title)+' 증거 사진':id?'최초 목격 수정':'최초 목격 기록'}</h3>
     ${month?'':`<label class="field"><span>무엇을 목격했나요?</span><input id="m-title" maxlength="30" value="${esc(m.title)}" placeholder="예: 첫 뒤집기">${id?'':`<div class="quick">${MILES.slice(0,6).map(([t])=>`<button data-act="fill" data-t="m-title" data-v="${t}">${t}</button>`).join('')}</div>`}</label>`}
     <label class="field"><span>날짜</span><input id="m-date" type="date" value="${m.date}" min="${S.profile.birth}" max="${today()}"></label>
     ${photoField(id?safeImg(PHOTOS[id]):'',month?'':'대표 사진 (여러 장 고를 수 있어요)',false,!month)}${month?'':ALBUM.exField(id)}

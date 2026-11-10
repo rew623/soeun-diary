@@ -163,13 +163,13 @@ document.addEventListener('click',async e=>{
     const rv=await write('saveItem','visit',{id:a.dataset.id,date:d,next:val('c-next'),hospital:val('c-hos'),diag:val('c-diag'),rx:val('c-rx'),ask:val('c-ask'),by:myRole()});
     if(rv){closeSheet();toast('진료 기록을 저장했어요');if(window.CLAIM)await CLAIM.flush('visit:'+(a.dataset.id||rv.id))}break}
   case 'addmom':openMoment(null,{type:'first',title:a.dataset.v||''});break;
-  case 'addmonth':openMoment(null,{type:'month',title:a.dataset.v+'개월',date:(()=>{const d=addMonths(S.profile.birth,+a.dataset.v);return d>today()?today():d})()});break;
+  case 'addmonth':openMoment(null,{type:a.dataset.k==='fmonth'?'fmonth':'month',title:a.dataset.v+'개월',date:(()=>{const d=addMonths(S.profile.birth,+a.dataset.v);return d>today()?today():d})()});break;
   case 'editmom':openMoment(a.dataset.id);break;
-  case 'savemom':{const title=a.dataset.type==='month'?a.dataset.title:val('m-title'),d=val('m-date');
+  case 'savemom':{const isM=a.dataset.type==='month'||a.dataset.type==='fmonth',title=isM?a.dataset.title:val('m-title'),d=val('m-date');
     if(!title)return err('m-err','무엇을 목격했는지 적어 주세요');if(!d)return err('m-err','날짜를 입력해 주세요');
-    if(a.dataset.type==='month'&&!a.dataset.id&&!pending)return err('m-err','사진을 골라 주세요');
+    if(isM&&!a.dataset.id&&!pending)return err('m-err','사진을 골라 주세요');
     const o={id:a.dataset.id,type:a.dataset.type,title,date:d,memo:val('m-memo'),by:myRole()};if(pending!==undefined)o.photo=pending;if(pending&&PGEO)Object.assign(o,PGEO);
-    const res=await write('saveItem','mom',o);if(res){if(pending)PHOTOS[res.id]=pending;else if(pending===null)delete PHOTOS[res.id];if(EXTRA_FILES.length&&a.dataset.type!=='month'){ALBUM.queue(EXTRA_FILES,{type:'extra',of:res.id,fb:d});EXTRA_FILES=[]}render();closeSheet();toast(a.dataset.type==='month'?'증거 사진을 보관했어요':'최초 목격을 기록했어요')}break}
+    const res=await write('saveItem','mom',o);if(res){if(pending)PHOTOS[res.id]=pending;else if(pending===null)delete PHOTOS[res.id];if(EXTRA_FILES.length&&!isM){ALBUM.queue(EXTRA_FILES,{type:'extra',of:res.id,fb:d});EXTRA_FILES=[]}render();closeSheet();toast(isM?'증거 사진을 보관했어요':'최초 목격을 기록했어요')}break}
   case 'addfood':openFood(null,a.dataset.v||'');break;
   case 'editfood':openFood(a.dataset.id);break;
   case 'savefood':{const name=val('fd-name'),start=val('fd-start');if(!name)return err('fd-err','식재료 이름을 입력해 주세요');if(!start)return err('fd-err','시작일을 입력해 주세요');
