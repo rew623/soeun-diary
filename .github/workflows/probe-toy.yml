@@ -1,0 +1,18 @@
+# 임시: 원주 장난감도서관 목록 화면 구조 알아보기 (확인 뒤 지움)
+name: 장난감도서관 알아보기
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/probe-toy.mjs
