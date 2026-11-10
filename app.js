@@ -33,9 +33,10 @@ const TBL = {
   look: ['date', 'pick', 'parts', 'by'],          // 닮은꼴 판정단 (문서 id = 날짜_mom|dad, pick: mom·dad·both, parts: 닮은 곳 쉼표로)
   capsule: ['title', 'body', 'open', 'occ', 'sealed', 'photo', 'by'],   // 봉인된 증거물 (open: 열리는 날, occ: 첫 돌 같은 이름, sealed: 봉인한 날)
   doc: ['kind', 'date', 'title', 'link', 'amount', 'hosp', 'drug', 'claim', 'memo', 'photo', 'by', 'grp'],   // 서류함(보험 청구): '건' 머리 문서(grp '', 종류 쉼표·병원비 hosp·약값 drug·amount 합계)와 사진 문서(grp=머리 id, 사진 한 장), link='log:<id>'·'visit:<id>'·'vac:<id>'·'chk:<id>', claim: 미청구·청구함·지급완료 (2026.10.17 추가)
+  rent: ['name', 'idx', 'br', 'tag', 'img', 'start', 'due', 'ext', 'back', 'memo', 'by'],   // 장난감 대여 (toys.js, 2026.11.10): 빌린 날 start·반납 예정 due·연장 ext('1')·반납한 날 back
   walk: ['date', 'kind', 'title', 'place', 'geo', 'start', 'end', 'dist', 'path', 'pics', 'memo', 'who', 'wx', 'mood', 'by']   // 탐문 기록 (산책·나들이, path: 경로 글자, pics: 같이 올린 사진 id)
 };
-const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks', doc: 'docs' };
+const OUT = { ep: 'eps', log: 'logs', visit: 'visits', mom: 'moments', food: 'foods', meal: 'meals', cube: 'cubes', menu: 'menus', people: 'people', dev: 'devs', guess: 'guesses', look: 'looks', capsule: 'capsules', walk: 'walks', doc: 'docs', rent: 'rents' };
 const LIM = { body: 5000, path: 60000, pics: 4000 };       // 칸별 글자 수 (나머지는 300)
 const OPT = { mom: ['geo', 'tm', 'fp'], meal: ['tm'] };   // meal tm: 먹인 시각 HH:MM (하루 수사 타임라인)   // 보낼 때만 쓰는 칸 (안 보내면 그대로 둬요 — 사진 위치·찍은 시각·보여 줄 곳은 고쳐 저장해도 안 지워지게)
 const COLS = ['records', 'periods', 'vaccines', ...Object.keys(TBL)];

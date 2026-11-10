@@ -60,7 +60,7 @@ function regionOf(pl) {
   return null;
 }
 function label(pl) { if (pl.home) return '본부 (우리 집)'; const r = regionOf(pl); return r && r.d ? `${r.d}` : r && r.g ? `${r.g} 어딘가` : '이름 모를 곳'; }
-const shown = () => S.view === 'explore' || (S.tab === 'town' && !S.view && S.townView !== 'info');
+const shown = () => S.view === 'explore' || (S.tab === 'town' && !S.view && !['info', 'toy'].includes(S.townView));
 function ensureRegions() {
   if (X.regions || X.regLoading) return; X.regLoading = true;
   fetch('data/regions.json').then(r => r.json()).then(j => { X.regions = (j.regions || []).filter(r => r.lat && r.lng); if (shown()) render(); }).catch(() => { X.regions = []; }).finally(() => { X.regLoading = false; });

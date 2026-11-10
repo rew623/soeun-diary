@@ -9,7 +9,7 @@ function stayAfterRender(){
   clearTimeout(stayT);stayT=setTimeout(staySave,300);   // 바로 읽으면 화면 전체 배치를 억지로 다시 계산해서 느려져요
 }
 try{const st=JSON.parse(sessionStorage.getItem(STAY)||'null');
-  if(st&&['grow','day','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.sickView=st.view==='hosp'?'hosp':['hosp','ph'].includes(st.sickView)?st.sickView:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.townView=st.townView==='info'?'info':'';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
+  if(st&&['grow','day','town','album','vac','food','sick'].includes(st.tab)){S.tab=st.tab;S.view=['recipe','report','posts','medals','book'].includes(st.view)?st.view:'';S.sickView=st.view==='hosp'?'hosp':['hosp','ph'].includes(st.sickView)?st.sickView:'';S.vacView=['check','dev'].includes(st.vacView)?st.vacView:'vac';S.albumView=['board','family'].includes(st.albumView)?st.albumView:'album';S.townView=['info','toy'].includes(st.townView)?st.townView:'';S.recAll=!!st.recAll;if(/^\d{4}-\d{2}$/.test(st.menuMonth||''))S.menuMonth=st.menuMonth;stayY=st.y||0}
 }catch(e){}
 window.addEventListener('scroll',()=>{clearTimeout(stayT);stayT=setTimeout(staySave,250)},{passive:true});
 window.addEventListener('pagehide',staySave);
@@ -75,24 +75,27 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
     try{staySave()}catch(x){}setTimeout(()=>location.reload(),150)};
   document.addEventListener('touchend',end);document.addEventListener('touchcancel',()=>{p=null;show(0,'')});
 })();
-// ---------- 맨 위로 가는 단추 (사용자 요청 2026.10.29): 500px 넘게 내리면 오른쪽 아래에 떠요, '+ 사진 올리기' 같은 떠 있는 단추가 있으면 그 바로 위 ----------
+// ---------- 맨 위로·맨 아래로 단추 (사용자 요청 2026.10.29·11.10): 긴 화면에서 오른쪽 아래에 ↑(위)·↓(아래) 묶음, '+ 사진 올리기' 같은 떠 있는 단추가 있으면 그 바로 위 ----------
+// 깜빡임 막기(2026.11.10): 스크롤 중엔 자리·보이기를 바꾸지 않고, 쓸 수 없는 쪽 단추만 흐리게(.dim). 자리는 화면을 다시 그릴 때·크기 바뀔 때만 계산
 (()=>{
-  const b=document.createElement('button');b.className='totop';b.type='button';b.setAttribute('aria-label','맨 위로');b.hidden=true;b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 19V6M6 11.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  document.body.appendChild(b);
-  const d=document.createElement('button');d.className='totop tobot';d.type='button';d.setAttribute('aria-label','맨 아래로');d.hidden=true;d.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v13M6 12.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  document.body.appendChild(d);   // 맨 아래로 (2026.11.10 사용자 요청): 긴 화면에서 아래가 아직 많이 남았을 때, 맨 위로 단추 위에
+  const SV=p=>`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${p}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const w=document.createElement('div');w.className='navbtns';w.hidden=true;
+  w.innerHTML=`<button type="button" class="totop" aria-label="맨 위로">${SV('M12 19V6M6 11.5l6-6 6 6')}</button><button type="button" class="totop tobot" aria-label="맨 아래로">${SV('M12 5v13M6 12.5l6 6 6-6')}</button>`;
+  document.body.appendChild(w);const up=w.children[0],dn=w.children[1];
   const st=document.createElement('style');
-  st.textContent=`.totop{position:fixed;right:max(20px,calc(50% - 260px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:7;width:44px;height:44px;border-radius:50%;border:2px solid var(--navy);background:var(--card);color:var(--navy);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(31,42,68,.25)}.totop[hidden]{display:none}.totop:active{transform:translateY(2px);box-shadow:none}html.shopen .totop,html.wk-open .totop,html.lb-open .totop,html.pk-open .totop,html.fpk-open .totop{display:none}.tobot{opacity:.92}`;
+  st.textContent=`.navbtns{position:fixed;right:max(20px,calc(50% - 260px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:7;display:flex;flex-direction:column;gap:8px}.navbtns[hidden]{display:none}
+.totop{width:44px;height:44px;border-radius:50%;border:2px solid var(--navy);background:var(--card);color:var(--navy);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(31,42,68,.25);transition:opacity .2s}.totop:active{transform:translateY(2px);box-shadow:none}.totop.dim{opacity:.28;pointer-events:none}
+html.shopen .navbtns,html.wk-open .navbtns,html.lb-open .navbtns,html.pk-open .navbtns,html.fpk-open .navbtns{display:none}`;
   document.head.appendChild(st);
-  let raf=0;
-  const upd=()=>{raf=0;const ok=S.mode==='ok',H=document.documentElement.scrollHeight,show=window.scrollY>500&&ok,down=ok&&H>innerHeight*2&&window.scrollY+innerHeight<H-600;
-    b.hidden=!show;d.hidden=!down;if(!show&&!down)return;
+  let raf=0,long=false;
+  const place=()=>{const ok=S.mode==='ok',H=document.documentElement.scrollHeight;long=ok&&H>innerHeight*1.6;w.hidden=!long;if(!long)return;
     const f=document.querySelector('.fab:not([hidden])');   // 떠 있는 빨간 단추가 있으면 그 바로 위로 (겹치지 않게)
-    const base=f&&f.getClientRects().length?Math.round(innerHeight-f.getBoundingClientRect().top+10):null;
-    b.style.bottom=base!=null?base+'px':'';
-    d.style.bottom=show?`${base!=null?base+52:'calc(144px + env(safe-area-inset-bottom,0px))'}${base!=null?'px':''}`:(base!=null?base+'px':'')};
-  window.addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(upd)},{passive:true});
-  new MutationObserver(()=>{if(!raf)raf=requestAnimationFrame(upd)}).observe(document.getElementById('app'),{childList:true});
-  b.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
-  d.addEventListener('click',()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'}));
+    w.style.bottom=f&&f.getClientRects().length?`${Math.round(innerHeight-f.getBoundingClientRect().top+10)}px`:'';dim()};
+  const dim=()=>{if(!long)return;const y=window.scrollY,H=document.documentElement.scrollHeight,a=y<300,b=y+innerHeight>H-300;
+    if(up.classList.contains('dim')!==a)up.classList.toggle('dim',a);if(dn.classList.contains('dim')!==b)dn.classList.toggle('dim',b)};
+  window.addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;dim()})},{passive:true});
+  let pt=0;const later=()=>{clearTimeout(pt);pt=setTimeout(place,350)};   // 다시 그린 뒤 배치가 끝나면 한 번만
+  new MutationObserver(later).observe(document.getElementById('app'),{childList:true});window.addEventListener('resize',later);
+  up.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+  dn.addEventListener('click',()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'}));
 })();

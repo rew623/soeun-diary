@@ -14,4 +14,4 @@
   - 쓰는 API(공공데이터포털 활용신청 필요, 키는 DATA_GO_KR_KEY 하나): 기상청 단기예보·중기예보(육상 강원영서/영동, 기온 시·군 지점 MID_TA)·기상특보, 에어코리아 대기오염정보·측정소정보·미세먼지 경보, 한국관광공사 국문 관광정보(KorService2), 질병관리청 전수신고 감염병 발생현황(EIDAPIService/PeriodBasic, 올해 주별이 없으면 작년 같은 때로 live:false)
   - 네이버 검색 API(블로그·카페글·뉴스, posts.json의 news = 시·군별 아이 행사 소식, NAVER API HUB 키 · 예전 개발자센터 키는 2027.6까지): fetch-posts.mjs, 시크릿 NAVER_CLIENT_ID · NAVER_CLIENT_SECRET (없으면 건너뜀)
 - 지인용 연결: 자세한 건 docs/friend-setup.md
-- toys.yml: 장난감 대여 목록(문막) data/toys.json, 바뀐 때만 커밋
+- toys.yml: 장난감 대여 목록 4지점 data/toys-<지점>.json, 월~토 KST 9·11·13·15·17시쯤, 바뀐 때만 커밋 (TOY_BRANCH=mm,np 로 일부만)
