@@ -1,0 +1,23 @@
+# 임시: 장난감도서관 지점 주소 알아보기 (확인 뒤 지움)
+name: 장난감도서관 주소 알아보기
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          cat > p.mjs <<'JS'
+          for (const p of ['m1/sub1.asp','m1/sub2.asp','m1/sub3.asp','m1/sub5.asp','m1/sub4.asp']) {
+            const r = await fetch('http://www.wjeducare.or.kr/toy/' + p);
+            const t = new TextDecoder('euc-kr').decode(new Uint8Array(await r.arrayBuffer())).replace(/<script[\s\S]*?<\/script>/g,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+            const i = t.indexOf('subContents') >= 0 ? t.indexOf('subContents') : 0;
+            const m = [...t.matchAll(/(강원[^,]{0,60}?(?:로|길)\s?\d+[^가-힣]{0,30}[^ ]*)|(주소[^ ]* [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+)/g)].map(x => x[0]);
+            console.log('==', p, [...new Set(m)].slice(0, 8).join(' | '));
+            const j = t.indexOf('위치'); if (j >= 0) console.log('  위치:', t.slice(j, j + 300));
+          }
+          JS
+          node p.mjs
