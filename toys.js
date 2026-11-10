@@ -37,8 +37,8 @@ function openNow(b) {
   return ['지금 열려 있어요', 'on'];
 }
 // 사이트 화면: 안드로이드는 기본 브라우저로(intent), 아이폰은 사파리 창으로
-const isAnd = /Android/i.test(navigator.userAgent);
-const link = id => { const u = `${SITE}sub1_view.asp?seq=-1&idx=${encodeURIComponent(id)}`; return isAnd ? `intent://${u.replace(/^http:\/\//, '')}#Intent;scheme=http;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(u)};end` : u; };
+const isAnd = /Android/i.test(navigator.userAgent), isSam = /SM-|SAMSUNG|SamsungBrowser|Galaxy/i.test(navigator.userAgent);   // 갤럭시는 삼성 인터넷으로 바로 (없으면 기본 브라우저)
+const link = id => { const u = `${SITE}sub1_view.asp?seq=-1&idx=${encodeURIComponent(id)}`; return isAnd ? `intent://${u.replace(/^http:\/\//, '')}#Intent;scheme=http;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;${isSam ? 'package=com.sec.android.app.sbrowser;' : ''}S.browser_fallback_url=${encodeURIComponent(u)};end` : u; };
 const pic = (D, x) => !x.p ? '' : /^https?:/.test(x.p) ? x.p : (D.pic || '') + x.p;
 
 // ---------- 빌린 장난감 ----------
@@ -96,7 +96,7 @@ function cards() {
 function render_() {
   const b = TY.br, B = BR[b], D = TY.d[b]; if (!D) load(b);
   const age = TY.age == null ? myAge() : TY.age, [ot, oc] = openNow(b), all = D ? D.items || [] : [], av = all.filter(x => x.s && (!age || x.a === age)).length;
-  const info = `<details class="tyinfo"${ls('soeun-toy-info') === '1' ? ' open' : ''}><summary><b class="tyo ${oc}">${ot}</b> ${B.n} 장난감도서관 · <a href="tel:${B.tel}">☎ ${B.tel.slice(4)}</a></summary>
+  const info = `<details class="tyinfo"${ls('soeun-toy-info') === '1' ? ' open' : ''}><summary><b class="tyo ${oc}">${ot}</b> ${B.n} 장난감도서관<span class="tytel"><a href="tel:${B.tel}">☎ ${B.tel}</a> · ${B.hours}</span></summary>
     <dl><dt>운영</dt><dd>${B.hours} (점심 12~13시엔 대여·반납 안 해요)</dd><dt>휴관</dt><dd>${B.off}, 센터가 정한 날</dd>
     <dt>대여</dt><dd>1회 2점 · 태그 색별로 (빨강은 1점만, 빨강+빨강 안 돼요)</dd><dt>기간</dt><dd>7~14일 · 전화로 1번 7일 연장 (최대 21일)</dd>
     <dt>신청</dt><dd>목록에서 장난감을 누르면 사이트가 열려요. 대여는 방문해서 해요</dd></dl></details>`;
@@ -156,7 +156,7 @@ const css = document.createElement('style');
 css.textContent = `
 .tybr{margin-bottom:10px}.tybr button{font-size:14px;min-height:40px}
 .tyinfo{border:1.5px solid var(--line);border-radius:12px;background:#FFFDF7;padding:8px 12px;margin-bottom:12px;font-size:13px}
-.tyinfo summary{cursor:pointer;color:var(--muted);line-height:1.6}.tyinfo summary a{color:var(--navy)}
+.tyinfo summary{cursor:pointer;color:var(--muted);line-height:1.6}.tytel{display:block;padding-left:16px;font-size:12.5px}.tyinfo summary a{color:var(--navy)}
 .tyinfo dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:8px 0 2px}.tyinfo dt{font-family:var(--display);color:var(--navy)}.tyinfo dd{margin:0;color:var(--ink)}
 .tyo{font-family:var(--display);font-weight:400;padding:1px 8px;border-radius:99px;margin-right:2px}.tyo.on{background:#DDF0D6;color:#2F6B2A}.tyo.mid{background:#FFF0C7;color:#8A6400}.tyo.off{background:#F1E4DD;color:var(--red)}
 .tyhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 2px}.tyhd b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--navy)}.tyhd button{min-height:34px;padding:0 12px;font-size:12.5px}.tyup{margin:0 0 8px;font-size:12px;color:var(--muted)}
