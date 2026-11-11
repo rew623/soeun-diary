@@ -354,7 +354,7 @@ const css = document.createElement('style');
 css.textContent = `
 .chr{display:block;overflow:visible}
 .guide{display:flex;align-items:flex-end;gap:6px;margin:14px 0 4px}
-.gchar{flex-shrink:0;border:0;background:none;padding:0;margin-bottom:-4px;filter:drop-shadow(0 3px 0 rgba(150,110,60,.18))}
+.gchar{flex-shrink:0;border:0;background:none;padding:0;margin-bottom:-4px}   /* drop-shadow 필터 뺌(2026.11.11): 안에서 캐릭터가 계속 움직여 필터가 매 프레임 다시 계산돼 스크롤이 버벅였어요 */
 .gbub{position:relative;flex:1;min-width:0;background:#FFFDF7;border:1.5px solid var(--line);border-radius:20px 20px 20px 6px;padding:10px 14px 8px;box-shadow:0 3px 0 #E6D2AE;margin-bottom:12px}
 .gbub::before{content:"";position:absolute;left:-9px;bottom:10px;width:14px;height:14px;background:#FFFDF7;border-left:1.5px solid var(--line);border-bottom:1.5px solid var(--line);transform:rotate(45deg) skew(10deg,10deg);border-radius:0 0 0 4px}
 .gbub b{font-family:var(--display);font-weight:400;font-size:14px;color:var(--red)}
@@ -365,7 +365,7 @@ css.textContent = `
 .guide.hop .gbub{animation:gpop .3s ease-out}
 @keyframes ghop{0%{transform:translateY(0)}40%{transform:translateY(-10px) rotate(-6deg)}100%{transform:none}}
 @keyframes gpop{0%{opacity:.3;transform:scale(.96)}100%{opacity:1;transform:none}}
-.gchar .chr{animation:gbob 3.2s ease-in-out infinite;transform-origin:50% 100%}
+.gchar .chr{animation:gbob 3.2s ease-in-out infinite;transform-origin:50% 100%;will-change:transform}
 .ghome{position:relative;flex-direction:column;align-items:stretch;gap:0}
 .ghome .gchar{width:100%;margin:0;filter:none}
 .gchar,.groomb{-webkit-tap-highlight-color:transparent;outline:none}.gchar:focus{outline:none}.gchar:focus-visible{outline:2px dashed var(--line);outline-offset:3px}   /* 누를 때 파란 표시 없이 */

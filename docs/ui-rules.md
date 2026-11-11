@@ -29,3 +29,4 @@
 - 앨범 칸은 원본 사진(최대 1600px·약 300KB)을 작게 보여 주는 거라 사진이 아주 많아지면 데이터·메모리가 큼 → 썸네일을 따로 저장하려면 사진 기록에 칸(thumbUrl)을 추가해야 해서 사용자 확인 후
 - 맨 위로 단추(.totop, 2026.10.29 사용자 요청): main-boot.js 맨 끝 — 500px 넘게 내리면 오른쪽 아래(탭 바 위)에 동그란 ↑ 단추, '+ 사진 올리기' 같은 .fab이 있으면 그 바로 위로 자동으로 올라감(고정 위치 요소라 offsetParent 말고 getClientRects로 확인). 편집창·탐문·크게 보기·사진 고르기 중엔 숨김, z-index 7
 - 맨 위로·맨 아래로 단추(.navbtns, 2026.11.10): 화면이 길면(1.6배 넘게) ↑ 위·↓ 아래 묶음으로 늘 보이고, 끝에 닿은 쪽만 흐리게(.dim) — 스크롤 중엔 자리·보이기를 안 바꿔 깜빡이지 않음, 자리는 다시 그린 뒤·크기 바뀔 때만. 서류 사진 크게 보기(#cl-lb)는 뒤로가기로 먼저 닫힘(CLAIM.closeBig, viewer.js popstate)
+- 속도(2026.11.11): 안내 캐릭터 .gchar drop-shadow 필터 뺌·움직이는 요소(.gchar .chr·.rthief .rpk·.wtthf .chr) will-change:transform, 앱이 뒤로 가면 html.bg로 애니메이션 멈춤, .agrid content-visibility:auto(앨범 사진 묶음 화면 밖은 배치 안 함), 탭 밀기 때 #app 투명도 변화 뺌, 폰 사본 저장은 requestIdleCallback. 측정: 사진 1500장·하루 수사 1200줄에서도 render()는 탭당 5~15ms라 JS가 아니라 그리기(필터+애니메이션·전체 레이어) 쪽이 원인이었음

@@ -37,8 +37,12 @@ function openNow(b) {
   return ['지금 열려 있어요', 'on'];
 }
 // 사이트 화면: 안드로이드는 기본 브라우저로(intent), 아이폰은 사파리 창으로
-const isAnd = /Android/i.test(navigator.userAgent), isSam = /SM-|SAMSUNG|SamsungBrowser|Galaxy/i.test(navigator.userAgent);   // 갤럭시는 삼성 인터넷으로 바로 (없으면 기본 브라우저)
-const link = id => { const u = `${SITE}sub1_view.asp?seq=-1&idx=${encodeURIComponent(id)}`; return isAnd ? `intent://${u.replace(/^http:\/\//, '')}#Intent;scheme=http;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;${isSam ? 'package=com.sec.android.app.sbrowser;' : ''}S.browser_fallback_url=${encodeURIComponent(u)};end` : u; };
+// 사이트 열기: 안드로이드는 intent로 삼성 인터넷을 지목(요즘 크롬은 기기 모델을 'K'로 숨겨서 갤럭시인지 알 수 없어 늘 지목 — 없으면 fallback 주소로 기본 브라우저), 아이폰은 사파리 창
+const isAnd = /Android/i.test(navigator.userAgent);
+const siteUrl = id => `${SITE}sub1_view.asp?seq=-1&idx=${encodeURIComponent(id)}`;
+const link = id => { const u = siteUrl(id); return isAnd ? `intent://${u.replace(/^http:\/\//, '')}#Intent;scheme=http;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.sec.android.app.sbrowser;S.browser_fallback_url=${encodeURIComponent(u)};end` : u; };
+// intent 주소는 새 창(target=_blank)으로는 크롬이 막을 때가 있어 같은 창에서 이동시켜요 (앱 화면은 그대로 남아요)
+document.addEventListener('click', e => { const a = e.target.closest('a.tylink'); if (!a || !isAnd) return; e.preventDefault(); location.href = a.getAttribute('href'); }, true);
 const pic = (D, x) => !x.p ? '' : /^https?:/.test(x.p) ? x.p : (D.pic || '') + x.p;
 
 // ---------- 빌린 장난감 ----------
@@ -87,7 +91,7 @@ function list(D) {
 function cards() {
   const D = TY.d[TY.br] || { items: [] }, L = list(D), shownL = L.slice(0, TY.more), mine = new Set(active().map(r => r.idx).filter(Boolean)), cw = canWrite();
   if (!L.length) return '<p class="vempty" style="margin:6px 0">조건에 맞는 장난감이 없어요.</p>';
-  return `<div class="tyg">${shownL.map(x => `<div class="tyc"><a href="${esc(link(x.i))}" target="_blank" rel="noopener">
+  return `<div class="tyg">${shownL.map(x => `<div class="tyc"><a class="tylink" href="${esc(link(x.i))}" target="_blank" rel="noopener">
       <span class="tyi">${x.p ? `<img src="${esc(pic(D, x))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}<span>🧸</span></span>
       <b>${esc(x.n)}</b><small><i style="background:${COL[x.c][1]}"></i>${COL[x.c][0]} · <em class="${x.s ? 'ok' : 'no'}">${x.s ? '대여가능' : '대여중'}</em></small></a>
       ${mine.has(x.i) ? '<span class="tymine">📦 빌리는 중</span>' : cw ? `<button class="tyb" data-toy="rtoy" data-id="${esc(x.i)}">+ 빌렸어요</button>` : ''}</div>`).join('')}</div>

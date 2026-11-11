@@ -128,7 +128,7 @@ function apply(d){setData(d);render.soft=true;try{render()}finally{render.soft=f
 async function refresh(){try{apply(await run('getData'))}catch(e){if(S.mode!=='ok'){S.mode='error';S.err=(e&&e.message)||'';render()}}}
 // ---------- 폰에 저장해 두는 캐시 (열자마자 바로 보이게) ----------
 const CK='soeun-cache-v1';let phTimer;
-let cacheT,cacheD;function saveCache(d){if(DEMO)return;cacheD=d;clearTimeout(cacheT);cacheT=setTimeout(()=>{try{localStorage.setItem(CK,cacheJSON(cacheD))}catch(e){}},2000)}   // 바뀔 때마다 통째로 쓰지 않고 2초 모아서
+let cacheT,cacheD;function saveCache(d){if(DEMO)return;cacheD=d;clearTimeout(cacheT);cacheT=setTimeout(()=>{(window.requestIdleCallback||setTimeout)(()=>{try{localStorage.setItem(CK,cacheJSON(cacheD))}catch(e){}},{timeout:3000})},2000)}   // 2초 모았다가 한가할 때 씀 (화면 만지는 중엔 안 멈추게, 2026.11.11)   // 바뀔 때마다 통째로 쓰지 않고 2초 모아서
 const cacheJSON=d=>{const cut=addDays(today(),-60);return JSON.stringify(d,(k,v)=>k==='path'&&typeof v==='string'&&v.length>2000?undefined:k==='cares'&&Array.isArray(v)?v.filter(x=>x.date>=cut):v)};   // 하루 수사 기록은 최근 60일만 폰 사본에   // 긴 탐문 경로는 폰 사본에서 빼요 (서버에서 다시 받아요)
 function savePhCache(){if(DEMO)return;try{const first=['profile','mom','dad'],keep={};let size=0;
   const keys=first.concat(Object.keys(PHOTOS).filter(k=>!first.includes(k)).reverse());

@@ -16,14 +16,14 @@
 | S.guesses | game, main-core, movie, wanted |
 | S.logs | charges, claims, day, fun, game, main-core, main-sick, movie, wanted |
 | S.looks | look, main-core, movie, wanted |
-| S.me | album, board, capsule, claims, day, explore, focus, game, look, main-core, main-render, main-sheets, main-sick, paper, settings, studio, town, viewer, walk, wanted |
+| S.me | album, board, capsule, claims, day, explore, focus, game, look, main-core, main-render, main-sheets, main-sick, paper, settings, studio, town, toys, viewer, walk, wanted |
 | S.meals | charges, day, fun, game, main-core, main-meal, movie, paper, wanted |
 | S.menus | main-core, main-meal, viewer |
 | S.moments | album, board, book, charges, dupes, explore, family, focus, fun, game, main-album, main-core, memories, movie, paper, posecam, room, settings, studio, viewer, walk, wanted |
 | S.periods | claims, main-album, main-core, main-render, main-sheets |
-| S.profile | album, board, book, calendar, capsule, characters, charges, checkups, day, dev, family, fun, game, look, main-album, main-boot, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, music, paper, posecam, posts, recipes, room, settings, studio, town, viewer, walk, wanted |
+| S.profile | album, board, book, calendar, capsule, characters, charges, checkups, day, dev, family, fun, game, look, main-album, main-boot, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, music, paper, posecam, posts, recipes, room, settings, studio, town, toys, viewer, walk, wanted |
 | S.records | book, characters, charges, fun, game, main-core, main-render, main-sheets, memories, movie, paper, room, settings, studio, viewer, wanted |
-| S.vaccines | book, charges, claims, fun, game, main-album, main-core, main-render, main-sheets, movie, paper, settings, wanted |
+| S.vaccines | book, charges, claims, fun, game, main-album, main-core, main-render, main-sheets, main-sick, movie, paper, settings, wanted |
 | S.visits | claims, fun, game, hospitals, main-core, main-sick, movie, wanted |
 | S.walks | characters, day, explore, game, main-core, paper, settings, walk |
 
@@ -38,7 +38,7 @@
 | CHARGES (charges) | board, main-render |
 | CHARS (characters) | board, book, day, explore, family, fun, game, main-album, main-core, main-meal, main-render, main-sheets, main-sick, memories, movie, paper, room, settings, themes, town, walk, wanted |
 | CHECKUPS (checkups) | board, main-render |
-| CLAIM (claims) | checkups, main-render, main-sheets, main-sick |
+| CLAIM (claims) | checkups, main-render, main-sheets, main-sick, viewer |
 | CV (studio) | album, capsule, claims, dupes, explore, focus, game, look, main-album, main-meal, main-render, movie, paper, posecam, room, settings, viewer, walk, wanted |
 | DAY (day) | main-render, main-sick |
 | DEV (dev) | main-render |
@@ -62,6 +62,7 @@
 | SETTINGS (settings) | main-render |
 | THEME (themes) | settings |
 | TOWN (town) | main-render, room, walk |
+| TOY (toys) | main-core, main-render |
 | VIEWER (viewer) | board, main-sheets |
 | WALK (walk) | album, day, explore, main-render, paper, settings, viewer |
 | WANTED (wanted) | characters, main-render, movie, paper, room |

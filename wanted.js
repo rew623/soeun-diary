@@ -255,7 +255,7 @@ css.textContent = `
 .wtrack i{position:absolute;left:0;top:14px;height:7px;border-radius:99px;background:var(--red);transition:width .6s}
 .wtrack .wtdet,.wtrack .wtthf{position:absolute;top:0;transform:translateX(-50%);line-height:0;transition:left .6s}.wtrack .wtthf{left:auto;right:-38px;transform:none}
 .wtrack.big{height:46px;margin:14px 44px 0 8px}.wtrack.big::before{top:20px;right:-30px}.wtrack.big i{top:19px}.wtrack.big .wtthf{right:-48px}
-.wtrack.got i{background:#E0B341}.wtrack .wtthf .chr{animation:wtthf 2.6s ease-in-out infinite}@keyframes wtthf{0%,100%{transform:none}50%{transform:translateY(-3px) rotate(4deg)}}
+.wtrack.got i{background:#E0B341}.wtrack .wtthf .chr{animation:wtthf 2.6s ease-in-out infinite;will-change:transform}@keyframes wtthf{0%,100%{transform:none}50%{transform:translateY(-3px) rotate(4deg)}}
 .whp{height:12px;border-radius:99px;background:#F3D3CF;overflow:hidden;margin-top:5px}
 .whp i{display:block;height:100%;min-width:0;border-radius:99px;background:var(--red);transition:width .6s}
 .whp.big{height:18px;margin-top:12px}

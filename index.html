@@ -218,6 +218,8 @@ html.shopen,html.shopen body{overflow:hidden}   /* 아래 창이 열려 있는 �
 .sheet.open{transform:none}
 .sheet.open.nudge{animation:nudge .4s}@keyframes nudge{0%,100%{transform:none}35%{transform:translateY(22px)}70%{transform:translateY(-4px)}}
 @media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+html.bg *{animation-play-state:paused!important}   /* 앱이 뒤로 가 있을 땐 움직임 멈춤 (배터리·버벅임, 2026.11.11) */
+.agrid{content-visibility:auto;contain-intrinsic-size:auto 300px}   /* 앨범 사진 묶음은 화면에 들어올 때만 배치·그리기 (사진 1500장일 때 탭 전환 빨라짐) */
 .sheet h3{font-family:var(--display);font-weight:400;font-size:22px;margin:0 0 16px;color:var(--navy)}
 .field{display:block;margin-bottom:14px}
 .field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}

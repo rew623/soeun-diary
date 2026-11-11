@@ -30,7 +30,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
   let ORDER=ALL;
   let sw=null;
   const W=()=>$app.clientWidth||innerWidth;
-  const setX=(x,ms)=>{$app.style.transition=ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1),opacity ${ms}ms`:'none';$app.style.transform=x?`translate3d(${x}px,0,0)`:'';$app.style.opacity=x?String(Math.max(.75,1-Math.abs(x)/W()*0.35)):''};
+  const setX=(x,ms)=>{$app.style.transition=ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1),opacity ${ms}ms`:'none';$app.style.transform=x?`translate3d(${x}px,0,0)`:'';$app.style.opacity=''};   // 밀 때 투명도는 안 바꿔요(2026.11.11): 화면 전체를 한 겹으로 다시 그리게 해 사진 많은 탭에서 뻑뻑했어요
   $app.addEventListener('touchstart',e=>{
     sw=null;
     if(e.touches.length!==1||S.mode!=='ok'||S.view||!S.profile||$sheet.classList.contains('open'))return;
@@ -75,6 +75,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
     try{staySave()}catch(x){}setTimeout(()=>location.reload(),150)};
   document.addEventListener('touchend',end);document.addEventListener('touchcancel',()=>{p=null;show(0,'')});
 })();
+document.addEventListener('visibilitychange',()=>document.documentElement.classList.toggle('bg',document.hidden));
 // ---------- 맨 위로·맨 아래로 단추 (사용자 요청 2026.10.29·11.10): 긴 화면에서 오른쪽 아래에 ↑(위)·↓(아래) 묶음, '+ 사진 올리기' 같은 떠 있는 단추가 있으면 그 바로 위 ----------
 // 깜빡임 막기(2026.11.10): 스크롤 중엔 자리·보이기를 바꾸지 않고, 쓸 수 없는 쪽 단추만 흐리게(.dim). 자리는 화면을 다시 그릴 때·크기 바뀔 때만 계산
 (()=>{
