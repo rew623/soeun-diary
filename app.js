@@ -123,7 +123,7 @@ function build() {
   };
   Object.keys(TBL).forEach(k => { d[OUT[k]] = item(k); });
   d.recipes = [...M.recipes.values()].map(r => ({ month: r.id, title: r.title || '', file: r.file || '', stages: r.stages || [], by: r.by || '' }));
-  d.checkups = [...M.checkups.values()].map(c => ({ id: c.id, done: c.done || '', hospital: c.hospital || '', memo: c.memo || '', by: c.by || '' }));
+  d.checkups = [...M.checkups.values()].map(c => ({ id: c.id, done: c.done || '', appt: c.appt || '', hospital: c.hospital || '', memo: c.memo || '', by: c.by || '' }));
   // 하루 수사: 날짜 문서마다 items 맵 → 한 줄 목록 (날짜 date 붙여서)
   d.cares = []; M.care.forEach((items, date) => Object.values(items || {}).forEach(it => { if (it && it.id) d.cares.push(Object.assign({}, it, { date })); }));
   // 두 폰이 같이 쓰는 놀이 저장 (도토리·방·옷·모자·스티커·룰렛), srv: 서버에서 한 번이라도 받았는지 (처음 합치기는 그다음에)
@@ -473,8 +473,9 @@ const H = {
   async saveCheckup(c) {
     const id = String((c && c.id) || '');
     if (!/^[go]\d$/.test(id)) throw new Error('검진 차수가 올바르지 않아요');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.done || '')) throw new Error('날짜 형식이 올바르지 않아요');
-    const row = { done: c.done, hospital: txt(c.hospital, 40), memo: txt(c.memo, 200), by: myRole() };
+    const ok = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+    if (!ok(c.done) && !ok(c.appt)) throw new Error('날짜 형식이 올바르지 않아요');
+    const row = { done: ok(c.done) ? c.done : '', appt: ok(c.appt) ? c.appt : '', hospital: txt(c.hospital, 40), memo: txt(c.memo, 200), by: myRole() };   // appt: 예약일 (2026.11.26 추가, 없으면 '')
     M.checkups.set(id, Object.assign({ id }, row));
     await commit(setDoc(dref('checkups', id), Object.assign({ updatedAt: serverTimestamp() }, row)));
     return { data: data() };

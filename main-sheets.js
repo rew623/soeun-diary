@@ -246,7 +246,7 @@ document.addEventListener('click',async e=>{
   case 'editp':openPeriod(a.dataset.id);break;
   case 'p-add':{const n=val('p-add');if(!n)return;PT.vaccines.push({name:n,sub:''});document.getElementById('p-add').value='';drawPT();break}
   case 'p-rm':PT.vaccines.splice(+a.dataset.i,1);drawPT();break;
-  case 'savep':{const name=val('p-name'),date=val('p-date'),conf=document.getElementById('p-conf').checked;
+  case 'savep':{const name=val('p-name'),date=val('p-date'),pr0=PT.id?S.periods.find(x=>x.id===PT.id):null,conf=document.getElementById('p-conf').checked||(!!pr0&&!!date&&date!==recDate(pr0));   // 권장일과 다른 날짜를 넣었으면 체크를 안 했어도 예약일로 (2026.11.26 — 날짜를 고쳐도 안 바뀐다는 요청)
     if(!name)return err('p-err','시기 이름을 입력해 주세요');
     if(conf&&!date)return err('p-err','날짜를 입력해 주세요');
     const extra=val('p-add');if(extra)PT.vaccines.push({name:extra,sub:''});
@@ -267,3 +267,5 @@ document.addEventListener('click',async e=>{
 });
 
 window.__app={apply,toast,isBusy:()=>busy,sheetOpen:()=>$sheet.classList.contains('open'),closeSheet,softClose,sheetDirty,openSheet,refresh,CK};
+// 접종 편집: 날짜를 고르면 '병원 예약 확정'이 저절로 체크돼요 (체크 안 하면 날짜가 안 바뀐다는 요청, 2026.11.26)
+document.addEventListener('change',e=>{if(e.target.id==='p-date'){const c=document.getElementById('p-conf');if(c)c.checked=true}});

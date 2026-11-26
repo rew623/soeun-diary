@@ -47,10 +47,11 @@ function caseHtml(x, hot) {
     <div class="top"><h3>${nameOf(c)}</h3>${dd ? `<span class="dd ${far || st === 'late' ? 'far' : ''}">${dd}</span>` : ''}</div>
     <div class="dline"><span><small>검진 기간</small>${fmtK(start, true)} ~ ${fmtK(end, true)}${st === 'open' ? '<span class="badge">지금 받을 기간</span>' : ''}</span></div>
     <p class="ckwhat">${esc(c.what)}</p>
+    ${st !== 'done' && r && r.appt ? `<p class="ckappt"><b>📅 예약 ${fmtK(r.appt, true)}</b> <em>${ddayText(r.appt)}</em>${r.hospital ? ` · ${esc(r.hospital)}` : ''}</p>` : ''}
     ${r && r.done ? `<p class="ckdone">${fmtK(r.done, true)}${r.hospital ? ', ' + esc(r.hospital) : ''}${r.by ? ` · ${esc(r.by)} 수사관` : ''}${r.memo ? `<br><span>${esc(r.memo)}</span>` : ''}</p>` : ''}
     <div class="cacts">${st === 'done'
       ? `<button class="addv" data-ck="edit" data-id="${c.id}">기록 수정</button>`
-      : `<button class="solve" data-ck="edit" data-id="${c.id}">검진 받았어요</button>`}</div>
+      : `<button class="addv" data-ck="appt" data-id="${c.id}">${r && r.appt ? '📅 예약일 고치기' : '📅 예약일 입력'}</button><button class="solve" data-ck="edit" data-id="${c.id}">검진 받았어요</button>`}</div>
   </article>`;
 }
 function renderChecks() {
@@ -66,7 +67,7 @@ function nextCard() {
   const x = next(); if (!x) return '';
   const t = today(), open = x.st === 'open';
   if (!open && daysBetween(t, x.start) > 45) return '';        // 너무 먼 검진은 첫 화면에 안 띄워요
-  return `<button class="nextcard" data-ck="go" style="margin-top:10px"><span><small>${open ? '다음 검진, 지금 받을 기간' : '다음 검진, 기간 전'}</small><span class="t">${nameOf(x.c)}, ${fmtK(open ? x.end : x.start)}${open ? '까지' : '부터'}</span><small>${esc(x.c.what)}</small></span><span class="d">${open ? '마감 ' + ddayText(x.end) : ddayText(x.start)}</span></button>`;
+  return `<button class="nextcard" data-ck="go" style="margin-top:10px"><span><small>${open ? '다음 검진, 지금 받을 기간' : '다음 검진, 기간 전'}</small><span class="t">${nameOf(x.c)}, ${x.r && x.r.appt ? '예약 ' + fmtK(x.r.appt) : fmtK(open ? x.end : x.start) + (open ? '까지' : '부터')}</span><small>${esc(x.c.what)}</small></span><span class="d">${open ? '마감 ' + ddayText(x.end) : ddayText(x.start)}</span></button>`;
 }
 // 수사 보드용 카드
 function boardCard() {
@@ -75,6 +76,15 @@ function boardCard() {
   return { id: 'check', go: 'check', cls: 'kraft note', html: `<b class="bt">다음 검진</b><span class="bbig">${open ? '마감 ' + ddayText(x.end) : ddayText(x.start)}</span><p>${nameOf(x.c)}<small>${fmtK(x.start, true)} ~ ${fmtK(x.end, true)}</small></p>` };
 }
 
+function openAppt(id) {
+  const c = CHECKS.find(x => x.id === id), r = recOf(id) || {}, [start, end] = windowOf(c);
+  openSheet(`<h3>${nameOf(c)} 예약일</h3>
+    <p class="hint" style="margin:-8px 0 12px">검진 기간 ${fmtK(start, true)} ~ ${fmtK(end, true)} 안에서 병원에 예약한 날을 적어 두세요.</p>
+    <label class="field"><span>예약한 날</span><input id="ck-appt" type="date" value="${r.appt || (start > today() ? start : today())}" min="${today()}"></label>
+    <label class="field"><span>병원 (선택)</span><input id="ck-ahos" maxlength="40" value="${esc(r.hospital || '')}" placeholder="${c.kind === '구강' ? '예: 우리동네 치과' : '예: 우리동네 소아청소년과'}"></label>
+    <p class="err" id="ck-aerr"></p>
+    <div class="actions">${r.appt ? `<button class="danger" data-ck="adel" data-id="${id}">예약 취소</button>` : ''}<button class="secondary" data-act="close">취소</button><button class="primary" data-ck="asave" data-id="${id}">저장</button></div>`);
+}
 function openEdit(id) {
   const c = CHECKS.find(x => x.id === id), r = recOf(id) || {};
   openSheet(`<h3>${nameOf(c)} ${r.done ? '기록 수정' : '해결'}</h3>
@@ -95,6 +105,21 @@ document.addEventListener('click', async e => {
     case 'go': S.tab = 'vac'; S.view = ''; S.vacView = 'check'; render(); window.scrollTo(0, 0); break;
     case 'view': S.vacView = b.dataset.v; render(); break;
     case 'edit': openEdit(id); break;
+    case 'appt': openAppt(id); break;
+    case 'asave': {
+      const d = (document.getElementById('ck-appt') || {}).value || '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { document.getElementById('ck-aerr').textContent = '예약한 날을 골라 주세요'; return; }
+      const r = recOf(id) || {};
+      if (await write('saveCheckup', { id, done: r.done || '', appt: d, hospital: document.getElementById('ck-ahos').value.trim(), memo: r.memo || '' })) { closeSheet(); toast(`${fmtK(d)} 예약으로 적어 뒀어요`); }
+      break;
+    }
+    case 'adel': {
+      const r = recOf(id) || {};
+      if (!(await ask('예약을 지울까요?', { ok: '지우기', danger: true }))) return;
+      const ok = r.done ? await write('saveCheckup', { id, done: r.done, appt: '', hospital: r.hospital || '', memo: r.memo || '' }) : await write('deleteCheckup', id);
+      if (ok) { closeSheet(); toast('예약을 지웠어요'); }
+      break;
+    }
     case 'save': {
       const d = (document.getElementById('ck-date') || {}).value || '';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { document.getElementById('ck-err').textContent = '검진 받은 날을 골라 주세요'; return; }
@@ -114,7 +139,7 @@ document.addEventListener('click', async e => {
 
 const css = document.createElement('style');
 css.textContent = `
-.ckwhat{margin:4px 0 0;font-size:13px}
+.ckwhat{margin:4px 0 0;font-size:13px}.ckappt{margin:8px 0 0;font-size:13.5px;color:var(--navy)}.ckappt em{font-style:normal;font-family:var(--display);color:var(--red);margin-left:4px}.cacts{display:flex;gap:8px;flex-wrap:wrap}.cacts .solve{flex:1;min-width:140px}.cacts .addv{flex:none}
 .ckdone{margin:8px 0 0;font-size:13px;color:var(--navy);font-weight:700}
 .ckdone span{font-weight:400;color:var(--ink)}`;
 document.head.appendChild(css);
