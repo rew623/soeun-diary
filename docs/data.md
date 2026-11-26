@@ -11,7 +11,7 @@
   - game/ledger: { items: { id: { t(ms), d(+-도토리), why, by, bal(그때 잔액), ok(0이면 못 한 시도), err } }, updatedAt } 도토리 장부 — 늘고 준 일마다 한 줄(app.js ledgerAdd, saveGame·gameTx가 자동으로), 400줄 넘으면 오래된 100줄 지움. 2026.10.13 추가, 기존 데이터 이전 필요 없음
   - game/feedalarm: { due, at } 수유 알람을 보낸 예정 시각(feed.mjs만 씀, 같은 알림 두 번 안 가게)
   - hospitals/{hpid}: star, memo, lunch, reserve, moonlight, updatedBy, updatedAt (관심 병원·약국)
-  - checkups/{g1~g8, o1~o3}: done, hospital, memo, by, updatedAt (받은 검진만 저장, g=건강검진 o=구강검진)
+  - checkups/{g1~g8, o1~o3}: done(받은 날), appt(예약일, 2026.11.26 추가 — 이전 필요 없음, done 없이 appt만 있는 문서도 있음), hospital, memo, by, updatedAt (받았거나 예약한 검진만 저장, g=건강검진 o=구강검진)
   - look/{날짜_mom|dad}: date, pick(mom·dad·both), parts(닮은 곳 id 쉼표로), by (닮은꼴 판정단, 2026.10 추가)
   - capsule/{id}: title(봉투 글), body(편지 5000자), open(열리는 날), occ(첫 돌 등), sealed(봉인한 날), photo, by (봉인된 증거물, 2026.10 추가)
   - doc/{id}: 서류함 '한 건'(병원·약국 한 번) = 머리 문서 + 사진 문서들. 머리(grp ''): kind(약봉지·처방전·영수증·진료확인서·세부내역서·검진결과·접종확인·증상사진·기타, 쉼표로 여러 개), date, hosp(병원비 원)·drug(약값 원)·amount(둘의 합계), claim(미청구·청구함·지급완료), memo, link('log:<id>'·'visit:<id>'·'vac:<id>'·'per:<id>'·'chk:<id>', 어디에 붙었는지, 없으면 ''), by. 사진 문서(grp=머리 id): photo(사진 한 장, photoUrl/photoPath), date·link. 2026.10.17 처음 버전의 '사진 하나짜리 문서'(grp 없이 photo 붙음)도 그대로 한 건으로 보임 — 이전 필요 없음. 옛 필드: title, by (서류함·보험 청구용, 2026.10.17 추가 — 새 컬렉션이라 이전 필요 없음, 보안 규칙도 그대로)
