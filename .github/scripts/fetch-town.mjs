@@ -29,13 +29,14 @@ function amount(v) {
   const n = v.match(/[\d.]+/g); return n ? +n[n.length - 1] : 0;
 }
 async function weather(regions) {
-  const bt = baseTime(), out = {};
+  const bt = baseTime(), out = {}, mm = {};
   for (const r of regions) {
     const { nx, ny } = grid(r.lat, r.lng);
     try {
       const body = await getJson('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst', { pageNo: 1, numOfRows: 2000, dataType: 'JSON', ...bt, nx, ny });
       const by = {};
       for (const it of list(body)) {
+        if (it.category === 'TMN' || it.category === 'TMX') { ((mm[r.code] = mm[r.code] || {})[it.fcstDate] = mm[r.code][it.fcstDate] || [null, null])[it.category === 'TMN' ? 0 : 1] = +it.fcstValue; continue; }   // 그날 최저·최고
         if (!['TMP', 'SKY', 'PTY', 'POP', 'WSD', 'REH', 'PCP', 'SNO'].includes(it.category)) continue;
         const k = it.fcstDate + it.fcstTime; (by[k] = by[k] || { t: k })[it.category] = it.fcstValue;
       }
@@ -46,7 +47,34 @@ async function weather(regions) {
     } catch (e) { console.warn(`날씨 ${r.name} 실패: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) break; }
     await sleep(300);
   }
-  return { base: bt.base_date + bt.base_time, data: out };
+  return { base: bt.base_date + bt.base_time, data: out, mm };
+}
+// 지금 날씨(기상청 초단기실황, 네이버 날씨 '현재'와 같은 실제 관측값): [YYYYMMDDHH00, 기온, 습도, 풍속, 풍향(도), 강수형태, 1시간 강수량]
+async function observe(regions) {
+  const k = new Date(Date.now() + 9 * 3600e3 - 40 * 60e3), d = k.toISOString().slice(0, 10).replace(/-/g, ''), h = String(k.getUTCHours()).padStart(2, '0') + '00', out = {};
+  for (const r of regions) {
+    const { nx, ny } = grid(r.lat, r.lng);
+    try {
+      const o = {}; for (const it of list(await getJson('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst', { pageNo: 1, numOfRows: 20, dataType: 'JSON', base_date: d, base_time: h, nx, ny }))) o[it.category] = +it.obsrValue;
+      if (Number.isFinite(o.T1H)) out[r.code] = [d + h, o.T1H, o.REH ?? null, o.WSD ?? null, o.VEC ?? null, o.PTY || 0, o.RN1 || 0];
+    } catch (e) { console.warn(`실황 ${r.name} 실패: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) break; }
+    await sleep(200);
+  }
+  console.log(`실황 ${Object.keys(out).length}곳 (${d}${h})`);
+  return out;
+}
+// 어제 같은 시각 기온을 이 파일에 모아 두고 '어제보다'를 계산 (처음 하루는 비어 있어요)
+async function yesterday(now) {
+  const f = dataFile('wx-hist.json'); let H = {}; try { H = JSON.parse(await readFile(f, 'utf8')); } catch (e) {}
+  const dy = {}, cut = new Date(Date.now() + 9 * 3600e3 - 60 * 3600e3).toISOString().slice(0, 13).replace(/[-T]/g, '');
+  for (const [code, r] of Object.entries(now)) {
+    const key = r[0].slice(0, 10), y = new Date(Date.parse(r[0].slice(0, 4) + '-' + r[0].slice(4, 6) + '-' + r[0].slice(6, 8) + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10).replace(/-/g, '') + r[0].slice(8, 10);
+    (H[code] = H[code] || {})[key] = r[1];
+    if (H[code][y] != null) dy[code] = +(r[1] - H[code][y]).toFixed(1);
+  }
+  for (const c of Object.keys(H)) for (const k of Object.keys(H[c])) if (k < cut) delete H[c][k];
+  await writeFile(f, JSON.stringify(H) + '\n');
+  return dy;
 }
 
 // ---------- 미세먼지 ----------
@@ -193,14 +221,21 @@ export async function diary(w, now = Date.now()) {
 if (!process.env.TOWN_DIARY_TEST) {   // 시험할 때는 받기 없이 diary만
 const regions = (JSON.parse(await readFile(dataFile('regions.json'), 'utf8')).regions || []).filter(r => r.lat && r.lng);
 if (!regions.length) { console.error('data/regions.json에 시·군 좌표가 없어요'); process.exit(1); }
-const w = await weather(regions), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions), md = await mid(regions);
+const w = await weather(regions), nw = await observe(regions), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions), md = await mid(regions);
 if (!Object.keys(w.data).length && !Object.keys(a.now).length) { console.error('날씨·미세먼지를 하나도 못 받았어요 (활용신청을 확인해 주세요)'); process.exit(1); }
 try { await diary(w); } catch (e) { console.warn(`날씨 일기 실패: ${e.message}`); }
 
 const out = dataFile('town.json');
 let old = null; try { old = JSON.parse(await readFile(out, 'utf8')); } catch (e) {}
-const body = { weather: Object.keys(w.data).length ? w : (old && old.weather) || w, air: Object.keys(a.now).length ? a : (old && old.air) || a, warn: wn, alarm: al || [], mid: md || (old && old.mid) || null };
-if (old && JSON.stringify({ weather: old.weather, air: old.air, warn: old.warn, alarm: old.alarm, mid: old.mid }) === JSON.stringify(body)) { console.log('바뀐 게 없어요'); process.exit(0); }
+const dy = await yesterday(nw).catch(e => { console.warn('어제 비교 실패: ' + e.message); return {}; });
+// 일 최저·최고: 새로 받은 값을 우선, 이미 지난 시각의 값(오늘 아침 최저 등)은 이전 값을 유지
+{ const om = (old && old.weather && old.weather.mm) || {}, day = new Date(Date.now() + 9 * 3600e3 - 864e5).toISOString().slice(0, 10).replace(/-/g, '');
+  for (const code of new Set([...Object.keys(om), ...Object.keys(w.mm || {})])) {
+    const m = {}; for (const d of new Set([...Object.keys(om[code] || {}), ...Object.keys((w.mm || {})[code] || {})])) { if (d < day) continue; const a = (om[code] || {})[d] || [null, null], b = ((w.mm || {})[code] || {})[d] || [null, null]; m[d] = [b[0] ?? a[0], b[1] ?? a[1]]; }
+    (w.mm = w.mm || {})[code] = m;
+  } }
+const body = { now: Object.keys(nw).length ? nw : (old && old.now) || {}, dy, weather: Object.keys(w.data).length ? w : (old && old.weather) || w, air: Object.keys(a.now).length ? a : (old && old.air) || a, warn: wn, alarm: al || [], mid: md || (old && old.mid) || null };
+if (old && JSON.stringify({ now: old.now, dy: old.dy, weather: old.weather, air: old.air, warn: old.warn, alarm: old.alarm, mid: old.mid }) === JSON.stringify(body)) { console.log('바뀐 게 없어요'); process.exit(0); }
 const updated = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
 await writeFile(out, JSON.stringify({ updated, ...body }) + '\n');
 console.log(`town.json 저장 (${updated})`);
