@@ -63,6 +63,30 @@ async function observe(regions) {
   console.log(`실황 ${Object.keys(out).length}곳 (${d}${h})`);
   return out;
 }
+
+// 자외선 지수 (기상청 생활기상지수 조회서비스 4.0, 하루 06·18시 발표, 3시간 간격 h0·h3…): { t: 발표 YYYYMMDDHH, v: [지수…] }
+// 강원 시·군 행정구역 코드는 2023년 특별자치도 뒤로 51xxx — 안 되면 예전 42xxx로 한 번 더
+const ADM = { chuncheon: 110, wonju: 130, gangneung: 150, donghae: 170, taebaek: 190, sokcho: 210, samcheok: 230, hongcheon: 720, hoengseong: 730, yeongwol: 750, pyeongchang: 760, jeongseon: 770, cheorwon: 780, hwacheon: 790, yanggu: 800, inje: 810, goseong: 820, yangyang: 830 };
+async function uv(regions) {
+  const k = new Date(Date.now() + 9 * 3600e3 - 30 * 60e3); let h = k.getUTCHours();
+  if (h < 6) { k.setUTCDate(k.getUTCDate() - 1); h = 18; } else h = h >= 18 ? 18 : 6;
+  const time = k.toISOString().slice(0, 10).replace(/-/g, '') + String(h).padStart(2, '0'), out = {};
+  for (const r of regions) {
+    const c = ADM[r.code]; if (!c) continue;
+    for (const pre of ['51', '42']) {
+      try {
+        const it = list(await getJson('https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4/getUVIdxV4', { pageNo: 1, numOfRows: 10, dataType: 'JSON', areaNo: `${pre}${c}00000`, time }))[0];
+        if (!it) continue;
+        const v = []; for (let i = 0; i <= 75; i += 3) { const x = it['h' + i]; if (x === undefined || x === '') break; v.push(+x); }
+        if (v.length) { out[r.code] = { t: it.date || time, v }; break; }
+      } catch (e) { console.warn(`자외선 ${r.name} (${pre}) 실패: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) return out; }
+      await sleep(150);
+    }
+    await sleep(150);
+  }
+  console.log(`자외선 ${Object.keys(out).length}곳 (${time})`);
+  return out;
+}
 // 어제 같은 시각 기온을 이 파일에 모아 두고 '어제보다'를 계산 (처음 하루는 비어 있어요)
 async function yesterday(now) {
   const f = dataFile('wx-hist.json'); let H = {}; try { H = JSON.parse(await readFile(f, 'utf8')); } catch (e) {}
@@ -221,7 +245,7 @@ export async function diary(w, now = Date.now()) {
 if (!process.env.TOWN_DIARY_TEST) {   // 시험할 때는 받기 없이 diary만
 const regions = (JSON.parse(await readFile(dataFile('regions.json'), 'utf8')).regions || []).filter(r => r.lat && r.lng);
 if (!regions.length) { console.error('data/regions.json에 시·군 좌표가 없어요'); process.exit(1); }
-const w = await weather(regions), nw = await observe(regions), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions), md = await mid(regions);
+const w = await weather(regions), nw = await observe(regions), uvx = await uv(regions).catch(e => { console.warn('자외선 실패: ' + e.message); return {}; }), a = await air(regions), wn = await warnings(regions), al = await dustAlarm(regions), md = await mid(regions);
 if (!Object.keys(w.data).length && !Object.keys(a.now).length) { console.error('날씨·미세먼지를 하나도 못 받았어요 (활용신청을 확인해 주세요)'); process.exit(1); }
 try { await diary(w); } catch (e) { console.warn(`날씨 일기 실패: ${e.message}`); }
 
@@ -234,8 +258,8 @@ const dy = await yesterday(nw).catch(e => { console.warn('어제 비교 실패: 
     const m = {}; for (const d of new Set([...Object.keys(om[code] || {}), ...Object.keys((w.mm || {})[code] || {})])) { if (d < day) continue; const a = (om[code] || {})[d] || [null, null], b = ((w.mm || {})[code] || {})[d] || [null, null]; m[d] = [b[0] ?? a[0], b[1] ?? a[1]]; }
     (w.mm = w.mm || {})[code] = m;
   } }
-const body = { now: Object.keys(nw).length ? nw : (old && old.now) || {}, dy, weather: Object.keys(w.data).length ? w : (old && old.weather) || w, air: Object.keys(a.now).length ? a : (old && old.air) || a, warn: wn, alarm: al || [], mid: md || (old && old.mid) || null };
-if (old && JSON.stringify({ now: old.now, dy: old.dy, weather: old.weather, air: old.air, warn: old.warn, alarm: old.alarm, mid: old.mid }) === JSON.stringify(body)) { console.log('바뀐 게 없어요'); process.exit(0); }
+const body = { now: Object.keys(nw).length ? nw : (old && old.now) || {}, dy, uv: Object.keys(uvx).length ? uvx : (old && old.uv) || {}, weather: Object.keys(w.data).length ? w : (old && old.weather) || w, air: Object.keys(a.now).length ? a : (old && old.air) || a, warn: wn, alarm: al || [], mid: md || (old && old.mid) || null };
+if (old && JSON.stringify({ now: old.now, dy: old.dy, uv: old.uv, weather: old.weather, air: old.air, warn: old.warn, alarm: old.alarm, mid: old.mid }) === JSON.stringify(body)) { console.log('바뀐 게 없어요'); process.exit(0); }
 const updated = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
 await writeFile(out, JSON.stringify({ updated, ...body }) + '\n');
 console.log(`town.json 저장 (${updated})`);
