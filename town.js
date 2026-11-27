@@ -361,6 +361,14 @@ function feel(tp, ws, rh) {
   if (tp >= 25 && rh != null) { const tw = tp * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) + Math.atan(tp + rh) - Math.atan(rh - 1.67633) + 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035; return +(-0.2442 + 0.55399 * tw + 0.45535 * tp - 0.0022 * tw * tw + 0.00278 * tw * tp + 3).toFixed(1); }
   return tp;
 }
+// 자외선: 발표 시각부터 3시간 간격 값에서 지금 칸 (기상청 단계: 0~2 낮음, 3~5 보통, 6~7 높음, 8~10 매우높음, 11~ 위험)
+function uvNow(code) {
+  const U = (T.town.uv || {})[code]; if (!U || !U.v || !U.v.length) return null;
+  const t = String(U.t), t0 = Date.parse(`${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}T${t.slice(8, 10) || '06'}:00:00+09:00`), i = Math.floor((Date.now() - t0) / (3 * 3600e3));
+  if (i < 0 || i >= U.v.length) return null;
+  const v = U.v[i], lv = v <= 2 ? 0 : v <= 5 ? 1 : v <= 7 ? 2 : v <= 10 ? 3 : 4;
+  return { v, lv, txt: ['낮음', '보통', '높음', '매우높음', '위험'][lv], c: [['#2F80ED', '#EAF3FF'], ['#2E9E55', '#EAF7EE'], ['#E8851B', '#FFF1DE'], ['#D93C3C', '#FFE9E7'], ['#8E3BC9', '#F4E8FF']][lv] };
+}
 const f1 = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
 function nvDay(code, d) {   // 하루 요약: 오전·오후 하늘·강수확률, 최저·최고
   const W = (T.town.weather.data || {})[code] || [], dk = d.replace(/-/g, ''), H = W.filter(h => h[0].slice(0, 8) === dk), mm = ((T.town.weather.mm || {})[code] || {})[dk];
@@ -396,7 +404,7 @@ function nvHtml(code) {
     <p class="nvsub"><b>${skyTxt(pty, cur[2])}</b>${dy != null && dy !== 0 ? ` <span>어제보다 ${f1(Math.abs(dy))}° <i class="${dy > 0 ? 'up' : 'dn'}">${dy > 0 ? '↑' : '↓'}</i></span>` : ''}</p>
     ${day && day.lo != null && day.hi != null ? `<p class="nvmm">최저 <b class="lo">${Math.round(day.lo)}°</b> · 최고 <b class="hi">${Math.round(day.hi)}°</b></p>` : ''}
     <p class="nvline">체감 <b>${f1(feel(tp, ws, rh))}°</b> · 습도 <b>${rh}%</b> · ${ob && ob[4] != null ? WIND8[Math.round(((ob[4] % 360) / 45)) % 8] : ''}풍 <b>${f1(ws)}m/s</b></p>
-    <div class="nvcards">${air('미세먼지', A ? g10(A.pm10) : null)}${air('초미세먼지', A ? g25(A.pm25) : null)}<div class="nvc" style="background:#FFF8D8"><small>일출</small><b style="color:#C98A00">${sr[0]}</b></div><div class="nvc" style="background:#FFEFE3"><small>일몰</small><b style="color:#D2691E">${sr[1]}</b></div></div>
+    <div class="nvcards">${air('미세먼지', A ? g10(A.pm10) : null)}${air('초미세먼지', A ? g25(A.pm25) : null)}${(() => { const u = uvNow(code); return u ? `<div class="nvc" style="background:${u.c[1]}"><small>자외선</small><b style="color:${u.c[0]}">${u.txt}</b></div>` : ''; })()}<div class="nvc" style="background:#FFF8D8"><small>일출</small><b style="color:#C98A00">${sr[0]}</b></div><div class="nvc" style="background:#FFEFE3"><small>일몰</small><b style="color:#D2691E">${sr[1]}</b></div></div>
     <div class="nvtabs">${[['wx', '날씨'], ['rain', '강수'], ['wind', '바람'], ['hum', '습도']].map(([a, l]) => `<button class="${tab === a ? 'on' : ''}" data-town="nvtab" data-v="${a}">${l}</button>`).join('')}</div>
     <div class="nvhrs" data-noswipe>${hrs.map(cell).join('')}</div>
     <h3 class="nvh3">주간예보 <small>오전·오후 강수확률 · 최저/최고</small></h3>
@@ -435,7 +443,7 @@ css.textContent = `
 .nvsub{margin:4px 0 0;text-align:center;font-size:17px}.nvsub b{font-family:var(--display);font-weight:400}.nvsub span{color:var(--muted);font-size:15px;margin-left:8px}.nvsub i{font-style:normal;font-weight:700}.nvsub i.up{color:#D93C3C}.nvsub i.dn{color:#2F80ED}
 .nvmm{margin:2px 0 0;text-align:center;font-size:14px;color:var(--muted)}.nvmm b,.nvt{font-family:var(--display);font-weight:400}.lo{color:#2F6FD6}.hi{color:#D2403A}
 .nvline{margin:8px 0 12px;text-align:center;font-size:13.5px;color:var(--muted)}.nvline b{color:var(--ink)}
-.nvcards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}.nvc{border-radius:14px;padding:9px 6px;text-align:center}.nvc small{display:block;font-size:11.5px;color:var(--muted)}.nvc b{display:block;font-family:var(--display);font-weight:400;font-size:16px;margin-top:2px}
+.nvcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px;margin-bottom:12px}.nvc{border-radius:14px;padding:9px 6px;text-align:center}.nvc small{display:block;font-size:11.5px;color:var(--muted)}.nvc b{display:block;font-family:var(--display);font-weight:400;font-size:16px;margin-top:2px}
 .nvtabs{display:flex;gap:6px;margin:4px 0 6px}.nvtabs button{padding:5px 14px;min-height:34px;border-radius:99px;border:1.5px solid var(--line);background:#FFFDF7;color:var(--muted);font-size:13.5px}.nvtabs button.on{border-color:var(--navy);color:var(--navy);font-weight:700;background:#fff}
 .nvhrs{display:flex;gap:2px;overflow-x:auto;margin:0 -6px;padding:6px 6px 8px;scrollbar-width:none}.nvhrs::-webkit-scrollbar{display:none}
 .nvh{flex:none;width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}.nvh small{font-size:12px;color:#6A5FD6}.nvh.now small{background:#EDEBFF;border-radius:99px;padding:0 8px;font-weight:700}.nvh em{font-style:normal;font-size:26px;line-height:1.1}.nvh b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--ink)}.nvh b small{font-size:10px;color:var(--muted);margin-left:1px}.nvh i{font-style:normal;font-size:12px;color:#5B8BE8}
