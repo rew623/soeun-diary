@@ -333,7 +333,75 @@ function render_() {
   const inTab = S.tab === 'town' && !S.view;
   return `<header class="vhead"><span class="no">사건 파일 No.${fileNo()}</span><h1>동네 탐문</h1>${inTab ? townSeg('info') : ''}<p>산책하기 좋은 시간, 미세먼지, 강원 행사를 한곳에서 봐요.</p></header>${CHARS.guide('town')}
     <div class="treg"><span>탐문 지역</span>${sel}</div>
-    ${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}${inTab && !(S.me && S.me.viewer) ? '<button class="fab" data-wk="add">+ 탐문 기록</button>' : ''}`;
+    ${nvHtml(code)}${walk}${dust}${newsHtml(code)}${evHtml()}${placesHtml()}${inTab && !(S.me && S.me.viewer) ? '<button class="fab" data-wk="add">+ 탐문 기록</button>' : ''}`;
+}
+
+// ---------- 네이버 날씨처럼 보이는 날씨 칸 (사용자 요청 2026.11.27: 익숙한 모양) ----------
+// 지금: 기상청 초단기실황(네이버 '기상청' 탭과 같은 관측값) · 어제보다 · 최저/최고 · 체감·습도·바람 · 미세먼지 · 일출 / 시간별 / 일주일(오전·오후)
+const LL = { chuncheon: [37.87, 127.74], wonju: [37.34, 127.95], gangneung: [37.76, 128.9], donghae: [37.52, 129.11], taebaek: [37.17, 128.99], sokcho: [38.2, 128.58], samcheok: [37.44, 129.16], hongcheon: [37.69, 127.88], hoengseong: [37.49, 127.99], yeongwol: [37.18, 128.47], pyeongchang: [37.62, 128.46], jeongseon: [37.38, 128.67], cheorwon: [38.21, 127.31], hwacheon: [38.1, 127.7], yanggu: [38.1, 127.99], inje: [38.07, 128.2], goseong: [38.38, 128.47], yangyang: [38.08, 128.62] };
+const NVC = [['#2F80ED', '#EAF3FF'], ['#2E9E55', '#EAF7EE'], ['#E8851B', '#FFF1DE'], ['#D93C3C', '#FFE9E7']];   // 좋음·보통·나쁨·매우나쁨 (네이버 색)
+const WIND8 = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
+const hrOf = k => +k.slice(8, 10);
+const skyTxt = (pty, sky) => pty === 3 ? '눈' : pty === 2 ? '비/눈' : pty > 0 ? '비' : sky >= 4 ? '흐림' : sky === 3 ? '구름많음' : '맑음';
+const nIco = (pty, sky, h) => pty === 3 ? '🌨️' : pty > 0 ? '🌧️' : sky >= 4 ? '☁️' : sky === 3 ? (h < 6 || h >= 19 ? '☁️' : '⛅') : (h < 6 || h >= 19 ? '🌙' : '☀️');
+// 일출·일몰 (그 날 위도·경도로 계산, 분 단위)
+function sun(code, d) {
+  const [lat, lng] = LL[code] || LL.wonju, rad = Math.PI / 180, doy = Math.floor((Date.parse(d + 'T00:00:00Z') - Date.UTC(+d.slice(0, 4), 0, 0)) / 864e5);
+  const g = 2 * Math.PI / 365 * (doy - 1), eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const dec = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const ha = Math.acos(Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(dec)) - Math.tan(lat * rad) * Math.tan(dec)) / rad;
+  const f = m => { m = Math.round(m); return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+  const noon = 720 - 4 * lng - eq + 540;   // 한국 표준시 기준 정오(분)
+  return [f(noon - 4 * ha), f(noon + 4 * ha)];
+}
+// 체감온도 (기상청식: 10℃ 이하 바람 있을 때 겨울 체감, 25℃ 이상 여름 체감, 그 사이는 기온 그대로)
+function feel(tp, ws, rh) {
+  const v = ws * 3.6;
+  if (tp <= 10 && v >= 4.68) { const p = Math.pow(v, 0.16); return +(13.12 + 0.6215 * tp - 11.37 * p + 0.3965 * tp * p).toFixed(1); }
+  if (tp >= 25 && rh != null) { const tw = tp * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) + Math.atan(tp + rh) - Math.atan(rh - 1.67633) + 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035; return +(-0.2442 + 0.55399 * tw + 0.45535 * tp - 0.0022 * tw * tw + 0.00278 * tw * tp + 3).toFixed(1); }
+  return tp;
+}
+const f1 = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
+function nvDay(code, d) {   // 하루 요약: 오전·오후 하늘·강수확률, 최저·최고
+  const W = (T.town.weather.data || {})[code] || [], dk = d.replace(/-/g, ''), H = W.filter(h => h[0].slice(0, 8) === dk), mm = ((T.town.weather.mm || {})[code] || {})[dk];
+  const half = (a, b) => { const R = H.filter(h => hrOf(h[0]) >= a && hrOf(h[0]) < b); if (!R.length) return null; const cnt = {}; R.forEach(h => { const k = h[3] > 0 ? 'p' + h[3] : 's' + h[2]; cnt[k] = (cnt[k] || 0) + 1; }); const top = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0], wet = R.find(h => h[3] > 0); const pty = wet && wet !== undefined && R.filter(h => h[3] > 0).length >= R.length / 3 ? wet[3] : 0; return { pop: Math.max(...R.map(h => h[4])), ico: nIco(pty, top[0] === 's' ? +top.slice(1) : 0, a === 0 ? 12 : 12) }; };
+  if (H.length >= 6 || (d === today() && H.length)) {   // 오늘은 밤이라 몇 시간 안 남았어도 그걸로
+    const tm = H.map(h => h[1]); let am = half(0, 12), pm = half(12, 24); am = am || pm; pm = pm || am;
+    const part = H.length < 12;   // 남은 시간이 적으면 그 시간 안 최저·최고는 하루 값이 아니라서 비워 둬요 (기상청 일 최저·최고 값이 있으면 그걸로)
+    return { am, pm, lo: mm && mm[0] != null ? mm[0] : part ? null : Math.min(...tm), hi: mm && mm[1] != null ? mm[1] : part ? null : Math.max(...tm) };
+  }
+  const M = T.town.mid; if (!M || !M.tmFc) return null;
+  const n = daysBetween(`${M.tmFc.slice(0, 4)}-${M.tmFc.slice(4, 6)}-${M.tmFc.slice(6, 8)}`, d), side = (T.town.air && T.town.air.east || []).includes(code) ? 'e' : 'w', L = (M.land || {})[side] || {}, ta = (M.ta || {})[code] || {};
+  const A = { pop: +(L[`rnSt${n}Am`] ?? L[`rnSt${n}`] ?? 0), ico: wfIco(L[`wf${n}Am`] || L[`wf${n}`] || '') }, P = { pop: +(L[`rnSt${n}Pm`] ?? L[`rnSt${n}`] ?? 0), ico: wfIco(L[`wf${n}Pm`] || L[`wf${n}`] || '') };
+  if (ta[`taMax${n}`] == null && !L[`wf${n}Pm`] && !L[`wf${n}`]) return null;
+  return { am: A, pm: P, lo: ta[`taMin${n}`] != null ? +ta[`taMin${n}`] : null, hi: ta[`taMax${n}`] != null ? +ta[`taMax${n}`] : null };
+}
+function nvHtml(code) {
+  const TW = T.town; if (!TW || !TW.weather || !((TW.weather.data || {})[code] || []).length) return '';
+  const W = TW.weather.data[code], k = nowKey(), cur = W.find(h => h[0].slice(0, 10) >= k.slice(0, 10)) || W[0], ob = (TW.now || {})[code], A = TW.air && TW.air.now && TW.air.now[code];
+  const hr = hrOf(cur[0]), tp = ob ? ob[1] : cur[1], rh = ob && ob[2] != null ? ob[2] : cur[6], ws = ob && ob[3] != null ? ob[3] : cur[5], pty = ob ? (ob[5] || cur[3]) : cur[3];
+  const day = nvDay(code, today()), dy = (TW.dy || {})[code], sr = sun(code, today());
+  const air = (n, g) => { const c = g == null ? ['#8A7356', '#F3EBDD'] : NVC[g]; return `<div class="nvc" style="background:${c[1]}"><small>${n}</small><b style="color:${c[0]}">${g == null ? '—' : GN[g]}</b></div>`; };
+  // 시간별 (지금부터 24시간)
+  const tab = T.nvTab || 'wx', hrs = W.filter(h => h[0] >= k + '00').slice(0, 25), cell = (h, i) => {
+    const hh = hrOf(h[0]), lab = i === 0 ? '지금' : hh === 0 ? '내일' : hh + '시';
+    const main = tab === 'rain' ? `<b>${h[7] ? f1(h[7]) : 0}<small>mm</small></b>` : tab === 'wind' ? `<b>${Math.round(h[5])}<small>m/s</small></b>` : tab === 'hum' ? `<b>${i === 0 && rh != null ? rh : h[6]}<small>%</small></b>` : `<b>${i === 0 ? Math.round(tp) : h[1]}°</b>`;
+    const sub = tab === 'wx' ? `<i>${h[4]}%</i>` : tab === 'rain' ? `<i>${h[4]}%</i>` : '';
+    return `<div class="nvh${i === 0 ? ' now' : ''}"><small>${lab}</small><em>${nIco(h[3], h[2], hh)}</em>${main}${sub}</div>`;
+  };
+  // 주간예보 (오늘 포함 8일)
+  const wk = []; for (let i = 0; i < 8; i++) { const d = addDays(today(), i), x = nvDay(code, d), wd = new Date(d + 'T00:00:00Z').getUTCDay(); wk.push(`<div class="nvw${i === 0 ? ' td' : ''}"><span class="nvd${wd === 0 ? ' sun' : wd === 6 ? ' sat' : ''}"><b>${i === 0 ? '오늘' : i === 1 ? '내일' : WD[wd]}</b><small>${d.slice(5).replace('-', '.')}.</small></span>${x ? `<span class="nvp"><i>${x.am.pop}%</i><em>${x.am.ico}</em></span><span class="nvp"><i>${x.pm.pop}%</i><em>${x.pm.ico}</em></span><span class="nvt lo">${x.lo != null ? Math.round(x.lo) + '°' : '-'}</span><span class="nvt hi">${x.hi != null ? Math.round(x.hi) + '°' : '-'}</span>` : '<span class="nvna">예보 준비 중</span>'}</div>`); }
+  return `<section class="nvsec"><div class="nvtop"><b>강원 ${esc(NAMES[code])}</b><span>${esc(TW.updated || '')} 기준</span><button class="ghost nvre" data-town="reload" aria-label="날씨 새로고침">🔄 새로고침</button></div>
+    <div class="nvnow"><span class="nvico">${nIco(pty, cur[2], new Date(Date.now() + 9 * 3600e3).getUTCHours())}</span><span class="nvbig">${f1(tp)}°</span></div>
+    <p class="nvsub"><b>${skyTxt(pty, cur[2])}</b>${dy != null && dy !== 0 ? ` <span>어제보다 ${f1(Math.abs(dy))}° <i class="${dy > 0 ? 'up' : 'dn'}">${dy > 0 ? '↑' : '↓'}</i></span>` : ''}</p>
+    ${day && day.lo != null && day.hi != null ? `<p class="nvmm">최저 <b class="lo">${Math.round(day.lo)}°</b> · 최고 <b class="hi">${Math.round(day.hi)}°</b></p>` : ''}
+    <p class="nvline">체감 <b>${f1(feel(tp, ws, rh))}°</b> · 습도 <b>${rh}%</b> · ${ob && ob[4] != null ? WIND8[Math.round(((ob[4] % 360) / 45)) % 8] : ''}풍 <b>${f1(ws)}m/s</b></p>
+    <div class="nvcards">${air('미세먼지', A ? g10(A.pm10) : null)}${air('초미세먼지', A ? g25(A.pm25) : null)}<div class="nvc" style="background:#FFF8D8"><small>일출</small><b style="color:#C98A00">${sr[0]}</b></div><div class="nvc" style="background:#FFEFE3"><small>일몰</small><b style="color:#D2691E">${sr[1]}</b></div></div>
+    <div class="nvtabs">${[['wx', '날씨'], ['rain', '강수'], ['wind', '바람'], ['hum', '습도']].map(([a, l]) => `<button class="${tab === a ? 'on' : ''}" data-town="nvtab" data-v="${a}">${l}</button>`).join('')}</div>
+    <div class="nvhrs" data-noswipe>${hrs.map(cell).join('')}</div>
+    <h3 class="nvh3">주간예보 <small>오전·오후 강수확률 · 최저/최고</small></h3>
+    <div class="nvwk">${wk.join('')}</div>
+    <p class="foot" style="margin:8px 0 0">기상청 단기·중기예보와 실황이에요. 지금 기온은 관측값, 4~10일 뒤는 중기예보라 대략이에요.</p></section>`;
 }
 function fcLine(code) {
   const f = T.town.air.fc || {}, side = (T.town.air.east || []).includes(code) ? 'e' : 'w', d0 = today(), d1 = addDays(d0, 1);
@@ -354,12 +422,28 @@ document.addEventListener('click', e => {
     case 'newsmore': T.newsOpen = true; render(); break;
     case 'newsfold': { T.newsOpen = false; render(); const el = document.getElementById('tnews'); if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' }); break; }
     case 'place': searchPlaces(b.dataset.v); break;
+    case 'reload': if (Date.now() - (T.reloadAt || 0) < 4000) { toast('방금 새로 불러왔어요'); break; } T.reloadAt = Date.now(); load(true).then(() => toast('날씨를 새로 불러왔어요')); break;
+    case 'nvtab': T.nvTab = b.dataset.v; render(); break;
   }
 });
 document.addEventListener('change', e => { if (e.target.id === 'town-reg') { setReg(e.target.value); render(); } });
 
 const css = document.createElement('style');
 css.textContent = `
+.nvsec{padding-bottom:14px}.nvtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.nvtop b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--navy)}.nvtop span{flex:1;font-size:12px;color:var(--muted)}.nvre{min-height:34px;padding:0 12px;font-size:12.5px}
+.nvnow{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 0}.nvico{font-size:54px;line-height:1}.nvbig{font-family:var(--display);font-size:68px;line-height:1;color:var(--ink);letter-spacing:-2px}
+.nvsub{margin:4px 0 0;text-align:center;font-size:17px}.nvsub b{font-family:var(--display);font-weight:400}.nvsub span{color:var(--muted);font-size:15px;margin-left:8px}.nvsub i{font-style:normal;font-weight:700}.nvsub i.up{color:#D93C3C}.nvsub i.dn{color:#2F80ED}
+.nvmm{margin:2px 0 0;text-align:center;font-size:14px;color:var(--muted)}.nvmm b,.nvt{font-family:var(--display);font-weight:400}.lo{color:#2F6FD6}.hi{color:#D2403A}
+.nvline{margin:8px 0 12px;text-align:center;font-size:13.5px;color:var(--muted)}.nvline b{color:var(--ink)}
+.nvcards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}.nvc{border-radius:14px;padding:9px 6px;text-align:center}.nvc small{display:block;font-size:11.5px;color:var(--muted)}.nvc b{display:block;font-family:var(--display);font-weight:400;font-size:16px;margin-top:2px}
+.nvtabs{display:flex;gap:6px;margin:4px 0 6px}.nvtabs button{padding:5px 14px;min-height:34px;border-radius:99px;border:1.5px solid var(--line);background:#FFFDF7;color:var(--muted);font-size:13.5px}.nvtabs button.on{border-color:var(--navy);color:var(--navy);font-weight:700;background:#fff}
+.nvhrs{display:flex;gap:2px;overflow-x:auto;margin:0 -6px;padding:6px 6px 8px;scrollbar-width:none}.nvhrs::-webkit-scrollbar{display:none}
+.nvh{flex:none;width:54px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}.nvh small{font-size:12px;color:#6A5FD6}.nvh.now small{background:#EDEBFF;border-radius:99px;padding:0 8px;font-weight:700}.nvh em{font-style:normal;font-size:26px;line-height:1.1}.nvh b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--ink)}.nvh b small{font-size:10px;color:var(--muted);margin-left:1px}.nvh i{font-style:normal;font-size:12px;color:#5B8BE8}
+.nvh3{font-family:var(--display);font-weight:400;font-size:18px;color:var(--navy);margin:12px 0 4px}.nvh3 small{font-family:var(--body);font-size:11.5px;color:var(--muted);margin-left:6px}
+.nvwk{display:flex;flex-direction:column}.nvw{display:grid;grid-template-columns:62px 1fr 1fr 40px 40px;align-items:center;gap:4px;padding:7px 4px;border-bottom:1px solid #ECE3D2}.nvw.td{background:#F6EFE0;border-radius:12px;border-bottom:0}.nvw:last-child{border-bottom:0}
+.nvd b{display:block;font-family:var(--display);font-weight:400;font-size:15px}.nvd small{font-size:12px;color:var(--muted)}.nvd.sun b,.nvd.sun small{color:#D2403A}.nvd.sat b{color:#2F6FD6}
+.nvp{display:flex;align-items:center;gap:4px;justify-content:center}.nvp i{font-style:normal;font-size:12.5px;color:#5B8BE8}.nvp em{font-style:normal;font-size:22px}.nvt{text-align:right;font-size:16px}.nvna{grid-column:2/-1;font-size:12.5px;color:var(--muted);text-align:center}
+
 .walert{display:inline-block;align-self:flex-start;font-size:11.5px;font-weight:700;color:#fff;background:var(--red);border-radius:99px;padding:1px 9px;margin:2px 4px 2px 0}
 .walerts{margin-top:10px}.walerts small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .dhot{display:inline-block;background:var(--red);color:#fff;border-radius:99px;padding:0 8px;font-size:11px;margin-right:6px;letter-spacing:0}

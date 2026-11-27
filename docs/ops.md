@@ -15,3 +15,4 @@
   - 네이버 검색 API(블로그·카페글·뉴스, posts.json의 news = 시·군별 아이 행사 소식, NAVER API HUB 키 · 예전 개발자센터 키는 2027.6까지): fetch-posts.mjs, 시크릿 NAVER_CLIENT_ID · NAVER_CLIENT_SECRET (없으면 건너뜀)
 - 지인용 연결: 자세한 건 docs/friend-setup.md
 - toys.yml: 장난감 대여 목록 4지점 data/toys-<지점>.json, 월~토 KST 9·11·13·15·17시쯤, 바뀐 때만 커밋 (TOY_BRANCH=mm,np 로 일부만)
+- town.json에 now(지금 실황)·dy(어제보다)·weather.mm(일 최저최고) 추가(2026.11.27), data/wx-hist.json(시간별 기온 60시간, 어제보다 계산용). fetch-town.mjs observe()·yesterday()
