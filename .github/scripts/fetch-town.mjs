@@ -67,21 +67,25 @@ async function observe(regions) {
 // 자외선 지수 (기상청 생활기상지수 조회서비스 4.0, 하루 06·18시 발표, 3시간 간격 h0·h3…): { t: 발표 YYYYMMDDHH, v: [지수…] }
 // 강원 시·군 행정구역 코드는 2023년 특별자치도 뒤로 51xxx — 안 되면 예전 42xxx로 한 번 더
 const ADM = { chuncheon: 110, wonju: 130, gangneung: 150, donghae: 170, taebaek: 190, sokcho: 210, samcheok: 230, hongcheon: 720, hoengseong: 730, yeongwol: 750, pyeongchang: 760, jeongseon: 770, cheorwon: 780, hwacheon: 790, yanggu: 800, inje: 810, goseong: 820, yangyang: 830 };
+// 서비스 주소는 4.0이 V5 경로라는 안내가 있어 차례로 시험해서 되는 것으로 (첫 시·군에서 찾고 나머지는 그걸로)
+const UVURL = ['LivingWthrIdxServiceV5/getUVIdxV5', 'LivingWthrIdxServiceV5/getUVIdxV4', 'LivingWthrIdxServiceV4/getUVIdxV4', 'LivingWthrIdxServiceV4/getUVIdxV5'];
 async function uv(regions) {
   const k = new Date(Date.now() + 9 * 3600e3 - 30 * 60e3); let h = k.getUTCHours();
   if (h < 6) { k.setUTCDate(k.getUTCDate() - 1); h = 18; } else h = h >= 18 ? 18 : 6;
   const time = k.toISOString().slice(0, 10).replace(/-/g, '') + String(h).padStart(2, '0'), out = {};
+  let url = null, pre = null;
+  const one = async (u, p, c) => { const it = list(await getJson('https://apis.data.go.kr/1360000/' + u, { pageNo: 1, numOfRows: 10, dataType: 'JSON', areaNo: `${p}${c}00000`, time }))[0]; if (!it) return null; const v = []; for (let i = 0; i <= 75; i += 3) { const x = it['h' + i]; if (x === undefined || x === '' || x === null) break; v.push(+x); } return v.length ? { t: it.date || time, v } : null; };
   for (const r of regions) {
     const c = ADM[r.code]; if (!c) continue;
-    for (const pre of ['51', '42']) {
-      try {
-        const it = list(await getJson('https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4/getUVIdxV4', { pageNo: 1, numOfRows: 10, dataType: 'JSON', areaNo: `${pre}${c}00000`, time }))[0];
-        if (!it) continue;
-        const v = []; for (let i = 0; i <= 75; i += 3) { const x = it['h' + i]; if (x === undefined || x === '') break; v.push(+x); }
-        if (v.length) { out[r.code] = { t: it.date || time, v }; break; }
-      } catch (e) { console.warn(`자외선 ${r.name} (${pre}) 실패: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) return out; }
-      await sleep(150);
+    if (!url) {   // 맞는 주소·지역 코드 찾기
+      outer: for (const u of UVURL) for (const p of ['51', '42']) {
+        try { const x = await one(u, p, c); if (x) { url = u; pre = p; out[r.code] = x; console.log(`자외선 주소: ${u}, 지역코드 ${p}xxx`); break outer; } }
+        catch (e) { console.warn(`자외선 시험 ${u} ${p}: ${e.message}`); if (/SERVICE_KEY|NOT_REGISTERED|등록/.test(e.message)) return out; if (/NO_OPENAPI|없어진/.test(e.message)) break; }
+      }
+      if (!url) { console.warn('자외선: 맞는 주소를 못 찾았어요'); return out; }
+      continue;
     }
+    try { const x = await one(url, pre, c); if (x) out[r.code] = x; } catch (e) { console.warn(`자외선 ${r.name} 실패: ${e.message}`); }
     await sleep(150);
   }
   console.log(`자외선 ${Object.keys(out).length}곳 (${time})`);
